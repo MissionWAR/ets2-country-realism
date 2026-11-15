@@ -1,0 +1,19 @@
+# Python / tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Generated / downloaded artifacts
+build/
+dist/
+out/
+raw/
+vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak

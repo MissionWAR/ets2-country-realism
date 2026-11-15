@@ -1,0 +1,6 @@
+* text=auto eol=lf
+fixtures/** -text
+*.scs binary
+*.dds binary
+*.jpg binary
+*.png binary

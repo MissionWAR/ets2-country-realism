@@ -9,10 +9,10 @@ Requirements for the V1 release (Phases 1–5), targeting Phase A Semi-Auto Stea
 
 ### Virtual Filesystem & Structural SII Engine
 
-- [ ] **VFS-01**: Read HashFS v1/v2 archives, standard `.scs`/`.zip` packages, and unpacked mod directories across Windows and Linux paths cleanly, while safely detecting and reporting `3nK`-obfuscated or `AEM!`/encrypted ZIP archives without attempting to crack them.
-- [ ] **VFS-02**: Extract ETS2 `1.62.3.3s` baseline metadata from `def.scs` and `locale.scs` (36 Vanilla+DLC country definitions, `speed_limits.sii`, `sign/board/*.sii`, and all 43 active locales) into deterministic schemas/fixtures under `data/baselines/ets2_1.62_def/`.
-- [ ] **SII-01**: Parse and surgically edit ETS2 `.sii`/`.sui` country files and `speed_limits.sii` while preserving comments, formatting, `regions[]`, `secondary_time_zone_area[]`, `secondary_time_zone[]`, `train`, `tram`, and unrelated attributes untouched.
-- [ ] **SII-02**: Enforce strict SCS SII serialization hygiene on every generated file: UTF-8 without BOM, LF (`\n`) line endings, POSIX `/` internal paths, valid unit scoping, and idempotent round-trip output.
+- [x] **VFS-01**: Read HashFS v1/v2 archives, standard `.scs`/`.zip` packages, and unpacked mod directories across Windows and Linux paths cleanly, while safely detecting and reporting `3nK`-obfuscated or `AEM!`/encrypted ZIP archives without attempting to crack them.
+- [x] **VFS-02**: Extract ETS2 `1.62.3.3s` baseline metadata from `def.scs` and `locale.scs` (36 Vanilla+DLC country definitions, `speed_limits.sii`, `sign/board/*.sii`, and all 43 active locales) into deterministic schemas/fixtures under `data/baselines/ets2_1.62_def/`.
+- [x] **SII-01**: Parse and surgically edit ETS2 `.sii`/`.sui` country files and `speed_limits.sii` while preserving comments, formatting, `regions[]`, `secondary_time_zone_area[]`, `secondary_time_zone[]`, `train`, `tram`, and unrelated attributes untouched.
+- [x] **SII-02**: Enforce strict SCS SII serialization hygiene on every generated file: UTF-8 without BOM, LF (`\n`) line endings, POSIX `/` internal paths, valid unit scoping, and idempotent round-trip output.
 
 ### Realism Registry, Seasonal Builds & Offline Validator (Phase A)
 
@@ -70,10 +70,10 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VFS-01 | Phase 1 | Pending |
-| VFS-02 | Phase 1 | Pending |
-| SII-01 | Phase 1 | Pending |
-| SII-02 | Phase 1 | Pending |
+| VFS-01 | Phase 1 | Complete |
+| VFS-02 | Phase 1 | Complete |
+| SII-01 | Phase 1 | Complete |
+| SII-02 | Phase 1 | Complete |
 | SIM-01 | Phase 2 | Pending |
 | SIM-02 | Phase 2 | Pending |
 | SIM-03 | Phase 2 | Pending |

@@ -1,0 +1,4445 @@
+{
+  "speed_limits": [
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 110
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "albania",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/albania/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "austria",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/austria/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 120
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 75,
+              "max_limit": 75,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "belgium",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/belgium/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 70
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "bosnia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/bosnia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 140,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 140
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": null,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": false,
+              "urban_limit": 90
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": false,
+              "urban_limit": 100
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "bulgaria",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/bulgaria/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "croatia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/croatia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": 110,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": 130,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "czech",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/czech/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "denmark",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/denmark/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "estonia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/estonia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "finland",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/finland/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "france",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/france/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 0,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 0,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 0
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "germany",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/germany/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "greece",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/greece/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "hungary",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/hungary/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "iceland",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/iceland/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "italy",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/italy/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 85,
+              "max_limit": 85,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 85,
+              "max_limit": 85,
+              "uncommon": null,
+              "urban_limit": 85
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": 120,
+              "uncommon": null,
+              "urban_limit": 120
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "kosovo",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/kosovo/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "latvia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/latvia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "lithuania",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/lithuania/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 75,
+              "max_limit": 75,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 75,
+              "max_limit": 75,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "luxembourg",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/luxembourg/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "macedonia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/macedonia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "montenegro",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/montenegro/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "netherlands",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/netherlands/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "norway",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/norway/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 140,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 140
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "poland",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/poland/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 120
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "portugal",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/portugal/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 130
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": null,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 100,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": false,
+              "urban_limit": 100
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": 110,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 110,
+              "max_limit": 110,
+              "uncommon": false,
+              "urban_limit": 110
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "romania",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/romania/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 60
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 60
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 60
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 60
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "russia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/russia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "serbia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/serbia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "slovakia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/slovakia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 130,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 130
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "slovenia",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/slovenia/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 120
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "spain",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/spain/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 110
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": null,
+              "urban_limit": 90
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "sweden",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/sweden/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 120
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 80
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": null,
+              "urban_limit": 100
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "switzerland",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/switzerland/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 90,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 110,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 120,
+              "max_limit": null,
+              "uncommon": false,
+              "urban_limit": 120
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": null,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 85,
+              "max_limit": 85,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": false,
+              "urban_limit": 90
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 80,
+              "max_limit": 80,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 90,
+              "max_limit": 90,
+              "uncommon": false,
+              "urban_limit": 50
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 100,
+              "max_limit": 100,
+              "uncommon": false,
+              "urban_limit": 100
+            },
+            {
+              "lane_speed_class": "slow_road",
+              "limit": 30,
+              "max_limit": 30,
+              "uncommon": true,
+              "urban_limit": 30
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        }
+      ],
+      "has_train": false,
+      "has_tram": false,
+      "slug": "turkey",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus"
+      ],
+      "vfs_path": "def/country/turkey/speed_limits.sii"
+    },
+    {
+      "blocks": [
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 60,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 70,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 70,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 70
+            }
+          ],
+          "unit_name": ".speed_limit.car",
+          "vehicle_speed_class": "car"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 50,
+              "max_limit": 50,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 60
+            }
+          ],
+          "unit_name": ".speed_limit.truck",
+          "vehicle_speed_class": "truck"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "local_road",
+              "limit": 50,
+              "max_limit": 50,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "expressway",
+              "limit": 60,
+              "max_limit": 60,
+              "uncommon": null,
+              "urban_limit": 30
+            },
+            {
+              "lane_speed_class": "motorway",
+              "limit": 70,
+              "max_limit": 70,
+              "uncommon": null,
+              "urban_limit": 70
+            }
+          ],
+          "unit_name": ".speed_limit.bus",
+          "vehicle_speed_class": "bus"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_train",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.train",
+          "vehicle_speed_class": "train"
+        },
+        {
+          "lanes": [
+            {
+              "lane_speed_class": "rail_tram",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "divided_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            },
+            {
+              "lane_speed_class": "local_road",
+              "limit": null,
+              "max_limit": null,
+              "uncommon": null,
+              "urban_limit": 40
+            }
+          ],
+          "unit_name": ".speed_limit.tram",
+          "vehicle_speed_class": "tram"
+        }
+      ],
+      "has_train": true,
+      "has_tram": true,
+      "slug": "uk",
+      "vehicle_classes": [
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "tram"
+      ],
+      "vfs_path": "def/country/uk/speed_limits.sii"
+    }
+  ]
+}

@@ -1,0 +1,386 @@
+{
+  "_meta": {
+    "updated_at": "2026-11-16T19:29:10.770Z",
+    "version": 2
+  },
+  "entries": {
+    ".github/workflows/ci.yml": {
+      "exports": [],
+      "imports": [],
+      "type": "config"
+    },
+    "data/baselines/ets2_1.62_def/manifest.json": {
+      "exports": [],
+      "imports": [],
+      "type": "data"
+    },
+    "pyproject.toml": {
+      "exports": [],
+      "imports": [],
+      "type": "config"
+    },
+    "src/ets2v2/__init__.py": {
+      "exports": [
+        "__version__"
+      ],
+      "imports": [],
+      "type": "module"
+    },
+    "src/ets2v2/baseline/__init__.py": {
+      "exports": [
+        "DEFAULT_ETS2_GAME_DIR",
+        "EXTRACTOR_SCHEMA_VERSION",
+        "BaselineBundle",
+        "BaselineCountry",
+        "BaselineManifest",
+        "BaselineSpeedLimit",
+        "BoardClassification",
+        "CountriesBaseline",
+        "FuelBoardEntry",
+        "FuelBoardSlot",
+        "FuelBoardsBaseline",
+        "LocalesBaseline",
+        "SpeedLimitsBaseline",
+        "extract_baseline",
+        "resolve_game_dir",
+        "verify_baseline_bundle",
+        "write_baseline_bundle"
+      ],
+      "imports": [
+        "ets2v2.baseline.extractor",
+        "ets2v2.baseline.models"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/baseline/extractor.py": {
+      "exports": [
+        "DEFAULT_ETS2_GAME_DIR",
+        "EXTRACTOR_SCHEMA_VERSION",
+        "resolve_game_dir",
+        "extract_baseline",
+        "write_baseline_bundle",
+        "verify_baseline_bundle"
+      ],
+      "imports": [
+        "hashlib",
+        "json",
+        "pydantic",
+        "ets2v2.baseline.models",
+        "ets2v2.sii",
+        "ets2v2.sii.lexer",
+        "ets2v2.vfs",
+        "ets2v2.vfs.hashfs"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/baseline/models.py": {
+      "exports": [
+        "BoardClassification",
+        "BaselineManifest",
+        "BaselineCountry",
+        "CountriesBaseline",
+        "BaselineSpeedLimit",
+        "SpeedLimitsBaseline",
+        "FuelBoardSlot",
+        "FuelBoardEntry",
+        "FuelBoardsBaseline",
+        "LocalesBaseline",
+        "BaselineBundle"
+      ],
+      "imports": [
+        "pydantic",
+        "ets2v2.sii.speed_limits"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/cli.py": {
+      "exports": [
+        "CommandHandler",
+        "build_parser",
+        "main"
+      ],
+      "imports": [
+        "argparse",
+        "json",
+        "ets2v2",
+        "ets2v2.baseline",
+        "ets2v2.vfs",
+        "ets2v2.vfs.hashfs"
+      ],
+      "type": "entry-point"
+    },
+    "src/ets2v2/sii/__init__.py": {
+      "exports": [
+        "CountryDataModel",
+        "CountryDataPatch",
+        "LaneSpeedRule",
+        "LocalizationEntry",
+        "SignBoardTemplate",
+        "SignTemplateTextSlot",
+        "SiiAttributeSpan",
+        "SiiDiagnostic",
+        "SiiDocument",
+        "SiiEncodingError",
+        "SiiIncludeSpan",
+        "SiiSpan",
+        "SiiUnitBlock",
+        "SpeedLimitsFile",
+        "VehicleSpeedLimitBlock",
+        "normalize_sii_bytes",
+        "parse_country_data",
+        "parse_country_includes",
+        "parse_localization_db",
+        "parse_sign_board",
+        "parse_sii_float",
+        "parse_speed_limits",
+        "patch_country_data",
+        "patch_speed_limits",
+        "scan_sii_structure",
+        "serialize_sii_text",
+        "validate_sii_hygiene"
+      ],
+      "imports": [
+        "ets2v2.sii.country",
+        "ets2v2.sii.document",
+        "ets2v2.sii.hygiene",
+        "ets2v2.sii.lexer",
+        "ets2v2.sii.localization",
+        "ets2v2.sii.sign_board",
+        "ets2v2.sii.speed_limits"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/country.py": {
+      "exports": [
+        "CountryDataModel",
+        "CountryDataPatch",
+        "parse_country_includes",
+        "parse_country_data",
+        "patch_country_data"
+      ],
+      "imports": [
+        "pydantic",
+        "ets2v2.sii.document",
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/document.py": {
+      "exports": [
+        "SiiAttributeSpan",
+        "SiiDocument",
+        "SiiIncludeSpan",
+        "SiiUnitBlock"
+      ],
+      "imports": [
+        "ets2v2.sii.hygiene",
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/hygiene.py": {
+      "exports": [
+        "SiiEncodingError",
+        "SiiDiagnostic",
+        "normalize_sii_bytes",
+        "serialize_sii_text",
+        "validate_unit_name_segments",
+        "validate_string_path_hygiene",
+        "validate_sii_hygiene"
+      ],
+      "imports": [
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/lexer.py": {
+      "exports": [
+        "SiiSpan",
+        "SiiLexDiagnostic",
+        "SiiIncludeSpan",
+        "SiiAttributeSpan",
+        "SiiUnitBlock",
+        "SiiScanResult",
+        "parse_sii_float",
+        "parse_sii_bool",
+        "split_sii_tuple",
+        "unquote_sii_string",
+        "scan_sii_structure"
+      ],
+      "imports": [
+        "struct"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/localization.py": {
+      "exports": [
+        "LocalizationEntry",
+        "parse_localization_db"
+      ],
+      "imports": [
+        "pydantic",
+        "ets2v2.sii.document",
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/sign_board.py": {
+      "exports": [
+        "SignTemplateTextSlot",
+        "SignBoardTemplate",
+        "parse_sign_board"
+      ],
+      "imports": [
+        "pydantic",
+        "ets2v2.sii.document",
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/sii/speed_limits.py": {
+      "exports": [
+        "LaneSpeedRule",
+        "VehicleSpeedLimitBlock",
+        "SpeedLimitsFile",
+        "parse_speed_limits",
+        "patch_speed_limits"
+      ],
+      "imports": [
+        "pydantic",
+        "ets2v2.sii.document",
+        "ets2v2.sii.lexer"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/__init__.py": {
+      "exports": [
+        "ArchiveDiagnostic",
+        "CompressionKind",
+        "DiagnosticKind",
+        "DirectoryArchive",
+        "EffectiveVfsEntry",
+        "HashFsV1Archive",
+        "HashFsV2Archive",
+        "ProtectedArchiveStub",
+        "ProtectedPayloadError",
+        "UnsupportedCompressionError",
+        "VfsArchive",
+        "VfsEntryMeta",
+        "VfsLayer",
+        "VfsStack",
+        "ZipArchive",
+        "cityhash64",
+        "classify_mount_path",
+        "detect_3nk",
+        "hash_vfs_path",
+        "is_empty_sii_stub",
+        "normalize_vfs_path",
+        "open_archive"
+      ],
+      "imports": [
+        "ets2v2.vfs.cityhash",
+        "ets2v2.vfs.dir_archive",
+        "ets2v2.vfs.hashfs",
+        "ets2v2.vfs.stack",
+        "ets2v2.vfs.types",
+        "ets2v2.vfs.zip_archive"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/cityhash.py": {
+      "exports": [
+        "K0",
+        "K1",
+        "K2",
+        "K3",
+        "cityhash64",
+        "hash_vfs_path"
+      ],
+      "imports": [
+        "struct",
+        "ets2v2.vfs.types"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/dir_archive.py": {
+      "exports": [
+        "DirectoryArchive"
+      ],
+      "imports": [
+        "ets2v2.vfs.types"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/hashfs.py": {
+      "exports": [
+        "DEFAULT_SEEDED_PREFIXES",
+        "MAX_V2_TABLE_BYTES",
+        "MAX_ENTRY_DECOMPRESSED_BYTES",
+        "HashFsV1Archive",
+        "HashFsV2Archive",
+        "ProtectedArchiveStub",
+        "detect_3nk",
+        "open_archive"
+      ],
+      "imports": [
+        "struct",
+        "zlib",
+        "ets2v2.vfs.cityhash",
+        "ets2v2.vfs.dir_archive",
+        "ets2v2.vfs.types",
+        "ets2v2.vfs.zip_archive"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/stack.py": {
+      "exports": [
+        "MAX_STUB_INSPECT_BYTES",
+        "is_empty_sii_stub",
+        "classify_mount_path",
+        "VfsLayer",
+        "EffectiveVfsEntry",
+        "VfsStack"
+      ],
+      "imports": [
+        "ets2v2.vfs.hashfs",
+        "ets2v2.vfs.types"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/types.py": {
+      "exports": [
+        "DiagnosticKind",
+        "CompressionKind",
+        "ProtectedPayloadError",
+        "UnsupportedCompressionError",
+        "detect_3nk",
+        "ArchiveDiagnostic",
+        "VfsEntryMeta",
+        "normalize_vfs_path",
+        "matches_prefixes",
+        "filter_paths_by_prefixes",
+        "DiagnosticCollector",
+        "deduplicate_diagnostics",
+        "decode_vfs_text",
+        "record_3nk_if_present",
+        "VfsArchive"
+      ],
+      "imports": [
+        "pydantic"
+      ],
+      "type": "module"
+    },
+    "src/ets2v2/vfs/zip_archive.py": {
+      "exports": [
+        "MAX_ZIP_ENTRY_BYTES",
+        "ZipArchive"
+      ],
+      "imports": [
+        "zipfile",
+        "zlib",
+        "ets2v2.vfs.types"
+      ],
+      "type": "module"
+    }
+  }
+}

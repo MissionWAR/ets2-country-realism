@@ -1,0 +1,80 @@
+{
+  "_meta": {
+    "updated_at": "2026-11-16T19:29:11.608Z",
+    "version": 3
+  },
+  "entries": {
+    "basedpyright": {
+      "version": "1.40.2",
+      "type": "development",
+      "invocation": "uv run basedpyright",
+      "used_by": [
+        "pyproject.toml",
+        ".github/workflows/ci.yml",
+        ".planning/config.json"
+      ]
+    },
+    "hatchling": {
+      "version": ">=1.27,<2",
+      "type": "development",
+      "invocation": "uv sync / hatchling.build",
+      "used_by": [
+        "pyproject.toml"
+      ]
+    },
+    "pydantic": {
+      "version": "2.14.3",
+      "type": "production",
+      "invocation": "import",
+      "used_by": [
+        "src/ets2v2/vfs/types.py",
+        "src/ets2v2/sii/country.py",
+        "src/ets2v2/sii/speed_limits.py",
+        "src/ets2v2/sii/sign_board.py",
+        "src/ets2v2/sii/localization.py",
+        "src/ets2v2/baseline/models.py",
+        "src/ets2v2/baseline/extractor.py",
+        "tests/test_cli_scaffold.py"
+      ]
+    },
+    "pytest": {
+      "version": "9.2.0",
+      "type": "development",
+      "invocation": "uv run pytest",
+      "used_by": [
+        "pyproject.toml",
+        ".github/workflows/ci.yml",
+        ".planning/config.json",
+        "tests/test_baseline_contracts.py",
+        "tests/test_baseline_extractor.py",
+        "tests/test_cli_scaffold.py",
+        "tests/test_sii_boards_locales.py",
+        "tests/test_sii_country.py",
+        "tests/test_sii_document.py",
+        "tests/test_sii_hygiene.py",
+        "tests/test_sii_speed_limits.py",
+        "tests/test_vfs_archives.py",
+        "tests/test_vfs_cityhash.py",
+        "tests/test_vfs_stack.py"
+      ]
+    },
+    "pytest-cov": {
+      "version": "7.1.0",
+      "type": "development",
+      "invocation": "uv run pytest --cov=ets2v2",
+      "used_by": [
+        "pyproject.toml"
+      ]
+    },
+    "ruff": {
+      "version": "0.17.5",
+      "type": "development",
+      "invocation": "uv run ruff check && uv run ruff format --check",
+      "used_by": [
+        "pyproject.toml",
+        ".github/workflows/ci.yml",
+        ".planning/config.json"
+      ]
+    }
+  }
+}

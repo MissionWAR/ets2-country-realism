@@ -1,0 +1,235 @@
+{
+  "_meta": {
+    "updated_at": "2026-11-16T19:29:11.191Z",
+    "version": 2
+  },
+  "entries": {
+    "CLI ets2v2 baseline extract": {
+      "method": "CLI",
+      "path": "ets2v2 baseline extract",
+      "params": [
+        "--game-dir",
+        "--out-dir",
+        "--raw-cache-dir",
+        "--check"
+      ],
+      "file": "src/ets2v2/cli.py",
+      "description": "Extract clean-room ETS2 baseline JSONs or verify zero-diff (--check)"
+    },
+    "CLI ets2v2 vfs inspect": {
+      "method": "CLI",
+      "path": "ets2v2 vfs inspect",
+      "params": [
+        "paths",
+        "--prefix",
+        "--limit",
+        "--json"
+      ],
+      "file": "src/ets2v2/cli.py",
+      "description": "Inspect ordered .scs/.zip/dir VFS layers, paths, and diagnostics"
+    },
+    "PYTHON ets2v2.baseline.extract_baseline": {
+      "method": "PYTHON",
+      "path": "ets2v2.baseline:extract_baseline",
+      "params": [
+        "game_dir",
+        "raw_cache_dir"
+      ],
+      "file": "src/ets2v2/baseline/extractor.py",
+      "description": "Extract BaselineBundle from version.scs, def.scs, locale.scs, and audit dlc_*.scs"
+    },
+    "PYTHON ets2v2.baseline.resolve_game_dir": {
+      "method": "PYTHON",
+      "path": "ets2v2.baseline:resolve_game_dir",
+      "params": [
+        "game_dir"
+      ],
+      "file": "src/ets2v2/baseline/extractor.py",
+      "description": "Resolve ETS2 install path (arg > ETS2_GAME_DIR > DEFAULT_ETS2_GAME_DIR)"
+    },
+    "PYTHON ets2v2.baseline.verify_baseline_bundle": {
+      "method": "PYTHON",
+      "path": "ets2v2.baseline:verify_baseline_bundle",
+      "params": [
+        "bundle",
+        "out_dir"
+      ],
+      "file": "src/ets2v2/baseline/extractor.py",
+      "description": "Verify no raw .sii/.sui files, valid SHA-256s, LF no-BOM, and zero diff"
+    },
+    "PYTHON ets2v2.baseline.write_baseline_bundle": {
+      "method": "PYTHON",
+      "path": "ets2v2.baseline:write_baseline_bundle",
+      "params": [
+        "bundle",
+        "out_dir"
+      ],
+      "file": "src/ets2v2/baseline/extractor.py",
+      "description": "Write deterministic UTF-8 no-BOM LF baseline JSON files and manifest"
+    },
+    "PYTHON ets2v2.cli.main": {
+      "method": "PYTHON",
+      "path": "ets2v2.cli:main",
+      "params": [
+        "argv"
+      ],
+      "file": "src/ets2v2/cli.py",
+      "description": "Root CLI entrypoint dispatching vfs and baseline subcommands"
+    },
+    "PYTHON ets2v2.sii.SiiDocument": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:SiiDocument",
+      "params": [
+        "text",
+        "require_siinunit"
+      ],
+      "file": "src/ets2v2/sii/document.py",
+      "description": "Span-preserving SII/SUI model for surgical scalar/array edits"
+    },
+    "PYTHON ets2v2.sii.parse_country_data": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:parse_country_data",
+      "params": [
+        "source"
+      ],
+      "file": "src/ets2v2/sii/country.py",
+      "description": "Parse country_data unit into CountryDataModel"
+    },
+    "PYTHON ets2v2.sii.parse_country_includes": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:parse_country_includes",
+      "params": [
+        "source"
+      ],
+      "file": "src/ets2v2/sii/country.py",
+      "description": "Extract ordered @include paths from def/country*.sii with col-0/path checks"
+    },
+    "PYTHON ets2v2.sii.parse_localization_db": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:parse_localization_db",
+      "params": [
+        "source"
+      ],
+      "file": "src/ets2v2/sii/localization.py",
+      "description": "Read-only parser for key[]/val[] pairs in localization_db or .sui fragments"
+    },
+    "PYTHON ets2v2.sii.parse_sign_board": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:parse_sign_board",
+      "params": [
+        "source"
+      ],
+      "file": "src/ets2v2/sii/sign_board.py",
+      "description": "Read-only sign_board_template and sign_template_text slot parser"
+    },
+    "PYTHON ets2v2.sii.parse_speed_limits": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:parse_speed_limits",
+      "params": [
+        "source"
+      ],
+      "file": "src/ets2v2/sii/speed_limits.py",
+      "description": "Parse country_speed_limit units into interleaved LaneSpeedRule blocks"
+    },
+    "PYTHON ets2v2.sii.patch_country_data": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:patch_country_data",
+      "params": [
+        "source",
+        "patch"
+      ],
+      "file": "src/ets2v2/sii/country.py",
+      "description": "Surgically patch country_data fields via CountryDataPatch, preserving comments"
+    },
+    "PYTHON ets2v2.sii.patch_speed_limits": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:patch_speed_limits",
+      "params": [
+        "source",
+        "updates"
+      ],
+      "file": "src/ets2v2/sii/speed_limits.py",
+      "description": "Surgically patch targeted vehicle_speed_class lane rules in speed_limits.sii"
+    },
+    "PYTHON ets2v2.sii.scan_sii_structure": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:scan_sii_structure",
+      "params": [
+        "source",
+        "require_siinunit"
+      ],
+      "file": "src/ets2v2/sii/lexer.py",
+      "description": "Single-pass O(n) string/comment-aware structural scanner for SII/SUI text"
+    },
+    "PYTHON ets2v2.sii.validate_sii_hygiene": {
+      "method": "PYTHON",
+      "path": "ets2v2.sii:validate_sii_hygiene",
+      "params": [
+        "source",
+        "require_siinunit"
+      ],
+      "file": "src/ets2v2/sii/hygiene.py",
+      "description": "Check UTF-8 no-BOM, LF, col-0 @include, POSIX paths, and unit segment rules"
+    },
+    "PYTHON ets2v2.vfs.VfsStack": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:VfsStack",
+      "params": [
+        "layers",
+        "seeded_prefixes",
+        "enabled_dlcs"
+      ],
+      "file": "src/ets2v2/vfs/stack.py",
+      "description": "Multi-layer priority VFS overlay with base/ normalization and stub tracking"
+    },
+    "PYTHON ets2v2.vfs.classify_mount_path": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:classify_mount_path",
+      "params": [
+        "raw_path",
+        "enabled_dlcs"
+      ],
+      "file": "src/ets2v2/vfs/stack.py",
+      "description": "Map base/ and opt-in dlc_<id>/ prefixes into (canonical_path, mount_scope)"
+    },
+    "PYTHON ets2v2.vfs.hash_vfs_path": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:hash_vfs_path",
+      "params": [
+        "path",
+        "salt"
+      ],
+      "file": "src/ets2v2/vfs/cityhash.py",
+      "description": "Normalize path and compute SCS HashFS CityHash64 1.0.3 digest"
+    },
+    "PYTHON ets2v2.vfs.is_empty_sii_stub": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:is_empty_sii_stub",
+      "params": [
+        "data"
+      ],
+      "file": "src/ets2v2/vfs/stack.py",
+      "description": "Detect empty SiiNunit {} or {} suppression stubs outside comments/strings"
+    },
+    "PYTHON ets2v2.vfs.normalize_vfs_path": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:normalize_vfs_path",
+      "params": [
+        "path",
+        "allow_empty"
+      ],
+      "file": "src/ets2v2/vfs/types.py",
+      "description": "Canonicalize VFS path to POSIX and reject NUL bytes and '..' traversal"
+    },
+    "PYTHON ets2v2.vfs.open_archive": {
+      "method": "PYTHON",
+      "path": "ets2v2.vfs:open_archive",
+      "params": [
+        "path",
+        "seeded_prefixes"
+      ],
+      "file": "src/ets2v2/vfs/hashfs.py",
+      "description": "Open DirectoryArchive, ZipArchive, HashFsV1/V2, or ProtectedArchiveStub"
+    }
+  }
+}

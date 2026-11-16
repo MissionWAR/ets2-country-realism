@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "updated_at": "2026-11-16T19:29:10.323Z",
+    "version": 3
+  },
+  "languages": [
+    "Python 3.12+"
+  ],
+  "frameworks": [
+    "Pydantic v2",
+    "argparse (stdlib CLI)"
+  ],
+  "tools": [
+    "uv",
+    "Hatchling",
+    "Ruff",
+    "basedpyright (strict)",
+    "pytest",
+    "pytest-cov",
+    "GitHub Actions"
+  ],
+  "build_system": "hatchling (pyproject.toml) + uv",
+  "test_framework": "pytest (with pytest-cov)",
+  "package_manager": "uv (uv.lock)",
+  "content_formats": [
+    "SCS .sii (SiiNunit unit definition files)",
+    "SCS .sui (headerless/fragment include files)",
+    "SCS .scs archives (HashFS v1, HashFS v2, ZIP)",
+    "JSON (clean-room ETS2 baseline schemas & manifest)",
+    "Markdown + YAML frontmatter (scs-modding-wiki skill)",
+    "TOML (pyproject.toml, uv.lock)"
+  ]
+}

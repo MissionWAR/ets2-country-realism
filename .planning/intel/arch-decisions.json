@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "updated_at": "2026-11-16T19:29:12.024Z",
+    "version": 3
+  },
+  "entries": {
+    "overview": {
+      "pattern": "Clean-room layered Python 3.12+ toolkit (VFS -> SII -> Baseline -> CLI)",
+      "description": "Modular ETS2 1.62+ country realism and VFS/SII toolkit in src/ets2v2/ separating read-only archive inspection (vfs), span-preserving SII/SUI parsing and surgical editing (sii), deterministic clean-room baseline extraction/verification (baseline), and argparse CLI (cli). Guided by .agents/skills/scs-modding-wiki/SKILL.md for official SCS Engine/Unit/Archive semantics."
+    },
+    "data-flow": {
+      "flow": "SCS archives (.scs HashFS v1/v2, .zip, dir) -> VfsStack overlay -> SiiDocument/adapters -> Pydantic v2 clean-room JSON baseline",
+      "description": "open_archive dispatches by magic bytes (SCS# v1/v2, PK, AEM!, or dir) and mounts into VfsStack (normalizing base/ mounts and tracking empty SiiNunit {} suppression stubs). extract_baseline reads version.sii, def/country.sii, country .sui and speed_limits.sii, def/sign/board/*.sii, and stripped-root locale.scs, serializing sorted UTF-8 no-BOM LF JSONs with SHA-256 manifest."
+    },
+    "conventions": {
+      "naming": "snake_case modules/functions, PascalCase frozen Pydantic v2 BaseModel/dataclass models; SCS unit segments enforced as [a-z0-9_]{1,12}",
+      "file-organization": "src/ets2v2/{vfs,sii,baseline}/ + cli.py + py.typed; tests under tests/test_<subsystem>_*.py with @pytest.mark.local_ets2 gating local archive tests; committed clean-room JSON baseline under data/baselines/ets2_1.62_def/",
+      "imports": "from __future__ import annotations throughout; strict typing via basedpyright (typeCheckingMode=strict, Python 3.12) and Ruff (E, F, I, UP, B, SIM, RUF; line-length=100); deterministic UTF-8 no-BOM LF serialization"
+    },
+    "security": {
+      "protection_boundaries": "Refuses decryption of protected/obfuscated assets: AEM! headers yield ProtectedArchiveStub, encrypted ZIP entries (flag_bits & 0x41) raise ProtectedPayloadError, and 3nK\\x01 payloads emit three_nk_obfuscated diagnostics and refuse text decoding.",
+      "traversal_and_resource_caps": "normalize_vfs_path and DirectoryArchive block NUL bytes, '..' traversal, and escaping symlinks/junctions; SII hygiene rejects backslashes, '..', and non-col-0 @include; HashFS v2 caps tables at 64 MiB (MAX_V2_TABLE_BYTES) and entries at 128 MiB (MAX_ENTRY_DECOMPRESSED_BYTES); ZipArchive caps reads at 128 MiB (MAX_ZIP_ENTRY_BYTES); VfsStack caps stub inspection at 1 MiB (MAX_STUB_INSPECT_BYTES); extract_baseline blocks --raw-cache-dir inside repo data/."
+    },
+    "component:VFS": {
+      "path": "src/ets2v2/vfs/",
+      "responsibility": "Read-only VfsArchive implementations for HashFS v1/v2 (hashfs.py) using pure-Python CityHash64 1.0.3 (cityhash.py), ZIP-wrapped .scs (zip_archive.py), unpacked directories (dir_archive.py), and multi-layer VfsStack overlay (stack.py) handling base/ flattening, opt-in dlc_<id>/ mounting, and empty SiiNunit {} stub detection."
+    },
+    "component:SII": {
+      "path": "src/ets2v2/sii/",
+      "responsibility": "Single-pass O(n) string/comment-aware structural scanner (lexer.py) with &xxxxxxxx IEEE754 hex-float decoding, SCS hygiene checker (hygiene.py), and span-preserving surgical editor SiiDocument (document.py); adapters for country.sii/country_data (country.py), interleaved country_speed_limit rules (speed_limits.py), read-only sign_board_template (sign_board.py), and localization_db (localization.py)."
+    },
+    "component:Baseline": {
+      "path": "src/ets2v2/baseline/",
+      "responsibility": "Clean-room ETS2 1.62.3.3 (eut2) extractor and byte-exact verifier (extractor.py, models.py) producing manifest.json, countries.json (36 countries), speed_limits.json (36 entries), fuel_boards.json (461 fuel boards: 373 active_fp, 88 placeholder/blank), and locales.json (43 locales, 12 tz_* keys, 99 fp_* keys) with dlc_*.scs country audit."
+    },
+    "component:CLI": {
+      "path": "src/ets2v2/cli.py",
+      "responsibility": "Root argparse CLI (ets2v2) providing 'ets2v2 vfs inspect' (--prefix, --limit, --json) for VFS overlay/diagnostic inspection and 'ets2v2 baseline extract' (--game-dir, --out-dir, --raw-cache-dir, --check) for baseline extraction and verification."
+    }
+  }
+}

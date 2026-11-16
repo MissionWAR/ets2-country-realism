@@ -43,7 +43,9 @@
     "security_block_on": "medium",
     "drift_threshold": 2,
     "drift_action": "auto-remap",
-    "subagent_timeout": 1200000
+    "subagent_timeout": 1200000,
+    "build_command": "uv run --offline ruff check && uv run --offline ruff format --check && uv run --offline basedpyright",
+    "test_command": "uv run --offline pytest -q --tb=short"
   },
   "project_code": "ETS2V2",
   "phase_naming": "sequential",

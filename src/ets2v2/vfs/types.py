@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Literal, Protocol, runtime_checkable
+from typing import Literal, Protocol, Self, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -83,6 +83,113 @@ def normalize_vfs_path(path: str, *, allow_empty: bool = False) -> str:
     return normalized
 
 
+def matches_prefixes(path: str, normalized_prefixes: Sequence[str]) -> bool:
+    """Return True if ``path`` equals or is under any prefix in ``normalized_prefixes``."""
+    if "" in normalized_prefixes:
+        return True
+    return any(path == pref or path.startswith(f"{pref}/") for pref in normalized_prefixes)
+
+
+def filter_paths_by_prefixes(
+    paths: Iterable[str],
+    prefixes: Sequence[str] | None = None,
+) -> list[str]:
+    """Return sorted VFS paths matching ``prefixes``.
+
+    ``prefixes=None`` returns all paths; an empty non-``None`` sequence returns ``[]``.
+    """
+    if prefixes is None:
+        return sorted(paths)
+    if len(prefixes) == 0:
+        return []
+    norm_prefixes = [normalize_vfs_path(p, allow_empty=True) for p in prefixes]
+    if "" in norm_prefixes:
+        return sorted(paths)
+    return sorted(p for p in paths if matches_prefixes(p, norm_prefixes))
+
+
+class DiagnosticCollector:
+    """Deduplicated per-archive ``ArchiveDiagnostic`` accumulator."""
+
+    def __init__(self, archive_path: Path | str) -> None:
+        self._archive_path = str(archive_path)
+        self._items: list[ArchiveDiagnostic] = []
+        self._keys: set[tuple[DiagnosticKind, str | None, str]] = set()
+
+    @property
+    def items(self) -> list[ArchiveDiagnostic]:
+        return list(self._items)
+
+    def add(
+        self,
+        kind: DiagnosticKind,
+        entry_path: str | None,
+        detail: str,
+    ) -> None:
+        key = (kind, entry_path, detail)
+        if key in self._keys:
+            return
+        self._keys.add(key)
+        self._items.append(
+            ArchiveDiagnostic(
+                kind=kind,
+                archive_path=self._archive_path,
+                entry_path=entry_path,
+                detail=detail,
+            )
+        )
+
+    def replace_entry_path(self, old_entry_path: str, new_entry_path: str) -> None:
+        updated: list[ArchiveDiagnostic] = []
+        new_keys: set[tuple[DiagnosticKind, str | None, str]] = set()
+        for diag in self._items:
+            if diag.entry_path == old_entry_path:
+                diag = diag.model_copy(update={"entry_path": new_entry_path})
+            key = (diag.kind, diag.entry_path, diag.detail)
+            if key not in new_keys:
+                new_keys.add(key)
+                updated.append(diag)
+        self._items = updated
+        self._keys = new_keys
+
+
+def deduplicate_diagnostics(diagnostics: Iterable[ArchiveDiagnostic]) -> list[ArchiveDiagnostic]:
+    """Return diagnostics in insertion order, deduplicated by all diagnostic fields."""
+    seen: set[tuple[DiagnosticKind, str, str | None, str]] = set()
+    result: list[ArchiveDiagnostic] = []
+    for diag in diagnostics:
+        key = (diag.kind, diag.archive_path, diag.entry_path, diag.detail)
+        if key not in seen:
+            seen.add(key)
+            result.append(diag)
+    return result
+
+
+def decode_vfs_text(data: bytes, vfs_path: str, encoding: str = "utf-8") -> str:
+    """Decode VFS payload bytes as text, refusing ``3nK\\x01`` obfuscated blobs."""
+    if detect_3nk(data):
+        raise ProtectedPayloadError(
+            f"Cannot decode 3nK\\x01 obfuscated payload {vfs_path!r} as text"
+        )
+    return data.decode(encoding)
+
+
+def record_3nk_if_present(
+    data: bytes,
+    norm_path: str,
+    three_nk_paths: set[str],
+    diagnostics: DiagnosticCollector,
+) -> None:
+    """Record ``3nK\\x01`` detection on ``norm_path`` when ``data`` carries the header."""
+    if detect_3nk(data):
+        three_nk_paths.add(norm_path)
+        diagnostics.add(
+            "three_nk_obfuscated",
+            norm_path,
+            "3nK\\x01 obfuscated payload detected; decryption is disabled.",
+        )
+
+
 @runtime_checkable
 class VfsArchive(Protocol):
     """Read-only virtual filesystem container contract."""
@@ -95,6 +202,10 @@ class VfsArchive(Protocol):
 
     @property
     def diagnostics(self) -> list[ArchiveDiagnostic]: ...
+
+    def __enter__(self) -> Self: ...
+
+    def __exit__(self, *args: object) -> None: ...
 
     def exists(self, vfs_path: str) -> bool: ...
 

@@ -9,7 +9,9 @@ import zlib
 
 import pytest
 
+import ets2v2.vfs.stack as stack_mod
 from ets2v2.vfs import (
+    DirectoryArchive,
     EffectiveVfsEntry,
     ProtectedPayloadError,
     VfsLayer,
@@ -259,3 +261,58 @@ def test_vfs_stack_higher_non_empty_layer_unsuppresses_empty_stub(
     assert resolved.layer_name == "2_high"
     assert resolved.is_empty_stub is False
     assert stack.empty_stub_paths() == []
+
+
+def test_vfs_stack_resolve_refreshes_three_nk_meta_on_first_call(tmp_path: pathlib.Path) -> None:
+    arc_path = _build_hashfs_v1_simple(
+        tmp_path / "3nk.scs",
+        files={"def/country/germany/speed_limits.sii": b"3nK\x01\x00\x09\xaa\xbb"},
+        dirs={
+            "": ["*def"],
+            "def": ["*country"],
+            "def/country": ["*germany"],
+            "def/country/germany": ["speed_limits.sii"],
+        },
+    )
+    stack = VfsStack.from_paths([arc_path], seeded_prefixes=("def",))
+    assert not hasattr(stack, "_seeded_prefixes")
+
+    with stack:
+        entry = stack.resolve("def/country/germany/speed_limits.sii")
+        assert entry is not None
+        assert entry.meta.three_nk is True
+        assert entry.is_empty_stub is False
+        assert any(d.kind == "three_nk_obfuscated" for d in stack.diagnostics())
+
+
+def test_vfs_stack_skips_stub_inspection_above_max_stub_inspect_bytes(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mod_dir = tmp_path / "large_sii_mod"
+    (mod_dir / "def").mkdir(parents=True)
+    big_payload = b"SiiNunit\n{\n" + (b"\t# comment\n" * 20) + b"}\n"
+    (mod_dir / "def" / "huge.sii").write_bytes(big_payload)
+    (mod_dir / "def" / "small.sii").write_bytes(b"SiiNunit { }")
+
+    monkeypatch.setattr(stack_mod, "MAX_STUB_INSPECT_BYTES", 32)
+    arc = DirectoryArchive(mod_dir)
+    read_calls: list[str] = []
+    orig_read_bytes = arc.read_bytes
+
+    def tracked_read_bytes(vfs_path: str) -> bytes:
+        read_calls.append(vfs_path)
+        return orig_read_bytes(vfs_path)
+
+    monkeypatch.setattr(arc, "read_bytes", tracked_read_bytes)
+
+    stack = VfsStack([VfsLayer(name="mod", priority=0, archive=arc)], seeded_prefixes=("def",))
+    assert not hasattr(stack, "_seeded_prefixes")
+
+    huge_entry = stack.resolve("def/huge.sii")
+    assert huge_entry is not None
+    assert huge_entry.is_empty_stub is False
+    assert read_calls == []
+    assert stack.empty_stub_paths() == ["def/small.sii"]
+    assert read_calls == ["def/small.sii"]
+    assert stack.read_bytes("def/huge.sii") == big_payload

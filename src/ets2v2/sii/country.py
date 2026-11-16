@@ -7,7 +7,13 @@ import math
 from pydantic import BaseModel, ConfigDict, Field
 
 from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.lexer import SiiAttributeSpan, parse_sii_float, unquote_sii_string
+from ets2v2.sii.lexer import (
+    SiiAttributeSpan,
+    parse_sii_bool,
+    parse_sii_float,
+    split_sii_tuple,
+    unquote_sii_string,
+)
 
 _KNOWN_COUNTRY_ATTRS = frozenset(
     {
@@ -78,38 +84,19 @@ class CountryDataPatch(BaseModel):
     mass_limit_per_axle_count: list[int] | None = None
 
 
-def _parse_bool(raw: str) -> bool:
-    token = raw.strip().lower()
-    if token == "true":
-        return True
-    if token == "false":
-        return False
-    raise ValueError(f"Invalid SII boolean value: {raw!r}")
-
-
 def _parse_float_3(raw: str) -> tuple[float, float, float]:
-    parts = _split_tuple_components(raw, expected_len=3)
+    parts = split_sii_tuple(raw, expected_len=3)
     return (parse_sii_float(parts[0]), parse_sii_float(parts[1]), parse_sii_float(parts[2]))
 
 
 def _parse_float_4(raw: str) -> tuple[float, float, float, float]:
-    parts = _split_tuple_components(raw, expected_len=4)
+    parts = split_sii_tuple(raw, expected_len=4)
     return (
         parse_sii_float(parts[0]),
         parse_sii_float(parts[1]),
         parse_sii_float(parts[2]),
         parse_sii_float(parts[3]),
     )
-
-
-def _split_tuple_components(raw: str, *, expected_len: int) -> list[str]:
-    text = raw.strip()
-    if not (text.startswith("(") and text.endswith(")")):
-        raise ValueError(f"Expected parenthesized {expected_len}-tuple, got {raw!r}")
-    parts = [part.strip() for part in text[1:-1].split(",")]
-    if len(parts) != expected_len:
-        raise ValueError(f"Expected {expected_len} components in tuple {raw!r}, got {len(parts)}")
-    return parts
 
 
 def _format_fuel_price(value: float) -> str:
@@ -122,19 +109,21 @@ def _format_fuel_price(value: float) -> str:
 
 
 def _format_sii_string(value: str) -> str:
-    if "\\" in value:
-        raise ValueError(f"Backslash disallowed in SII string literal: {value!r}")
-    escaped = value.replace('"', '\\"')
+    if "\\" in value or "\x00" in value:
+        raise ValueError(f"Disallowed backslash or NUL in SII string literal: {value!r}")
+    escaped = (
+        value.replace('"', '\\"').replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+    )
     return f'"{escaped}"'
 
 
 def _ordered_array_values(attrs: list[SiiAttributeSpan]) -> list[str]:
-    """Return raw attribute values in document order or sorted fixed-index order."""
-    indexed = [(attr.index, attr.raw_value) for attr in attrs if attr.index is not None]
-    if indexed and len(indexed) == len(attrs):
-        indexed.sort(key=lambda item: item[0])
-        return [val for _, val in indexed]
-    return [attr.raw_value for attr in attrs if attr.is_append or attr.index is not None]
+    """Return raw attribute values sorted by fixed index or in append document order."""
+    indexed = [attr for attr in attrs if attr.index is not None]
+    if indexed:
+        indexed.sort(key=lambda attr: attr.index if attr.index is not None else -1)
+        return [attr.raw_value for attr in indexed]
+    return [attr.raw_value for attr in attrs if attr.is_append]
 
 
 def parse_country_includes(source: str | bytes) -> list[str]:
@@ -203,19 +192,19 @@ def parse_country_data(source: str | bytes) -> CountryDataModel:
     fuel_price = parse_sii_float(fuel_raw) if fuel_raw is not None else None
 
     lights_raw = _scalar_raw("lights_mandatory")
-    lights_mandatory = _parse_bool(lights_raw) if lights_raw is not None else None
+    lights_mandatory = parse_sii_bool(lights_raw) if lights_raw is not None else None
 
     tired_raw = _scalar_raw("driving_tired_offence")
-    driving_tired_offence = _parse_bool(tired_raw) if tired_raw is not None else None
+    driving_tired_offence = parse_sii_bool(tired_raw) if tired_raw is not None else None
 
     imperial_raw = _scalar_raw("imperial_units")
-    imperial_units = _parse_bool(imperial_raw) if imperial_raw is not None else None
+    imperial_units = parse_sii_bool(imperial_raw) if imperial_raw is not None else None
 
     leftside_raw = _scalar_raw("leftside_traffic")
-    leftside_traffic = _parse_bool(leftside_raw) if leftside_raw is not None else None
+    leftside_traffic = parse_sii_bool(leftside_raw) if leftside_raw is not None else None
 
     trailer_raw = _scalar_raw("trailer_standalone")
-    trailer_standalone = _parse_bool(trailer_raw) if trailer_raw is not None else None
+    trailer_standalone = parse_sii_bool(trailer_raw) if trailer_raw is not None else None
 
     tz_raw = _scalar_raw("time_zone")
     time_zone = int(tz_raw) if tz_raw is not None else None

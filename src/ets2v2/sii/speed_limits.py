@@ -8,7 +8,12 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict, Field
 
 from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.lexer import SiiAttributeSpan, SiiUnitBlock, unquote_sii_string
+from ets2v2.sii.lexer import (
+    SiiAttributeSpan,
+    SiiUnitBlock,
+    parse_sii_bool,
+    unquote_sii_string,
+)
 
 _LANE_FIELDS = ("limit", "urban_limit", "max_limit", "uncommon")
 
@@ -59,15 +64,6 @@ class _LaneSpanGroup:
     lane_attr: SiiAttributeSpan
     fields: dict[str, SiiAttributeSpan]
     ordered_attrs: list[SiiAttributeSpan]
-
-
-def _parse_bool(raw: str) -> bool:
-    token = raw.strip().lower()
-    if token == "true":
-        return True
-    if token == "false":
-        return False
-    raise ValueError(f"Invalid SII boolean value: {raw!r}")
 
 
 def _extract_vehicle_class(unit: SiiUnitBlock) -> str:
@@ -122,7 +118,7 @@ def _group_to_rule(group: _LaneSpanGroup) -> LaneSpeedRule:
         limit=int(limit_attr.raw_value.strip()) if limit_attr is not None else None,
         urban_limit=int(urban_attr.raw_value.strip()) if urban_attr is not None else None,
         max_limit=int(max_attr.raw_value.strip()) if max_attr is not None else None,
-        uncommon=_parse_bool(uncommon_attr.raw_value) if uncommon_attr is not None else None,
+        uncommon=parse_sii_bool(uncommon_attr.raw_value) if uncommon_attr is not None else None,
     )
 
 
@@ -201,22 +197,54 @@ def _replace_unit_lane_region(
             if idx > 0:
                 lines.append("")
             lines.extend(_format_lane_rule_lines(rule, indent))
-        close_pos = current_unit.close_brace_pos
-        brace_line_start = doc.text.rfind("\n", 0, close_pos) + 1
-        payload = "".join(f"{line}\n" for line in lines)
-        doc.replace_span(brace_line_start, brace_line_start, payload)
+        doc.insert_lines(unit_index, lines)
         return
 
-    region_start = groups[0].ordered_attrs[0].line_span.start
-    region_end = groups[-1].ordered_attrs[-1].line_span.end
+    first_attr = groups[0].ordered_attrs[0]
+    last_attr = groups[-1].ordered_attrs[-1]
+    first_same_open = (
+        first_attr.line_span.start <= current_unit.open_brace_pos < first_attr.line_span.end
+    )
+    last_same_close = (
+        last_attr.line_span.start <= current_unit.close_brace_pos < last_attr.line_span.end
+    )
+
+    if first_same_open:
+        region_start = first_attr.span.start
+        while (
+            region_start > current_unit.open_brace_pos + 1 and doc.text[region_start - 1] in " \t"
+        ):
+            region_start -= 1
+    else:
+        region_start = first_attr.line_span.start
+        if (
+            not new_lanes
+            and last_same_close
+            and current_unit.header_indent
+            and region_start + len(current_unit.header_indent) <= first_attr.span.start
+            and doc.text.startswith(current_unit.header_indent, region_start)
+        ):
+            region_start += len(current_unit.header_indent)
+
+    if last_same_close:
+        region_end = current_unit.close_brace_pos
+    else:
+        region_end = last_attr.line_span.end
+        if (
+            not new_lanes
+            and not first_same_open
+            and region_end < len(doc.text)
+            and doc.text[region_end] == "\n"
+        ):
+            region_end += 1
 
     if not new_lanes:
-        if region_end < len(doc.text) and doc.text[region_end] == "\n":
-            region_end += 1
         doc.replace_span(region_start, region_end, "")
         return
 
-    doc.replace_span(region_start, region_end, replacement_body)
+    prefix = "\n" if first_same_open else ""
+    suffix = f"\n{current_unit.header_indent}" if last_same_close else ""
+    doc.replace_span(region_start, region_end, f"{prefix}{replacement_body}{suffix}")
 
 
 def parse_speed_limits(source: str | bytes) -> SpeedLimitsFile:

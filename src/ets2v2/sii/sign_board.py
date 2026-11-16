@@ -5,7 +5,12 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.lexer import SiiUnitBlock, parse_sii_float, unquote_sii_string
+from ets2v2.sii.lexer import (
+    SiiUnitBlock,
+    parse_sii_float,
+    split_sii_tuple,
+    unquote_sii_string,
+)
 
 
 class SignTemplateTextSlot(BaseModel):
@@ -72,12 +77,7 @@ def _scalar_non_nil(unit: SiiUnitBlock, key: str) -> str | None:
 
 
 def _parse_float_2(raw: str) -> tuple[float, float]:
-    text = raw.strip()
-    if not (text.startswith("(") and text.endswith(")")):
-        raise ValueError(f"Expected 2-component float tuple, got {raw!r}")
-    parts = [p.strip() for p in text[1:-1].split(",")]
-    if len(parts) != 2:
-        raise ValueError(f"Expected 2 components in float tuple {raw!r}, got {len(parts)}")
+    parts = split_sii_tuple(raw, expected_len=2)
     return (parse_sii_float(parts[0]), parse_sii_float(parts[1]))
 
 

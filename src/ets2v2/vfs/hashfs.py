@@ -15,17 +15,21 @@ from ets2v2.vfs.dir_archive import DirectoryArchive
 from ets2v2.vfs.types import (
     ArchiveDiagnostic,
     CompressionKind,
-    DiagnosticKind,
+    DiagnosticCollector,
     ProtectedPayloadError,
     UnsupportedCompressionError,
     VfsArchive,
     VfsEntryMeta,
-    detect_3nk,
+    decode_vfs_text,
     normalize_vfs_path,
+    record_3nk_if_present,
 )
+from ets2v2.vfs.types import detect_3nk as detect_3nk
 from ets2v2.vfs.zip_archive import ZipArchive
 
 DEFAULT_SEEDED_PREFIXES: tuple[str, ...] = ("locale", "def", "base")
+MAX_V2_TABLE_BYTES = 64 * 1024 * 1024
+MAX_ENTRY_DECOMPRESSED_BYTES = 128 * 1024 * 1024
 _V1_HEADER_STRUCT = struct.Struct("<4sHH4sIQQ")
 _V1_ENTRY_STRUCT = struct.Struct("<QQIIII")
 _V2_HEADER_STRUCT = struct.Struct("<4sHH4sIIIIQQ")
@@ -43,7 +47,15 @@ class _HashFsRecord:
     comp_code: int = 0
 
 
-def _bounded_zlib_decompress(raw: bytes, expected_size: int) -> bytes:
+def _bounded_zlib_decompress(
+    raw: bytes,
+    expected_size: int,
+    *,
+    max_allowed_bytes: int | None = None,
+) -> bytes:
+    cap = MAX_ENTRY_DECOMPRESSED_BYTES if max_allowed_bytes is None else max_allowed_bytes
+    if expected_size < 0 or expected_size > cap:
+        raise zlib.error(f"Declared decompressed size {expected_size} exceeds cap {cap}")
     decompressor = zlib.decompressobj()
     out = decompressor.decompress(raw, expected_size + 1)
     if len(out) > expected_size:
@@ -72,8 +84,7 @@ class _BaseHashFsArchive:
         )
         self._salt = 0
         self._records: dict[int, _HashFsRecord] = {}
-        self._diagnostics: list[ArchiveDiagnostic] = []
-        self._diag_keys: set[tuple[DiagnosticKind, str | None, str]] = set()
+        self._diag = DiagnosticCollector(self._path)
         self._three_nk_paths: set[str] = set()
         self._file_size = 0
         self._active_handle: BinaryIO | None = None
@@ -92,7 +103,7 @@ class _BaseHashFsArchive:
 
     @property
     def diagnostics(self) -> list[ArchiveDiagnostic]:
-        return list(self._diagnostics)
+        return self._diag.items
 
     def __enter__(self) -> Self:
         if self._active_handle is None:
@@ -106,37 +117,6 @@ class _BaseHashFsArchive:
         if self._active_handle is not None:
             self._active_handle.close()
             self._active_handle = None
-
-    def _add_diagnostic(
-        self,
-        kind: DiagnosticKind,
-        entry_path: str | None,
-        detail: str,
-    ) -> None:
-        key = (kind, entry_path, detail)
-        if key in self._diag_keys:
-            return
-        self._diag_keys.add(key)
-        self._diagnostics.append(
-            ArchiveDiagnostic(
-                kind=kind,
-                archive_path=str(self._path),
-                entry_path=entry_path,
-                detail=detail,
-            )
-        )
-
-    def _replace_hash_diagnostic_path(self, entry_hash: int, resolved_path: str) -> None:
-        hash_label = f"hash:{entry_hash:016x}"
-        updated: list[ArchiveDiagnostic] = []
-        new_keys: set[tuple[DiagnosticKind, str | None, str]] = set()
-        for diag in self._diagnostics:
-            if diag.entry_path == hash_label:
-                diag = diag.model_copy(update={"entry_path": resolved_path})
-            new_keys.add((diag.kind, diag.entry_path, diag.detail))
-            updated.append(diag)
-        self._diagnostics = updated
-        self._diag_keys = new_keys
 
     def _read_slice(self, offset: int, length: int) -> bytes:
         if offset < 0 or length < 0 or offset + length > self._file_size:
@@ -152,7 +132,7 @@ class _BaseHashFsArchive:
 
     def _read_record_bytes(self, record: _HashFsRecord, entry_label: str) -> bytes:
         if record.compression == "unknown":
-            self._add_diagnostic(
+            self._diag.add(
                 "unsupported_compression",
                 entry_label,
                 f"Unsupported compression code {record.comp_code}",
@@ -162,12 +142,27 @@ class _BaseHashFsArchive:
                 f"{entry_label!r} in {self._path}"
             )
 
+        if record.size < 0 or record.size > MAX_ENTRY_DECOMPRESSED_BYTES:
+            self._diag.add(
+                "corrupt_archive",
+                entry_label,
+                f"Entry size {record.size} exceeds cap {MAX_ENTRY_DECOMPRESSED_BYTES}",
+            )
+            raise ValueError(
+                f"Entry {entry_label!r} size {record.size} exceeds cap "
+                f"{MAX_ENTRY_DECOMPRESSED_BYTES}"
+            )
+
         if record.compression == "zlib":
             raw = self._read_slice(record.offset, record.compressed_size)
             try:
-                return _bounded_zlib_decompress(raw, record.size)
+                return _bounded_zlib_decompress(
+                    raw,
+                    record.size,
+                    max_allowed_bytes=MAX_ENTRY_DECOMPRESSED_BYTES,
+                )
             except zlib.error as exc:
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     entry_label,
                     f"Corrupt zlib stream: {exc}",
@@ -175,6 +170,15 @@ class _BaseHashFsArchive:
                 raise ValueError(f"Corrupt zlib payload for {entry_label!r}") from exc
 
         read_len = record.size if record.size > 0 else record.compressed_size
+        if read_len < 0 or read_len > MAX_ENTRY_DECOMPRESSED_BYTES:
+            self._diag.add(
+                "corrupt_archive",
+                entry_label,
+                f"Entry size {read_len} exceeds cap {MAX_ENTRY_DECOMPRESSED_BYTES}",
+            )
+            raise ValueError(
+                f"Entry {entry_label!r} size {read_len} exceeds cap {MAX_ENTRY_DECOMPRESSED_BYTES}"
+            )
         return self._read_slice(record.offset, read_len)
 
     def exists(self, vfs_path: str) -> bool:
@@ -205,24 +209,13 @@ class _BaseHashFsArchive:
         if record.is_dir:
             raise IsADirectoryError(f"{norm!r} is a directory in {self._path}")
 
-        self._replace_hash_diagnostic_path(entry_hash, norm)
+        self._diag.replace_entry_path(f"hash:{entry_hash:016x}", norm)
         payload = self._read_record_bytes(record, norm)
-        if detect_3nk(payload):
-            self._three_nk_paths.add(norm)
-            self._add_diagnostic(
-                "three_nk_obfuscated",
-                norm,
-                "3nK\\x01 obfuscated payload detected; decryption is disabled.",
-            )
+        record_3nk_if_present(payload, norm, self._three_nk_paths, self._diag)
         return payload
 
     def read_text(self, vfs_path: str, encoding: str = "utf-8") -> str:
-        payload = self.read_bytes(vfs_path)
-        if detect_3nk(payload):
-            raise ProtectedPayloadError(
-                f"Cannot decode 3nK\\x01 obfuscated payload {vfs_path!r} as text"
-            )
-        return payload.decode(encoding)
+        return decode_vfs_text(self.read_bytes(vfs_path), vfs_path, encoding)
 
     def _parse_dir_listing(self, data: bytes, dir_path: str) -> list[tuple[str, bool]]:
         raise NotImplementedError
@@ -270,7 +263,7 @@ class _BaseHashFsArchive:
                 cur_rec = self._records.get(cur_hash)
                 if cur_rec is None or not cur_rec.is_dir:
                     continue
-                self._replace_hash_diagnostic_path(cur_hash, cur_dir or "/")
+                self._diag.replace_entry_path(f"hash:{cur_hash:016x}", cur_dir or "/")
                 try:
                     raw_listing = self._read_record_bytes(cur_rec, cur_dir or "/")
                 except (UnsupportedCompressionError, ValueError):
@@ -284,7 +277,7 @@ class _BaseHashFsArchive:
                         or "\\" in child_name
                         or "\x00" in child_name
                     ):
-                        self._add_diagnostic(
+                        self._diag.add(
                             "path_traversal",
                             cur_dir or "/",
                             f"Rejected unsafe directory entry name {child_name!r}",
@@ -295,7 +288,7 @@ class _BaseHashFsArchive:
                     child_hash = hash_vfs_path(child_path, salt=self._salt)
                     child_rec = self._records.get(child_hash)
                     if child_rec is not None:
-                        self._replace_hash_diagnostic_path(child_hash, child_path)
+                        self._diag.replace_entry_path(f"hash:{child_hash:016x}", child_path)
 
                     if is_sub:
                         if (
@@ -307,7 +300,11 @@ class _BaseHashFsArchive:
                             visited_dir_hashes.add(child_hash)
                             visited_dir_paths.add(child_path)
                             queue.append(child_path)
-                    elif child_path not in seen_files and child_rec is not None:
+                    elif (
+                        child_path not in seen_files
+                        and child_rec is not None
+                        and not child_rec.is_dir
+                    ):
                         seen_files.add(child_path)
                         results.append(child_path)
 
@@ -339,7 +336,7 @@ class HashFsV1Archive(_BaseHashFsArchive):
             fh.seek(0, 2)
             self._file_size = fh.tell()
             if self._file_size < _V1_HEADER_STRUCT.size:
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     f"Truncated HashFS v1 header ({self._file_size} bytes)",
@@ -351,7 +348,7 @@ class HashFsV1Archive(_BaseHashFsArchive):
                 _V1_HEADER_STRUCT.unpack_from(hdr, 0)
             )
             if magic != b"SCS#" or version != 1 or hash_method != b"CITY":
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     f"Invalid HashFS v1 header: magic={magic!r}, "
@@ -362,7 +359,7 @@ class HashFsV1Archive(_BaseHashFsArchive):
             self._salt = salt
             table_bytes_len = num_entries * _V1_ENTRY_STRUCT.size
             if start_offset + table_bytes_len > self._file_size:
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     "HashFS v1 entry table extends past end of file",
@@ -421,13 +418,24 @@ class HashFsV2Archive(_BaseHashFsArchive):
     def _decode_table(self, raw: bytes, expected_size: int, label: str) -> bytes | None:
         if expected_size == 0:
             return b""
+        if expected_size < 0 or expected_size > MAX_V2_TABLE_BYTES:
+            self._diag.add(
+                "corrupt_archive",
+                None,
+                f"HashFS v2 {label} size {expected_size} exceeds cap {MAX_V2_TABLE_BYTES}",
+            )
+            return None
         if raw:
             try:
-                return _bounded_zlib_decompress(raw, expected_size)
+                return _bounded_zlib_decompress(
+                    raw,
+                    expected_size,
+                    max_allowed_bytes=MAX_V2_TABLE_BYTES,
+                )
             except zlib.error:
                 if len(raw) == expected_size:
                     return raw
-        self._add_diagnostic(
+        self._diag.add(
             "corrupt_archive",
             None,
             f"Failed to decode HashFS v2 {label} (raw={len(raw)}, expected={expected_size})",
@@ -439,7 +447,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
             fh.seek(0, 2)
             self._file_size = fh.tell()
             if self._file_size < _V2_HEADER_STRUCT.size:
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     f"Truncated HashFS v2 header ({self._file_size} bytes)",
@@ -461,7 +469,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
             ) = _V2_HEADER_STRUCT.unpack_from(hdr, 0)
 
             if magic != b"SCS#" or version != 2 or hash_method != b"CITY":
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     f"Invalid HashFS v2 header: magic={magic!r}, "
@@ -470,11 +478,25 @@ class HashFsV2Archive(_BaseHashFsArchive):
                 return
 
             self._salt = salt
+            entry_table_expected = entry_count * _V2_ENTRY_STRUCT.size
+            meta_table_expected = metadata_count * 4
+            if (
+                entry_table_expected > MAX_V2_TABLE_BYTES
+                or meta_table_expected > MAX_V2_TABLE_BYTES
+            ):
+                self._diag.add(
+                    "corrupt_archive",
+                    None,
+                    f"HashFS v2 table size exceeds cap (entry={entry_table_expected}, "
+                    f"meta={meta_table_expected}, cap={MAX_V2_TABLE_BYTES})",
+                )
+                return
+
             if (
                 entry_table_offset + entry_table_size > self._file_size
                 or metadata_table_offset + metadata_table_size > self._file_size
             ):
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     None,
                     "HashFS v2 entry or metadata table extends past end of file",
@@ -488,12 +510,12 @@ class HashFsV2Archive(_BaseHashFsArchive):
 
         entry_bytes = self._decode_table(
             raw_entry_table,
-            entry_count * _V2_ENTRY_STRUCT.size,
+            entry_table_expected,
             "entry_table",
         )
         meta_bytes = self._decode_table(
             raw_meta_table,
-            metadata_count * 4,
+            meta_table_expected,
             "metadata_table",
         )
         if entry_bytes is None or meta_bytes is None:
@@ -512,7 +534,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
                 row,
             )
             if meta_cnt == 0 or meta_idx + meta_cnt > total_meta_words:
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     f"hash:{entry_hash:016x}",
                     f"Out-of-bounds metadata span ({meta_idx}+{meta_cnt} > {total_meta_words})",
@@ -529,20 +551,13 @@ class HashFsV2Archive(_BaseHashFsArchive):
                 seen_kinds.append(kind)
 
                 if kind not in (0x80, 0x81):
-                    if payload_idx >= total_meta_words:
-                        self._add_diagnostic(
-                            "corrupt_archive",
-                            f"hash:{entry_hash:016x}",
-                            "Out-of-bounds non-plain metadata index "
-                            f"{payload_idx} >= {total_meta_words}",
-                        )
                     continue
 
-                if meta_cnt == 1 and payload_idx < meta_idx + meta_cnt:
+                if meta_cnt == 1 and (payload_idx == 0 or payload_idx >= total_meta_words):
                     payload_idx = meta_idx + 1
 
                 if payload_idx + 4 > total_meta_words:
-                    self._add_diagnostic(
+                    self._diag.add(
                         "corrupt_archive",
                         f"hash:{entry_hash:016x}",
                         f"Truncated {kind:#x} metadata block at word {payload_idx}",
@@ -564,7 +579,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
                     compression = "zlib"
                 else:
                     compression = "unknown"
-                    self._add_diagnostic(
+                    self._diag.add(
                         "unsupported_compression",
                         f"hash:{entry_hash:016x}",
                         f"Unsupported HashFS v2 compression nibble {comp_nibble}",
@@ -585,7 +600,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
                 self._records[entry_hash] = selected_record
             elif seen_kinds:
                 kinds_text = ", ".join(f"{k:#x}" for k in seen_kinds)
-                self._add_diagnostic(
+                self._diag.add(
                     "unsupported_metadata",
                     f"hash:{entry_hash:016x}",
                     f"Skipped entry with non-0x80/0x81 metadata kind(s): {kinds_text}",
@@ -593,7 +608,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
 
     def _parse_dir_listing(self, data: bytes, dir_path: str) -> list[tuple[str, bool]]:
         if len(data) < 4:
-            self._add_diagnostic(
+            self._diag.add(
                 "corrupt_archive",
                 dir_path or "/",
                 f"Truncated HashFS v2 directory listing ({len(data)} bytes)",
@@ -602,7 +617,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
 
         count: int = struct.unpack_from("<I", data, 0)[0]
         if 4 + count > len(data):
-            self._add_diagnostic(
+            self._diag.add(
                 "corrupt_archive",
                 dir_path or "/",
                 "HashFS v2 directory length table exceeds listing payload",
@@ -614,7 +629,7 @@ class HashFsV2Archive(_BaseHashFsArchive):
         entries: list[tuple[str, bool]] = []
         for name_len in lengths:
             if pos + name_len > len(data):
-                self._add_diagnostic(
+                self._diag.add(
                     "corrupt_archive",
                     dir_path or "/",
                     "HashFS v2 directory entry string exceeds listing payload",
@@ -686,7 +701,7 @@ class ProtectedArchiveStub:
         )
 
     def read_text(self, vfs_path: str, encoding: str = "utf-8") -> str:
-        return self.read_bytes(vfs_path).decode(encoding)
+        return decode_vfs_text(self.read_bytes(vfs_path), vfs_path, encoding)
 
 
 def open_archive(

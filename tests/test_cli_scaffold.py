@@ -147,6 +147,7 @@ def test_ci_workflow_configuration() -> None:
         "permissions:",
         "contents: read",
         "ubuntu-latest",
+        "timeout-minutes: 15",
         "actions/checkout@v4",
         "astral-sh/setup-uv@v5",
         "uv sync --locked",

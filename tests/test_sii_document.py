@@ -228,3 +228,116 @@ def test_document_parses_headerless_bare_attributes() -> None:
     vals = [a.raw_value for a in doc.get_root_attributes("val")]
     assert keys == ['"fp_de_diesel"', '"fp_cz_natural95"']
     assert vals == ['"1.959"', '"48.10"']
+
+
+def test_document_single_line_and_shared_brace_mutations_preserve_braces() -> None:
+    single_line = "country_data : .a { regions[]: north }\n"
+    doc = SiiDocument.parse(single_line)
+    doc.replace_array_append(doc.units[0], "regions", ["north", "south"])
+    expanded = doc.render()
+    assert expanded == "country_data : .a { regions[]: north\n\tregions[]: south }\n"
+    assert [a.raw_value for a in SiiDocument.parse(expanded).units[0].attributes] == [
+        "north",
+        "south",
+    ]
+
+    # Shrink from 2 down to 1 (removing attribute sharing line with '}')
+    doc_shrink = SiiDocument.parse(expanded)
+    doc_shrink.replace_array_append(doc_shrink.units[0], "regions", ["north"])
+    assert doc_shrink.render() == "country_data : .a { regions[]: north\n}\n"
+
+    # Remove single remaining attribute sharing line with '{' and '}'
+    doc_clear = SiiDocument.parse(single_line)
+    doc_clear.remove_attribute_line(doc_clear.units[0].attributes[0])
+    assert doc_clear.render() == "country_data : .a {}\n"
+    assert SiiDocument.parse(doc_clear.render()).diagnostics == []
+
+    # Shared opening brace on line 1, shared closing brace on line 2
+    two_line_shared = "country_data : .a { regions[]: north\n\tregions[]: south }\n"
+    doc_two = SiiDocument.parse(two_line_shared)
+    doc_two.replace_array_append(doc_two.units[0], "regions", [])
+    assert doc_two.render() == "country_data : .a {\n}\n"
+
+    # Fixed-array replacement when single-line brace is shared
+    fixed_single = (
+        "country_data : .a { mass_limit_per_axle_count: 2\n"
+        "\tmass_limit_per_axle_count[0]: 18000\n"
+        "\tmass_limit_per_axle_count[1]: 26000 }\n"
+    )
+    doc_fixed = SiiDocument.parse(fixed_single)
+    doc_fixed.replace_array_append(
+        doc_fixed.units[0],
+        "mass_limit_per_axle_count",
+        ["18000", "25000", "38000"],
+    )
+    rendered_fixed = doc_fixed.render()
+    assert rendered_fixed == (
+        "country_data : .a {\n"
+        "\tmass_limit_per_axle_count[]: 18000\n"
+        "\tmass_limit_per_axle_count[]: 25000\n"
+        "\tmass_limit_per_axle_count[]: 38000\n"
+        "}\n"
+    )
+
+    # Indented unit (inside SiiNunit) where anchor shares line with closing '}' (WR-11)
+    indented_shared_close = (
+        "SiiNunit\n{\n\tcountry_data : .a {\n\t\tmass_limit_per_axle_count[0]: 18000 }\n}\n"
+    )
+    doc_indented = SiiDocument.parse(indented_shared_close)
+    doc_indented.replace_array_append(
+        doc_indented.units[0],
+        "mass_limit_per_axle_count",
+        ["18000", "26000"],
+    )
+    assert doc_indented.render() == (
+        "SiiNunit\n"
+        "{\n"
+        "\tcountry_data : .a {\n"
+        "\t\tmass_limit_per_axle_count[]: 18000\n"
+        "\t\tmass_limit_per_axle_count[]: 26000\n"
+        "\t}\n"
+        "}\n"
+    )
+
+
+def test_scan_sii_structure_unclosed_paren_and_eof_unit_span_clamp() -> None:
+    malformed = (
+        "country_data : .a {\n"
+        "\tpos: (1.0, 2.0\n"
+        "\tfuel_price: 1.5\n"
+        "}\n"
+        "country_data : .b {\n"
+        "\tcountry_id: 2\n"
+        "}\n"
+    )
+    scan = scan_sii_structure(malformed)
+    assert any(d.code == "unbalanced_paren" for d in scan.diagnostics)
+    assert len(scan.units) == 2
+    assert scan.units[0].unit_name == ".a"
+    fuel = scan.units[0].get_scalar("fuel_price")
+    assert fuel is not None and fuel.raw_value == "1.5"
+    assert scan.units[1].unit_name == ".b"
+
+    same_line_unclosed = (
+        "country_data : .a { pos: (1.0, 2.0 }\ncountry_data : .b { country_id: 2 }\n"
+    )
+    scan_sl = scan_sii_structure(same_line_unclosed)
+    assert any(d.code == "unbalanced_paren" for d in scan_sl.diagnostics)
+    assert len(scan_sl.units) == 2
+
+    unclosed_eof = "country_data : .eof {\n\tpos: (1.0, 2.0"
+    scan_eof = scan_sii_structure(unclosed_eof)
+    codes = {d.code for d in scan_eof.diagnostics}
+    assert {"unbalanced_paren", "unbalanced_brace"} <= codes
+    assert len(scan_eof.units) == 1
+    assert scan_eof.units[0].span.end <= len(unclosed_eof)
+
+
+def test_document_duplicate_scalar_last_wins() -> None:
+    text = "country_data : .dup {\n\tfuel_price: 1.1\n\tfuel_price: 2.2\n}\n"
+    doc = SiiDocument.parse(text)
+    scalar = doc.units[0].get_scalar("fuel_price")
+    assert scalar is not None
+    assert scalar.raw_value == "2.2"
+    doc.set_scalar(doc.units[0], "fuel_price", "3.3")
+    assert doc.render() == "country_data : .dup {\n\tfuel_price: 1.1\n\tfuel_price: 3.3\n}\n"

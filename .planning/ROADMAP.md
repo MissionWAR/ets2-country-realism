@@ -10,7 +10,7 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
 - Integer phases (`1`, `2`, `3`, `4`, `5`): Planned V1 milestone work
 - Decimal phases (`2.1`, `2.2`): Urgent insertions (created via `/gsd-phase --insert`)
 
-- [ ] **Phase 1: VFS, 1.62 Baseline Extraction & Structural SII Engine** - Clean-room HashFS v1/v2 + ZIP + unpacked VFS reader, `1.62.3.3s` baseline extraction, and comment/region-preserving surgical SII/SUI engine.
+- [x] **Phase 1: VFS, 1.62 Baseline Extraction & Structural SII Engine** - Clean-room HashFS v1/v2 + ZIP + unpacked VFS reader, `1.62.3.3s` baseline extraction, and comment/region-preserving surgical SII/SUI engine. (completed 2026-11-16)
 - [ ] **Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)** - Canonical seasonal country laws, `zoneinfo`+`tzdata` DST derivation, dual 36-country Vanilla+DLC Core builds, Offline SCS Validator, SHA-256 diff gate, and Friday CI release pipeline.
 - [ ] **Phase 3: Open European Fuel/FX Pipeline & Zero-DDS Totem Engine** - Multi-provider FX cross-validation, Tier 1 EU/EEA fuel APIs with `prices.lock.json` circuit breakers, and Option 4b Zero-DDS 43-locale fuel totems covering all active and placeholder `1.62` signs.
 - [ ] **Phase 4: ProMods Companion Builder & Local Map Combo Composer** - Versioned `realism-snapshot-{summer|winter}.json` contract, local ProMods `EU+ME+MA+TGS` builder, and `ets2v2 compose-local` with `FieldOwnershipPolicy` map-combo protection.
@@ -32,7 +32,7 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
 Plans:
 - [x] `01-01-PLAN.md` — Project package scaffold (`pyproject.toml`, `uv.lock`, `src/ets2v2/` structure, `ruff` + `basedpyright` + `pytest` gates, Day-1 CI)
 - [x] `01-02-PLAN.md` — Clean-room HashFS v1/v2 (`CityHash64` MIT + `zlib`), ZIP, and unpacked VFS reader/overlay with safe `3nK`/`AEM!`/encrypted-ZIP detection (`VFS-01`)
-- [ ] `01-03-PLAN.md` — ETS2 `1.62.3.3s` `def.scs` & `locale.scs` baseline extractor generating deterministic `data/baselines/ets2_1.62_def/` schemas and CLI wiring (`VFS-02`)
+- [x] `01-03-PLAN.md` — ETS2 `1.62.3.3s` `def.scs` & `locale.scs` baseline extractor generating deterministic `data/baselines/ets2_1.62_def/` schemas and CLI wiring (`VFS-02`)
 - [x] `01-04-PLAN.md` — Structural SII/SUI & `speed_limits.sii` parser, surgical field rewriter, and UTF-8/LF/POSIX round-trip verification suite (`SII-01`, `SII-02`)
 
 ### Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)
@@ -104,7 +104,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. VFS, 1.62 Baseline Extraction & Structural SII Engine | 0/4 | Not started | - |
+| 1. VFS, 1.62 Baseline Extraction & Structural SII Engine | 4/4 | Complete | 2026-11-16 |
 | 2. Realism Registry, Core & Validator | 0/5 | Not started | - |
 | 3. European Fuel/FX & Totems | 0/4 | Not started | - |
 | 4. ProMods Companion & Combo Composer | 0/4 | Not started | - |

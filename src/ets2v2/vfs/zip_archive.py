@@ -11,19 +11,42 @@ from typing import Self
 from ets2v2.vfs.types import (
     ArchiveDiagnostic,
     CompressionKind,
-    DiagnosticKind,
+    DiagnosticCollector,
     ProtectedPayloadError,
     UnsupportedCompressionError,
     VfsEntryMeta,
-    detect_3nk,
+    decode_vfs_text,
+    filter_paths_by_prefixes,
     normalize_vfs_path,
+    record_3nk_if_present,
 )
 
+MAX_ZIP_ENTRY_BYTES = 128 * 1024 * 1024
+_ZIP_READ_CHUNK_BYTES = 65536
 
-def _matches_prefixes(path: str, normalized_prefixes: list[str]) -> bool:
-    if not normalized_prefixes or "" in normalized_prefixes:
-        return True
-    return any(path == pref or path.startswith(f"{pref}/") for pref in normalized_prefixes)
+
+def _is_encrypted_zip_info(info: zipfile.ZipInfo) -> bool:
+    return bool(info.flag_bits & 0x41)
+
+
+def _read_zip_bounded(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
+    if info.file_size < 0 or info.file_size > MAX_ZIP_ENTRY_BYTES:
+        raise ValueError(
+            f"ZIP entry {info.filename!r} exceeds size cap "
+            f"({info.file_size} > {MAX_ZIP_ENTRY_BYTES} bytes)"
+        )
+    chunks: list[bytes] = []
+    total = 0
+    with zf.open(info, "r") as member:
+        while chunk := member.read(_ZIP_READ_CHUNK_BYTES):
+            total += len(chunk)
+            if total > MAX_ZIP_ENTRY_BYTES:
+                raise ValueError(
+                    f"ZIP entry {info.filename!r} exceeded decompression cap "
+                    f"({MAX_ZIP_ENTRY_BYTES} bytes)"
+                )
+            chunks.append(chunk)
+    return b"".join(chunks)
 
 
 class ZipArchive:
@@ -36,8 +59,7 @@ class ZipArchive:
         if not self._path.exists():
             raise FileNotFoundError(self._path)
         self._entries: dict[str, zipfile.ZipInfo] = {}
-        self._diagnostics: list[ArchiveDiagnostic] = []
-        self._diag_keys: set[tuple[DiagnosticKind, str | None, str]] = set()
+        self._diag = DiagnosticCollector(self._path)
         self._three_nk_paths: set[str] = set()
         self._active_zip: zipfile.ZipFile | None = None
         self._load_central_directory()
@@ -48,7 +70,7 @@ class ZipArchive:
 
     @property
     def diagnostics(self) -> list[ArchiveDiagnostic]:
-        return list(self._diagnostics)
+        return self._diag.items
 
     def __enter__(self) -> Self:
         if self._active_zip is None:
@@ -66,25 +88,6 @@ class ZipArchive:
             self._active_zip.close()
             self._active_zip = None
 
-    def _add_diagnostic(
-        self,
-        kind: DiagnosticKind,
-        entry_path: str | None,
-        detail: str,
-    ) -> None:
-        key = (kind, entry_path, detail)
-        if key in self._diag_keys:
-            return
-        self._diag_keys.add(key)
-        self._diagnostics.append(
-            ArchiveDiagnostic(
-                kind=kind,
-                archive_path=str(self._path),
-                entry_path=entry_path,
-                detail=detail,
-            )
-        )
-
     def _compression_for(self, info: zipfile.ZipInfo) -> CompressionKind:
         if info.compress_type == zipfile.ZIP_STORED:
             return "none"
@@ -97,7 +100,7 @@ class ZipArchive:
             with zipfile.ZipFile(self._path, "r") as zf:
                 infos = zf.infolist()
         except (zipfile.BadZipFile, OSError) as exc:
-            self._add_diagnostic(
+            self._diag.add(
                 "corrupt_archive",
                 None,
                 f"Invalid or corrupt ZIP archive: {exc}",
@@ -110,7 +113,7 @@ class ZipArchive:
             try:
                 norm = normalize_vfs_path(info.filename, allow_empty=True)
             except ValueError as exc:
-                self._add_diagnostic(
+                self._diag.add(
                     "path_traversal",
                     info.filename,
                     f"Rejected unsafe ZIP entry path: {exc}",
@@ -120,15 +123,17 @@ class ZipArchive:
                 continue
 
             self._entries[norm] = info
-            if info.flag_bits & 0x1:
-                self._add_diagnostic(
+
+        for norm, info in self._entries.items():
+            if _is_encrypted_zip_info(info):
+                self._diag.add(
                     "encrypted_zip",
                     norm,
-                    "Password-encrypted ZIP entry (flag_bits & 0x1); "
+                    "Password-encrypted ZIP entry (flag_bits & 0x41); "
                     "central-directory path inspected only.",
                 )
             elif self._compression_for(info) == "unknown":
-                self._add_diagnostic(
+                self._diag.add(
                     "unsupported_compression",
                     norm,
                     f"Unsupported ZIP compression method {info.compress_type}",
@@ -149,32 +154,27 @@ class ZipArchive:
             size=info.file_size,
             compressed_size=info.compress_size,
             compression=self._compression_for(info),
-            encrypted=bool(info.flag_bits & 0x1),
+            encrypted=_is_encrypted_zip_info(info),
             three_nk=norm in self._three_nk_paths,
         )
 
     def list_paths(self, prefixes: Sequence[str] | None = None) -> list[str]:
-        norm_prefixes = (
-            [normalize_vfs_path(p, allow_empty=True) for p in prefixes]
-            if prefixes is not None
-            else []
-        )
-        return sorted(p for p in self._entries if _matches_prefixes(p, norm_prefixes))
+        return filter_paths_by_prefixes(self._entries, prefixes)
 
     def read_bytes(self, vfs_path: str) -> bytes:
         norm = normalize_vfs_path(vfs_path)
         info = self._entries.get(norm)
         if info is None:
             raise FileNotFoundError(f"{norm!r} not found in {self._path}")
-        if info.flag_bits & 0x1:
-            self._add_diagnostic(
+        if _is_encrypted_zip_info(info):
+            self._diag.add(
                 "encrypted_zip",
                 norm,
-                "Password-encrypted ZIP entry (flag_bits & 0x1); decryption is unsupported.",
+                "Password-encrypted ZIP entry (flag_bits & 0x41); decryption is unsupported.",
             )
             raise ProtectedPayloadError(f"Cannot read encrypted ZIP entry {norm!r} in {self._path}")
         if self._compression_for(info) == "unknown":
-            self._add_diagnostic(
+            self._diag.add(
                 "unsupported_compression",
                 norm,
                 f"Unsupported ZIP compression method {info.compress_type}",
@@ -185,31 +185,27 @@ class ZipArchive:
 
         try:
             if self._active_zip is not None:
-                data = self._active_zip.read(info.filename)
+                data = _read_zip_bounded(self._active_zip, info)
             else:
                 with zipfile.ZipFile(self._path, "r") as zf:
-                    data = zf.read(info.filename)
+                    data = _read_zip_bounded(zf, info)
+        except ValueError as exc:
+            self._diag.add(
+                "corrupt_archive",
+                norm,
+                str(exc),
+            )
+            raise
         except (zipfile.BadZipFile, zlib.error, RuntimeError, EOFError) as exc:
-            self._add_diagnostic(
+            self._diag.add(
                 "corrupt_archive",
                 norm,
                 f"Failed to read ZIP entry payload: {exc}",
             )
             raise ValueError(f"Corrupt ZIP entry {norm!r} in {self._path}") from exc
 
-        if detect_3nk(data):
-            self._three_nk_paths.add(norm)
-            self._add_diagnostic(
-                "three_nk_obfuscated",
-                norm,
-                "3nK\\x01 obfuscated payload detected; decryption is disabled.",
-            )
+        record_3nk_if_present(data, norm, self._three_nk_paths, self._diag)
         return data
 
     def read_text(self, vfs_path: str, encoding: str = "utf-8") -> str:
-        data = self.read_bytes(vfs_path)
-        if detect_3nk(data):
-            raise ProtectedPayloadError(
-                f"Cannot decode 3nK\\x01 obfuscated payload {vfs_path!r} as text"
-            )
-        return data.decode(encoding)
+        return decode_vfs_text(self.read_bytes(vfs_path), vfs_path, encoding)

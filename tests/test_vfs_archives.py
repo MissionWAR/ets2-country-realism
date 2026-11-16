@@ -2,25 +2,30 @@
 
 from __future__ import annotations
 
+import io
 import os
 import pathlib
 import struct
 import zipfile
 import zlib
 from dataclasses import dataclass
+from typing import IO
 
 import pytest
 
+import ets2v2.vfs.hashfs as hashfs_mod
+import ets2v2.vfs.zip_archive as zip_archive_mod
 from ets2v2.vfs.cityhash import hash_vfs_path
 from ets2v2.vfs.dir_archive import DirectoryArchive
 from ets2v2.vfs.hashfs import (
+    MAX_V2_TABLE_BYTES,
     HashFsV1Archive,
     HashFsV2Archive,
     ProtectedArchiveStub,
     detect_3nk,
     open_archive,
 )
-from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError
+from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError, VfsArchive
 from ets2v2.vfs.zip_archive import ZipArchive
 
 
@@ -135,7 +140,7 @@ def _build_hashfs_v2(
         h = hash_vfs_path(file_path, salt=salt)
         if comp_nibble == 1:
             stored = zlib.compress(raw)
-            raw_len = len(raw)
+            raw_len = (raw_sizes or {}).get(file_path, len(raw))
         else:
             stored = raw
             raw_len = (raw_sizes or {}).get(file_path, len(raw))
@@ -587,3 +592,386 @@ def test_open_archive_dispatches_all_formats_and_protected_stubs(tmp_path: pathl
     corrupt_arc = open_archive(corrupt_zip)
     assert corrupt_arc.list_paths() == []
     assert any(d.kind == "corrupt_archive" for d in corrupt_arc.diagnostics)
+
+
+def test_hashfs_v2_table_bomb_and_entry_decompression_caps(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 1. entry_count * 16 > MAX_V2_TABLE_BYTES (4 GiB claim on tiny file)
+    tiny_z = zlib.compress(b"\x00" * 16)
+    entry_bomb = tmp_path / "entry_bomb.scs"
+    hdr_entry_bomb = struct.pack(
+        "<4sHH4sIIIIQQ",
+        b"SCS#",
+        2,
+        0,
+        b"CITY",
+        0x10000000,
+        len(tiny_z),
+        0,
+        0,
+        44,
+        44 + len(tiny_z),
+    )
+    entry_bomb.write_bytes(hdr_entry_bomb + tiny_z)
+    arc1 = HashFsV2Archive(entry_bomb)
+    assert arc1.walk() == []
+    assert any(d.kind == "corrupt_archive" for d in arc1.diagnostics)
+
+    # 2. metadata_count * 4 > MAX_V2_TABLE_BYTES (1 GiB claim on tiny file)
+    meta_bomb = tmp_path / "meta_bomb.scs"
+    hdr_meta_bomb = struct.pack(
+        "<4sHH4sIIIIQQ",
+        b"SCS#",
+        2,
+        0,
+        b"CITY",
+        1,
+        len(tiny_z),
+        (MAX_V2_TABLE_BYTES // 4) + 1,
+        len(tiny_z),
+        44,
+        44 + len(tiny_z),
+    )
+    meta_bomb.write_bytes(hdr_meta_bomb + tiny_z + tiny_z)
+    arc2 = HashFsV2Archive(meta_bomb)
+    assert arc2.walk() == []
+    assert any(d.kind == "corrupt_archive" for d in arc2.diagnostics)
+
+    # 3. Compressed stream exceeding declared expected_size is rejected as corrupt_archive
+    small_bomb = _build_hashfs_v2(
+        tmp_path / "small_bomb.scs",
+        files={"def/bomb.sii": (b"A" * 100, 1)},
+        dirs={"": ["/def"], "def": ["bomb.sii"]},
+        raw_sizes={"def/bomb.sii": 4},
+    )
+    arc_small = HashFsV2Archive(small_bomb)
+    with pytest.raises(ValueError, match="Corrupt zlib payload"):
+        arc_small.read_bytes("def/bomb.sii")
+    assert any(d.kind == "corrupt_archive" for d in arc_small.diagnostics)
+
+    # 4. _read_record_bytes enforces MAX_ENTRY_DECOMPRESSED_BYTES
+    v2_path = _build_hashfs_v2(
+        tmp_path / "big_entry.scs",
+        files={"def/big.sii": (b"X" * 128, 1)},
+        dirs={"": ["/def"], "def": ["big.sii"]},
+    )
+    arc3 = HashFsV2Archive(v2_path)
+    monkeypatch.setattr(hashfs_mod, "MAX_ENTRY_DECOMPRESSED_BYTES", 64)
+    with pytest.raises(ValueError, match="exceeds cap"):
+        arc3.read_bytes("def/big.sii")
+    assert any(d.kind == "corrupt_archive" for d in arc3.diagnostics)
+
+
+def test_zip_archive_streaming_size_cap_and_multi_chunk_read(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload_90k = b"ABCD" * 22500  # 90,000 bytes (> 65536 read chunk)
+    zip_path = tmp_path / "chunked.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("def/large.sii", payload_90k)
+
+    arc = ZipArchive(zip_path)
+    assert arc.read_bytes("def/large.sii") == payload_90k
+
+    # Header size > MAX_ZIP_ENTRY_BYTES rejected before opening stream
+    monkeypatch.setattr(zip_archive_mod, "MAX_ZIP_ENTRY_BYTES", 1024)
+    with pytest.raises(ValueError, match="exceeds size cap"):
+        arc.read_bytes("def/large.sii")
+    assert any(d.kind == "corrupt_archive" for d in arc.diagnostics)
+
+    # Lying ZipInfo.file_size (10 bytes) in real ZIP triggers BadZipFile -> ValueError
+    bomb_zip = tmp_path / "lying_bomb.zip"
+    with zipfile.ZipFile(bomb_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("def/bomb.sii", payload_90k)
+    raw = bytearray(bomb_zip.read_bytes())
+    target = b"def/bomb.sii"
+    lf_pos = raw.find(target)
+    lf_hdr = raw.rfind(b"PK\x03\x04", 0, lf_pos)
+    struct.pack_into("<I", raw, lf_hdr + 22, 10)
+    cd_pos = raw.find(target, lf_pos + len(target))
+    cd_hdr = raw.rfind(b"PK\x01\x02", 0, cd_pos)
+    struct.pack_into("<I", raw, cd_hdr + 24, 10)
+    bomb_zip.write_bytes(bytes(raw))
+
+    bomb_arc = ZipArchive(bomb_zip)
+    monkeypatch.setattr(zip_archive_mod, "MAX_ZIP_ENTRY_BYTES", 70000)
+    with pytest.raises(ValueError, match="Corrupt ZIP entry"):
+        bomb_arc.read_bytes("def/bomb.sii")
+    assert any(d.kind == "corrupt_archive" for d in bomb_arc.diagnostics)
+
+    # Streaming chunk abort when member yields more bytes than MAX_ZIP_ENTRY_BYTES
+    def fake_open(*_args: object, **_kwargs: object) -> IO[bytes]:
+        return io.BytesIO(payload_90k)
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", fake_open)
+    with pytest.raises(ValueError, match="exceeded decompression cap"):
+        bomb_arc.read_bytes("def/bomb.sii")
+
+
+def test_list_paths_empty_prefixes_consistent_across_all_archives(tmp_path: pathlib.Path) -> None:
+    dir_root = tmp_path / "dir_mod"
+    (dir_root / "def").mkdir(parents=True)
+    (dir_root / "def" / "a.sui").write_bytes(b"a")
+
+    zip_path = tmp_path / "zip_mod.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("def/a.sui", b"a")
+
+    v1_path = _build_hashfs_v1(
+        tmp_path / "v1_mod.scs",
+        files={"def/a.sui": (b"a", True)},
+        dirs={"": ["*def"], "def": ["a.sui"]},
+    )
+    v2_path = _build_hashfs_v2(
+        tmp_path / "v2_mod.scs",
+        files={"def/a.sui": (b"a", 1)},
+        dirs={"": ["/def"], "def": ["a.sui"]},
+    )
+    aem_path = tmp_path / "aem_mod.scs"
+    aem_path.write_bytes(b"AEM!\x00\x00\x00\x01")
+
+    archives: list[VfsArchive] = [
+        open_archive(dir_root),
+        open_archive(zip_path),
+        open_archive(v1_path),
+        open_archive(v2_path),
+    ]
+    for arc in archives:
+        with arc:
+            assert isinstance(arc, VfsArchive)
+            assert arc.list_paths() == ["def/a.sui"]
+            assert arc.list_paths(None) == ["def/a.sui"]
+            assert arc.list_paths([]) == []
+            assert arc.list_paths(()) == []
+            assert arc.list_paths(["def"]) == ["def/a.sui"]
+            assert arc.list_paths(["locale"]) == []
+
+    stub = open_archive(aem_path)
+    with stub:
+        assert isinstance(stub, VfsArchive)
+        assert stub.list_paths(None) == []
+        assert stub.list_paths([]) == []
+
+
+def test_zip_archive_strong_encryption_0x40_and_duplicate_path_diagnostics(
+    tmp_path: pathlib.Path,
+) -> None:
+    # 1. Strong encryption flag bit 0x40 (without 0x01)
+    strong_zip = tmp_path / "strong.zip"
+    with zipfile.ZipFile(strong_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("def/strong.sui", b"secret")
+    raw = bytearray(strong_zip.read_bytes())
+    target = b"def/strong.sui"
+    lf_pos = raw.find(target)
+    lf_hdr = raw.rfind(b"PK\x03\x04", 0, lf_pos)
+    raw[lf_hdr + 6] |= 0x40
+    cd_pos = raw.find(target, lf_pos + len(target))
+    cd_hdr = raw.rfind(b"PK\x01\x02", 0, cd_pos)
+    raw[cd_hdr + 8] |= 0x40
+    strong_zip.write_bytes(bytes(raw))
+
+    strong_arc = ZipArchive(strong_zip)
+    meta = strong_arc.get_meta("def/strong.sui")
+    assert meta is not None
+    assert meta.encrypted is True
+    assert any(
+        d.kind == "encrypted_zip" and d.entry_path == "def/strong.sui"
+        for d in strong_arc.diagnostics
+    )
+    with pytest.raises(ProtectedPayloadError):
+        strong_arc.read_bytes("def/strong.sui")
+
+    # 2. Duplicate normalized path: encrypted (0x01) overwritten by plaintext -> no stale diag;
+    #    unsupported compress_type=99 overwritten by plaintext -> no stale diag;
+    #    plaintext overwritten by strong-encrypted (0x40) -> encrypted_zip diagnostic present.
+    dup_zip = tmp_path / "dup.zip"
+    with zipfile.ZipFile(dup_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("def/enc_then_plain.sui", b"old-enc")
+        zf.writestr("/def/enc_then_plain.sui", b"new-plain")
+        zf.writestr("def/badcomp_then_plain.sui", b"old-badcomp")
+        zf.writestr("/def/badcomp_then_plain.sui", b"new-plain-2")
+        zf.writestr("def/plain_then_enc.sui", b"old-plain")
+        zf.writestr("/def/plain_then_enc.sui", b"new-strong-enc")
+
+    dup_raw = bytearray(dup_zip.read_bytes())
+    cd_start = dup_raw.find(b"PK\x01\x02")
+    assert cd_start != -1
+
+    def patch_cd_entry(
+        name_bytes: bytes,
+        *,
+        flag_or: int = 0,
+        method: int | None = None,
+    ) -> None:
+        pos = dup_raw.find(name_bytes, cd_start)
+        assert pos != -1
+        cd_idx = dup_raw.rfind(b"PK\x01\x02", cd_start, pos)
+        assert cd_idx != -1
+        if flag_or:
+            dup_raw[cd_idx + 8] |= flag_or
+        if method is not None:
+            struct.pack_into("<H", dup_raw, cd_idx + 10, method)
+
+    patch_cd_entry(b"def/enc_then_plain.sui", flag_or=0x01)
+    patch_cd_entry(b"def/badcomp_then_plain.sui", method=99)
+    patch_cd_entry(b"/def/plain_then_enc.sui", flag_or=0x40)
+
+    dup_zip.write_bytes(bytes(dup_raw))
+    dup_arc = ZipArchive(dup_zip)
+    assert dup_arc.read_bytes("def/enc_then_plain.sui") == b"new-plain"
+    assert dup_arc.read_bytes("def/badcomp_then_plain.sui") == b"new-plain-2"
+    assert [d.entry_path for d in dup_arc.diagnostics] == ["def/plain_then_enc.sui"]
+    assert dup_arc.diagnostics[0].kind == "encrypted_zip"
+    with pytest.raises(ProtectedPayloadError):
+        dup_arc.read_bytes("def/plain_then_enc.sui")
+
+
+def test_directory_archive_junction_pruning_and_get_meta_containment(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "mod_root"
+    (root / "def").mkdir(parents=True)
+    (root / "def" / "ok.sui").write_bytes(b"ok")
+
+    outside_dir = tmp_path / "outside_dir"
+    outside_dir.mkdir()
+    outside_file = outside_dir / "secret.sui"
+    outside_file.write_bytes(b"outside-secret")
+
+    # 1. Pruning escaping junction in os.walk
+    escape_dir = root / "escape_junc"
+    escape_dir.mkdir()
+    (escape_dir / "hidden.sui").write_bytes(b"should-not-be-walked")
+    orig_resolve = pathlib.Path.resolve
+
+    def fake_is_junction(self: pathlib.Path) -> bool:
+        return self.name == "escape_junc"
+
+    def fake_resolve_junction(self: pathlib.Path, strict: bool = False) -> pathlib.Path:
+        if self.name == "escape_junc":
+            return orig_resolve(outside_dir, strict=strict)
+        return orig_resolve(self, strict=strict)
+
+    monkeypatch.setattr(pathlib.Path, "is_junction", fake_is_junction, raising=False)
+    monkeypatch.setattr(pathlib.Path, "resolve", fake_resolve_junction)
+    arc = DirectoryArchive(root)
+    assert arc.list_paths() == ["def/ok.sui"]
+    assert any(
+        d.kind == "path_traversal" and d.entry_path == "escape_junc" for d in arc.diagnostics
+    )
+
+    # 2. get_meta() re-verifies containment
+    monkeypatch.undo()
+    arc_meta = DirectoryArchive(root)
+    assert arc_meta.get_meta("def/ok.sui") is not None
+
+    def fake_resolve_escaped_file(self: pathlib.Path, strict: bool = False) -> pathlib.Path:
+        if self.name == "ok.sui":
+            return orig_resolve(outside_file, strict=strict)
+        return orig_resolve(self, strict=strict)
+
+    monkeypatch.setattr(pathlib.Path, "resolve", fake_resolve_escaped_file)
+    assert arc_meta.get_meta("def/ok.sui") is None
+    assert any(
+        d.kind == "path_traversal" and d.entry_path == "def/ok.sui" for d in arc_meta.diagnostics
+    )
+
+
+def test_hashfs_walk_skips_dir_records_listed_as_files_and_backwards_meta_ref(
+    tmp_path: pathlib.Path,
+) -> None:
+    # 1. Corrupt archive listing a directory record as a non-subdir file entry
+    corrupt_v2 = _build_hashfs_v2(
+        tmp_path / "dir_as_file.scs",
+        files={"def/real.sui": (b"real", 1)},
+        dirs={
+            "": ["/def"],
+            "def": ["real.sui", "sneaky_dir"],  # missing leading '/'!
+            "def/sneaky_dir": ["nested.sui"],
+        },
+    )
+    arc_corrupt = HashFsV2Archive(corrupt_v2)
+    assert arc_corrupt.walk() == ["def/real.sui"]
+
+    # 2. HashFS v2 backwards metadata reference + non-plain high-bits descriptor
+    payload_a = b"alpha"
+    payload_b = b"beta"
+    blk_dir_root = 8
+    dir_root_raw = _encode_v2_dir_listing(["a.txt", "b.txt"])
+    # Build manually using explicit metadata table where entry B points backwards to entry A's block
+    cursor = 128
+    blob = bytearray(b"\x00" * (cursor - 44))
+
+    def add_blob(data: bytes) -> int:
+        nonlocal cursor
+        pad = (-cursor) % 16
+        if pad:
+            blob.extend(b"\x00" * pad)
+            cursor += pad
+        blk = cursor // 16
+        blob.extend(data)
+        cursor += len(data)
+        return blk
+
+    blk_dir = add_blob(dir_root_raw)
+    blk_a = add_blob(payload_a)
+    assert blk_dir >= blk_dir_root
+
+    # Metadata words:
+    # [0..4]: root dir (kind 0x81 -> word 1)
+    # [5..9]: file a (kind 0x80 -> word 6)
+    # [10]: file b (kind 0x80 -> backwards ref to word 6!)
+    # [11]: non-plain entry (kind 0x06 with large flags >= total_meta_words)
+    metas = [
+        (0x81 << 24) | 1,
+        len(dir_root_raw),
+        len(dir_root_raw),
+        0,
+        blk_dir,
+        (0x80 << 24) | 6,
+        len(payload_a),
+        len(payload_a),
+        0,
+        blk_a,
+        (0x80 << 24) | 6,
+        (0x06 << 24) | 0x00123456,
+    ]
+    rows = sorted(
+        [
+            (hash_vfs_path(""), 0, 1, 5),
+            (hash_vfs_path("a.txt"), 5, 1, 4),
+            (hash_vfs_path("b.txt"), 10, 1, 4),
+            (hash_vfs_path("nonplain.dds"), 11, 1, 0),
+        ],
+        key=lambda r: r[0],
+    )
+    eu = zlib.compress(b"".join(struct.pack("<QIHH", *r) for r in rows))
+    mu = zlib.compress(struct.pack(f"<{len(metas)}I", *metas))
+    eto = add_blob(eu) * 16
+    mto = add_blob(mu) * 16
+    hdr = struct.pack(
+        "<4sHH4sIIIIQQ",
+        b"SCS#",
+        2,
+        0,
+        b"CITY",
+        len(rows),
+        len(eu),
+        len(metas),
+        len(mu),
+        eto,
+        mto,
+    )
+    backref_path = tmp_path / "backref.scs"
+    backref_path.write_bytes(hdr + bytes(blob))
+
+    arc_back = HashFsV2Archive(backref_path)
+    assert arc_back.walk() == ["a.txt", "b.txt"]
+    assert arc_back.read_bytes("a.txt") == payload_a
+    assert arc_back.read_bytes("b.txt") == payload_a
+    assert [d.kind for d in arc_back.diagnostics] == ["unsupported_metadata"]
+    assert payload_b != payload_a

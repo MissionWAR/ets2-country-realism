@@ -90,8 +90,8 @@ class SiiUnitBlock:
     includes: tuple[SiiIncludeSpan, ...]
 
     def get_scalar(self, key: str) -> SiiAttributeSpan | None:
-        """Return the first non-array attribute matching ``key``, if present."""
-        for attr in self.attributes:
+        """Return the last non-array attribute matching ``key``, if present."""
+        for attr in reversed(self.attributes):
             if attr.key == key and not attr.is_append and attr.index is None:
                 return attr
         return None
@@ -129,6 +129,27 @@ def parse_sii_float(raw: str) -> float:
         raise ValueError(f"Malformed SII hex float literal: {raw!r}")
 
     return float(token)
+
+
+def parse_sii_bool(raw: str) -> bool:
+    """Parse an SII boolean literal (``true`` or ``false``)."""
+    token = raw.strip().lower()
+    if token == "true":
+        return True
+    if token == "false":
+        return False
+    raise ValueError(f"Invalid SII boolean value: {raw!r}")
+
+
+def split_sii_tuple(raw: str, *, expected_len: int) -> list[str]:
+    """Split a parenthesized SII tuple literal into ``expected_len`` trimmed components."""
+    text = raw.strip()
+    if not (text.startswith("(") and text.endswith(")")):
+        raise ValueError(f"Expected parenthesized {expected_len}-tuple, got {raw!r}")
+    parts = [part.strip() for part in text[1:-1].split(",")]
+    if len(parts) != expected_len:
+        raise ValueError(f"Expected {expected_len} components in tuple {raw!r}, got {len(parts)}")
+    return parts
 
 
 def unquote_sii_string(raw: str) -> tuple[str, bool]:
@@ -244,6 +265,46 @@ def _skip_ws_and_comments(
     return pos
 
 
+def _looks_like_next_statement(text: str, nl_pos: int) -> bool:
+    """Return True when the next statement after a newline starts a brace, @include, or key."""
+    n = len(text)
+    j = nl_pos
+    while j < n:
+        ch = text[j]
+        if ch in " \t\r\n":
+            j += 1
+        elif ch == "#":
+            nl = text.find("\n", j)
+            j = n if nl == -1 else nl + 1
+        elif text.startswith("//", j):
+            nl = text.find("\n", j + 2)
+            j = n if nl == -1 else nl + 1
+        elif text.startswith("/*", j):
+            end = text.find("*/", j + 2)
+            if end == -1:
+                return True
+            j = end + 2
+        else:
+            break
+
+    if j >= n:
+        return True
+    if text[j] in "{}" or text.startswith("@include", j):
+        return True
+    ident = _IDENT_RE.match(text, j)
+    if ident is None:
+        return False
+    cur = ident.end()
+    while cur < n and text[cur] in " \t":
+        cur += 1
+    suffix = _ARRAY_SUFFIX_RE.match(text, cur)
+    if suffix is not None:
+        cur = suffix.end()
+        while cur < n and text[cur] in " \t":
+            cur += 1
+    return cur < n and text[cur] == ":"
+
+
 def _scan_rhs_value(
     text: str,
     val_start: int,
@@ -257,7 +318,7 @@ def _scan_rhs_value(
     n = len(text)
     i = val_start
     last_non_ws = val_start
-    paren_depth = 0
+    paren_positions: list[int] = []
     while i < n:
         ch = text[i]
         if ch == '"':
@@ -275,16 +336,17 @@ def _scan_rhs_value(
             last_non_ws = str_end
             i = str_end
         elif ch == "(":
-            paren_depth += 1
+            paren_positions.append(i)
             i += 1
             last_non_ws = i
         elif ch == ")":
-            if paren_depth > 0:
-                paren_depth -= 1
+            if paren_positions:
+                paren_positions.pop()
             i += 1
             last_non_ws = i
         elif (
-            (ch in "{}\n\r" and paren_depth == 0)
+            ch in "{}"
+            or (ch in "\n\r" and (not paren_positions or _looks_like_next_statement(text, i)))
             or ch == "#"
             or text.startswith("//", i)
             or text.startswith("/*", i)
@@ -295,6 +357,18 @@ def _scan_rhs_value(
         else:
             i += 1
             last_non_ws = i
+
+    if paren_positions:
+        p_line, p_col0 = _pos_to_line_col(line_starts, paren_positions[-1])
+        diagnostics.append(
+            SiiLexDiagnostic(
+                code="unbalanced_paren",
+                message="Unclosed '(' in attribute value",
+                line=p_line,
+                column=p_col0 + 1,
+            )
+        )
+
     return last_non_ws, i
 
 
@@ -364,16 +438,14 @@ def _close_open_unit(
             indent = ""
             break
     else:
-        if open_unit.attributes:
-            indent = open_unit.attributes[0].indent
-        elif open_unit.header_indent:
+        if open_unit.header_indent:
             indent = open_unit.header_indent + "\t"
 
     return SiiUnitBlock(
         index=open_unit.index,
         class_name=open_unit.class_name,
         unit_name=open_unit.unit_name,
-        span=SiiSpan(open_unit.start, close_brace_pos + 1),
+        span=SiiSpan(open_unit.start, min(close_brace_pos + 1, len(text))),
         header_span=SiiSpan(open_unit.start, open_unit.header_end),
         unit_name_span=open_unit.unit_name_span,
         open_brace_pos=open_unit.open_brace_pos,
@@ -610,7 +682,7 @@ def scan_sii_structure(source: str, *, require_siinunit: bool = False) -> SiiSca
         prefix = source[l_start:key_start]
         indent = prefix if set(prefix) <= {" ", "\t"} else ""
 
-        attr_end = max(last_non_ws, end_after_comment)
+        attr_end = end_after_comment if comment_span is not None else last_non_ws
         if l_end < attr_end and last_non_ws > l_end:
             # Multi-line tuple value spanned beyond attr_line.
             end_line, _ = _pos_to_line_col(line_starts, max(0, attr_end - 1))

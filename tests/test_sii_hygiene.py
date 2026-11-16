@@ -182,3 +182,32 @@ def test_validate_sii_hygiene_enforces_unit_segment_rules_and_braces() -> None:
         d.code == "missing_siinunit_header"
         for d in validate_sii_hygiene(missing_header, require_siinunit=True)
     )
+
+
+def test_validate_sii_hygiene_allows_valid_escapes_before_asset_ext_and_reports_col() -> None:
+    safe_ui_with_ext = (
+        "localization_db : .localization\n"
+        "{\n"
+        '\tkey[]: "msg_1"\n'
+        '\tval[]: "Saved\\nreport.txt"\n'
+        '\tkey[]: "msg_2"\n'
+        '\tval[]: "Tab\\t/logs/out.png"\n'
+        '\tkey[]: "msg_3"\n'
+        '\tval[]: "Slash\\\\demo.sui"\n'
+        "}\n"
+    )
+    assert validate_sii_hygiene(safe_ui_with_ext) == []
+
+    # Path-attribute keys with backslash escapes still fail and report exact column
+    bad_icon = 'country_data : .demo\n{\n\ticon: "def\\new\\test.sui"\n}\n'
+    diags = validate_sii_hygiene(bad_icon)
+    path_diags = [d for d in diags if d.code == "path_backslash"]
+    assert len(path_diags) == 1
+    assert path_diags[0].line == 3
+    assert path_diags[0].column == len("\ticon: ") + 1
+
+    # Mid-file ZWNBSP in str input is not misclassified as leading UTF-8 BOM
+    mid_zwnbsp = 'localization_db : .loc\n{\n\tkey[]: "k"\n\tval[]: "a\ufeffb"\n}\n'
+    assert validate_sii_hygiene(mid_zwnbsp) == []
+    leading_bom = "\ufeff" + mid_zwnbsp
+    assert any(d.code == "utf8_bom" for d in validate_sii_hygiene(leading_bom))

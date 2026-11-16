@@ -15,10 +15,14 @@ from ets2v2.vfs.types import (
     UnsupportedCompressionError,
     VfsArchive,
     VfsEntryMeta,
+    decode_vfs_text,
+    deduplicate_diagnostics,
     detect_3nk,
+    filter_paths_by_prefixes,
     normalize_vfs_path,
 )
 
+MAX_STUB_INSPECT_BYTES = 1 * 1024 * 1024
 _SII_TOKEN_RE = re.compile(r"\{|\}|[^\s{}]+")
 
 
@@ -164,7 +168,7 @@ class VfsStack:
         seeded_prefixes: Sequence[str] = DEFAULT_SEEDED_PREFIXES,
         enabled_dlcs: Iterable[str] | None = None,
     ) -> None:
-        self._seeded_prefixes = tuple(seeded_prefixes)
+        del seeded_prefixes  # Retained for call-site compatibility; layers own their seeds.
         self._enabled_dlcs: set[str] | None = (
             set(enabled_dlcs) if enabled_dlcs is not None else None
         )
@@ -186,7 +190,7 @@ class VfsStack:
         enabled_dlcs: Iterable[str] | None = None,
     ) -> VfsStack:
         """Build a ``VfsStack`` from ordered paths (later paths take higher priority)."""
-        stack = cls(seeded_prefixes=seeded_prefixes, enabled_dlcs=enabled_dlcs)
+        stack = cls(enabled_dlcs=enabled_dlcs)
         for idx, item in enumerate(paths):
             if isinstance(item, tuple):
                 name, path = item
@@ -271,22 +275,28 @@ class VfsStack:
     def _with_stub_status(self, entry: EffectiveVfsEntry) -> EffectiveVfsEntry:
         cached = self._stub_cache.get(entry.canonical_path)
         if cached is not None:
-            return replace(entry, is_empty_stub=cached)
+            meta = entry.archive.get_meta(entry.raw_path) or entry.meta
+            return replace(entry, meta=meta, is_empty_stub=cached)
 
         is_stub = False
+        meta = entry.meta
         if (
             entry.canonical_path.lower().endswith((".sii", ".sui"))
             and not entry.meta.encrypted
             and entry.meta.compression != "unknown"
+            and 0 <= entry.meta.size <= MAX_STUB_INSPECT_BYTES
         ):
             try:
                 payload = entry.archive.read_bytes(entry.raw_path)
                 is_stub = is_empty_sii_stub(payload)
             except (ProtectedPayloadError, UnsupportedCompressionError, OSError, ValueError):
                 is_stub = False
+            meta = entry.archive.get_meta(entry.raw_path) or entry.meta
 
+        updated = replace(entry, meta=meta, is_empty_stub=is_stub)
         self._stub_cache[entry.canonical_path] = is_stub
-        return replace(entry, is_empty_stub=is_stub)
+        self._index[entry.canonical_path] = updated
+        return updated
 
     def resolve(self, path: str) -> EffectiveVfsEntry | None:
         """Resolve the highest-priority ``EffectiveVfsEntry`` for ``path``."""
@@ -307,11 +317,8 @@ class VfsStack:
 
     def list_paths(self, prefix: str = "") -> list[str]:
         """List sorted canonical POSIX paths in the effective overlay."""
-        norm_prefix = normalize_vfs_path(prefix, allow_empty=True)
         self._ensure_index()
-        if not norm_prefix:
-            return sorted(self._index)
-        return sorted(p for p in self._index if p == norm_prefix or p.startswith(f"{norm_prefix}/"))
+        return filter_paths_by_prefixes(self._index, [prefix])
 
     def empty_stub_paths(self, prefix: str = "") -> list[str]:
         """Return sorted canonical paths whose winning payload is an empty ``SiiNunit {}`` stub."""
@@ -333,22 +340,11 @@ class VfsStack:
 
     def read_text(self, path: str, encoding: str = "utf-8") -> str:
         """Read and decode UTF-8 text from the highest-priority layer owning ``path``."""
-        data = self.read_bytes(path)
-        if detect_3nk(data):
-            raise ProtectedPayloadError(
-                f"Cannot decode 3nK\\x01 obfuscated payload {path!r} as text"
-            )
-        return data.decode(encoding)
+        return decode_vfs_text(self.read_bytes(path), path, encoding)
 
     def diagnostics(self) -> list[ArchiveDiagnostic]:
         """Aggregate deduplicated diagnostics across all mounted layers."""
         ordered = sorted(self._layers, key=lambda pair: (pair[1].priority, pair[0]))
-        seen: set[tuple[str, str, str | None, str]] = set()
-        aggregated: list[ArchiveDiagnostic] = []
-        for _, layer in ordered:
-            for diag in layer.archive.diagnostics:
-                key = (diag.kind, diag.archive_path, diag.entry_path, diag.detail)
-                if key not in seen:
-                    seen.add(key)
-                    aggregated.append(diag)
-        return aggregated
+        return deduplicate_diagnostics(
+            diag for _, layer in ordered for diag in layer.archive.diagnostics
+        )

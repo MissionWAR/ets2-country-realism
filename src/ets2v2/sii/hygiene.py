@@ -119,16 +119,7 @@ def _has_disallowed_backslash(raw_inner: str, key: str | None) -> bool:
     """Detect Windows backslash separators while allowing valid text escapes in UI strings."""
     if "\\" not in raw_inner:
         return False
-    if "\\\\" in raw_inner:
-        return True
-
-    is_path_context = (
-        raw_inner.startswith("\\")
-        or "/" in raw_inner
-        or _ASSET_EXT_RE.search(raw_inner) is not None
-        or (key is not None and key in _PATH_ATTR_KEYS)
-    )
-    if is_path_context:
+    if key is not None and key in _PATH_ATTR_KEYS:
         return True
 
     i = 0
@@ -138,11 +129,18 @@ def _has_disallowed_backslash(raw_inner: str, key: str | None) -> bool:
             if i + 1 >= n:
                 return True
             nxt = raw_inner[i + 1]
-            if nxt not in {'"', "n", "r", "t"}:
+            if nxt not in {'"', "\\", "n", "r", "t"}:
                 return True
             i += 2
         else:
             i += 1
+
+    if key is None:
+        return (
+            raw_inner.startswith("\\")
+            or "/" in raw_inner
+            or _ASSET_EXT_RE.search(raw_inner) is not None
+        )
     return False
 
 
@@ -216,13 +214,21 @@ def validate_string_path_hygiene(
     return diagnostics
 
 
-def _validate_attribute_hygiene(attr: SiiAttributeSpan) -> list[SiiDiagnostic]:
+def _offset_to_line_col(text: str, pos: int) -> tuple[int, int]:
+    """Return 1-based ``(line, column)`` for character offset ``pos`` in LF-normalized text."""
+    line = text.count("\n", 0, pos) + 1
+    line_start = text.rfind("\n", 0, pos) + 1
+    return line, pos - line_start + 1
+
+
+def _validate_attribute_hygiene(attr: SiiAttributeSpan, text: str) -> list[SiiDiagnostic]:
+    line, column = _offset_to_line_col(text, attr.value_span.start)
     return validate_string_path_hygiene(
         attr.raw_value,
         key=attr.key,
         is_include=False,
-        line=attr.line,
-        column=1,
+        line=line,
+        column=column,
     )
 
 
@@ -260,7 +266,7 @@ def validate_sii_hygiene(
             return diagnostics
     else:
         text = source
-        if "\ufeff" in text:
+        if text.startswith("\ufeff"):
             diagnostics.append(
                 SiiDiagnostic(
                     code="utf8_bom",
@@ -269,7 +275,7 @@ def validate_sii_hygiene(
                     column=1,
                 )
             )
-            text = text.replace("\ufeff", "")
+            text = text[1:]
 
     if "\r" in text:
         cr_idx = text.find("\r")
@@ -323,9 +329,9 @@ def validate_sii_hygiene(
             )
         )
         for attr in unit.attributes:
-            diagnostics.extend(_validate_attribute_hygiene(attr))
+            diagnostics.extend(_validate_attribute_hygiene(attr, text))
 
     for attr in scan.root_attributes:
-        diagnostics.extend(_validate_attribute_hygiene(attr))
+        diagnostics.extend(_validate_attribute_hygiene(attr, text))
 
     return diagnostics

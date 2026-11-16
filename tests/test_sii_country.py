@@ -224,3 +224,85 @@ def test_patch_country_data_expands_axles_and_preserves_unquoted_isl_and_noop() 
     noop_out = patch_country_data(clean_bytes, CountryDataPatch())
     assert serialize_sii_text(noop_out) == clean_bytes
     assert normalize_sii_bytes(clean_bytes) == noop_out
+
+
+def test_country_fixed_array_parse_and_patch_removes_stale_count_and_indices() -> None:
+    fixed_array_country = (
+        "country_data : country.data.test\n"
+        "{\n"
+        "\tcountry_id: 99\n"
+        '\tname: "Testland"\n'
+        "\tiso_country_code: tst\n"
+        "\tfuel_price: 1.5\n"
+        "\tmass_limit_per_axle_count: 4\n"
+        "\tmass_limit_per_axle_count[2]: 36000\n"
+        "\tmass_limit_per_axle_count[0]: 18000\n"
+        "\tmass_limit_per_axle_count[3]: 40000\n"
+        "\tmass_limit_per_axle_count[1]: 26000\n"
+        "\tregions[]: central\n"
+        "}\n"
+    )
+    parsed = parse_country_data(fixed_array_country)
+    assert parsed.mass_limit_per_axle_count == [18000, 26000, 36000, 40000]
+    assert parsed.regions == ["central"]
+
+    patched = patch_country_data(
+        fixed_array_country,
+        CountryDataPatch(mass_limit_per_axle_count=[18000, 25000, 38000, 40000, 60000]),
+    )
+    assert "mass_limit_per_axle_count: 4" not in patched
+    assert "mass_limit_per_axle_count[0]" not in patched
+    assert "mass_limit_per_axle_count[3]" not in patched
+    assert "\tregions[]: central\n" in patched
+
+    reparsed = parse_country_data(patched)
+    assert reparsed.mass_limit_per_axle_count == [18000, 25000, 38000, 40000, 60000]
+    assert reparsed.regions == ["central"]
+
+    # Pass 2 zero-diff idempotency
+    assert (
+        patch_country_data(
+            patched, CountryDataPatch(mass_limit_per_axle_count=[18000, 25000, 38000, 40000, 60000])
+        )
+        == patched
+    )
+
+
+def test_patch_country_data_escapes_newlines_tabs_quotes_and_rejects_backslash_nul() -> None:
+    base = (
+        "country_data : country.data.test\n"
+        "{\n"
+        "\tcountry_id: 1\n"
+        "\tfuel_price: 1.85\n"
+        '\ttime_zone_name: "@@tz_cet@@"\n'
+        "}\n"
+    )
+    injected = '@@tz_cet@@"\n\tfuel_price: 0.01'
+    patched = patch_country_data(base, CountryDataPatch(time_zone_name=injected))
+    model = parse_country_data(patched)
+    assert model.fuel_price == pytest.approx(1.85)
+    assert model.time_zone_name == injected
+
+    tabbed = patch_country_data(base, CountryDataPatch(time_zone_name="tz\r\tname"))
+    assert "\\r\\t" in tabbed
+    assert parse_country_data(tabbed).time_zone_name == "tz\r\tname"
+
+    for bad in ("bad\\slash", "bad\x00nul"):
+        with pytest.raises(ValueError):
+            patch_country_data(base, CountryDataPatch(time_zone_name=bad))
+
+
+def test_patch_country_data_duplicate_scalar_uses_last_wins() -> None:
+    dup_country = (
+        "country_data : country.data.dup\n"
+        "{\n"
+        "\tcountry_id: 5\n"
+        "\tfuel_price: 1.11\n"
+        "\tfuel_price: 2.22\n"
+        "}\n"
+    )
+    assert parse_country_data(dup_country).fuel_price == pytest.approx(2.22)
+    patched = patch_country_data(dup_country, CountryDataPatch(fuel_price=3.33))
+    assert parse_country_data(patched).fuel_price == pytest.approx(3.33)
+    assert "\tfuel_price: 1.11\n" in patched
+    assert "\tfuel_price: 3.33\n" in patched

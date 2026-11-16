@@ -11,11 +11,11 @@ See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREM
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
 Phase: 1 of 5 (VFS, 1.62 Baseline Extraction & Structural SII Engine)
-Plan: 0 of 4 in current phase
-Status: Ready to execute
-Last activity: 2026-11-16 — Phase 1 planned and verified (01-01 through 01-04)
+Plan: 1 of 4 in current phase
+Status: Executing Wave 2 (01-02 & 01-04)
+Last activity: 2026-11-16 — Completed Plan 01-01 (package scaffold, uv.lock, strict gates, Day-1 CI)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 

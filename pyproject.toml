@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ets2-world-realism"
+version = "0.1.0"
+description = "Clean-room ETS2 1.62+ country realism generator and VFS/SII toolkit."
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "pydantic>=2.14,<3",
+]
+
+[project.scripts]
+ets2v2 = "ets2v2.cli:main"
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.40,<2",
+    "pytest>=9.2,<9.3",
+    "pytest-cov>=6,<8",
+    "ruff>=0.16",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ets2v2"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = [".planning", ".agents"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["-ra", "--strict-markers"]
+markers = [
+    "local_ets2: tests requiring local ETS2 1.62.3.3s archives",
+]

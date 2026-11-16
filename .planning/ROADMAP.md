@@ -30,7 +30,7 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
   4. Every serialized `.sii`/`.sui` output passes strict SCS hygiene assertions (UTF-8 without BOM, `\n` LF endings, POSIX `/` internal paths, column-0 `@include`, valid unit scoping) and produces zero byte diff on idempotent round-trip writes.
 **Plans**: 4 plans
 Plans:
-- [ ] `01-01-PLAN.md` — Project package scaffold (`pyproject.toml`, `uv.lock`, `src/ets2v2/` structure, `ruff` + `basedpyright` + `pytest` gates, Day-1 CI)
+- [x] `01-01-PLAN.md` — Project package scaffold (`pyproject.toml`, `uv.lock`, `src/ets2v2/` structure, `ruff` + `basedpyright` + `pytest` gates, Day-1 CI)
 - [ ] `01-02-PLAN.md` — Clean-room HashFS v1/v2 (`CityHash64` MIT + `zlib`), ZIP, and unpacked VFS reader/overlay with safe `3nK`/`AEM!`/encrypted-ZIP detection (`VFS-01`)
 - [ ] `01-03-PLAN.md` — ETS2 `1.62.3.3s` `def.scs` & `locale.scs` baseline extractor generating deterministic `data/baselines/ets2_1.62_def/` schemas and CLI wiring (`VFS-02`)
 - [ ] `01-04-PLAN.md` — Structural SII/SUI & `speed_limits.sii` parser, surgical field rewriter, and UTF-8/LF/POSIX round-trip verification suite (`SII-01`, `SII-02`)

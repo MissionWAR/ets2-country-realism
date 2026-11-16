@@ -31,9 +31,9 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
 **Plans**: 4 plans
 Plans:
 - [x] `01-01-PLAN.md` — Project package scaffold (`pyproject.toml`, `uv.lock`, `src/ets2v2/` structure, `ruff` + `basedpyright` + `pytest` gates, Day-1 CI)
-- [ ] `01-02-PLAN.md` — Clean-room HashFS v1/v2 (`CityHash64` MIT + `zlib`), ZIP, and unpacked VFS reader/overlay with safe `3nK`/`AEM!`/encrypted-ZIP detection (`VFS-01`)
+- [x] `01-02-PLAN.md` — Clean-room HashFS v1/v2 (`CityHash64` MIT + `zlib`), ZIP, and unpacked VFS reader/overlay with safe `3nK`/`AEM!`/encrypted-ZIP detection (`VFS-01`)
 - [ ] `01-03-PLAN.md` — ETS2 `1.62.3.3s` `def.scs` & `locale.scs` baseline extractor generating deterministic `data/baselines/ets2_1.62_def/` schemas and CLI wiring (`VFS-02`)
-- [ ] `01-04-PLAN.md` — Structural SII/SUI & `speed_limits.sii` parser, surgical field rewriter, and UTF-8/LF/POSIX round-trip verification suite (`SII-01`, `SII-02`)
+- [x] `01-04-PLAN.md` — Structural SII/SUI & `speed_limits.sii` parser, surgical field rewriter, and UTF-8/LF/POSIX round-trip verification suite (`SII-01`, `SII-02`)
 
 ### Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)
 **Goal**: Players and maintainers obtain verified, Workshop-compliant Summer and Winter Vanilla+DLC Core mods (`36` countries) compiled from one canonical source of truth, backed by an Offline SCS Validator and automated Friday Phase A release artifacts.

@@ -34,6 +34,11 @@ from ets2v2.registry import (
     validate_law_registry,
     write_realism_snapshot,
 )
+from ets2v2.validate import (
+    ValidationReport,
+    validate_local_zip,
+    validate_workshop_package,
+)
 from ets2v2.vfs import (
     ProtectedPayloadError,
     UnsupportedCompressionError,
@@ -334,6 +339,46 @@ def _handle_package_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def _emit_validation_report(report: ValidationReport, *, as_json: bool) -> int:
+    if as_json:
+        payload: object = report.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0 if report.ok else 1
+
+    if report.ok:
+        print(f"Validation passed ({report.mode}): {report.target} (0 errors, 0 warnings).")
+        return 0
+
+    for issue in report.issues:
+        loc = f" [{issue.path}]" if issue.path else ""
+        print(f"{issue.severity.upper()} {issue.code}{loc}: {issue.detail}", file=sys.stderr)
+    return 1
+
+
+def _handle_validate_workshop(args: argparse.Namespace) -> int:
+    target = cast(Path, args.target)
+    baseline_dir = cast(Path | None, args.baseline_dir)
+    as_json = cast(bool, args.json)
+    try:
+        report = validate_workshop_package(target, baseline_dir=baseline_dir)
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: workshop validation failed: {exc}", file=sys.stderr)
+        return 1
+    return _emit_validation_report(report, as_json=as_json)
+
+
+def _handle_validate_local(args: argparse.Namespace) -> int:
+    target = cast(Path, args.target)
+    baseline_dir = cast(Path | None, args.baseline_dir)
+    as_json = cast(bool, args.json)
+    try:
+        report = validate_local_zip(target, baseline_dir=baseline_dir)
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: local ZIP validation failed: {exc}", file=sys.stderr)
+        return 1
+    return _emit_validation_report(report, as_json=as_json)
+
+
 def _make_help_handler(subparser: argparse.ArgumentParser) -> CommandHandler:
     def _show_help(_args: argparse.Namespace) -> int:
         subparser.print_help()
@@ -602,6 +647,60 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Anchor year when --date is omitted (default: {DEFAULT_ANCHOR_YEAR}).",
     )
     package_build.set_defaults(handler=_handle_package_build)
+
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Run the Offline SCS Workshop Validator and 1.62 realism invariant checks.",
+    )
+    validate_parser.set_defaults(handler=_make_help_handler(validate_parser))
+    validate_subparsers = validate_parser.add_subparsers(
+        dest="validate_command",
+        metavar="SUBCOMMAND",
+    )
+
+    validate_workshop = validate_subparsers.add_parser(
+        "workshop",
+        help="Validate an unpacked Steam Workshop directory root (versions.sii + universal/).",
+    )
+    validate_workshop.add_argument(
+        "target",
+        type=Path,
+        help="Path to the staged Workshop root directory.",
+    )
+    validate_workshop.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    validate_workshop.add_argument(
+        "--json",
+        action="store_true",
+        help="Print validation report as JSON.",
+    )
+    validate_workshop.set_defaults(handler=_handle_validate_workshop)
+
+    validate_local = validate_subparsers.add_parser(
+        "local",
+        help="Validate a standalone local playtest .zip package.",
+    )
+    validate_local.add_argument(
+        "target",
+        type=Path,
+        help="Path to the standalone local .zip archive.",
+    )
+    validate_local.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    validate_local.add_argument(
+        "--json",
+        action="store_true",
+        help="Print validation report as JSON.",
+    )
+    validate_local.set_defaults(handler=_handle_validate_local)
 
     return parser
 

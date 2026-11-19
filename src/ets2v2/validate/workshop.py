@@ -1,0 +1,1120 @@
+"""Package-independent Offline SCS Workshop Validator for unpacked roots and local ZIPs."""
+
+from __future__ import annotations
+
+import io
+import re
+import zipfile
+from pathlib import Path
+from typing import Final
+
+from PIL import Image, UnidentifiedImageError
+from pydantic import ValidationError
+
+from ets2v2.baseline.models import (
+    CountriesBaseline,
+    LocalesBaseline,
+    SpeedLimitsBaseline,
+)
+from ets2v2.sii.country import CountryDataModel, parse_country_data
+from ets2v2.sii.document import SiiDocument
+from ets2v2.sii.hygiene import (
+    SiiEncodingError,
+    validate_sii_hygiene,
+    validate_string_path_hygiene,
+    validate_unit_name_segments,
+)
+from ets2v2.sii.lexer import parse_sii_bool, unquote_sii_string
+from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
+from ets2v2.validate.invariants import validate_core_realism_invariants
+from ets2v2.validate.models import ValidationCollector, ValidationReport
+from ets2v2.vfs.dir_archive import DirectoryArchive
+from ets2v2.vfs.types import (
+    ProtectedPayloadError,
+    UnsupportedCompressionError,
+    VfsArchive,
+    detect_3nk,
+)
+from ets2v2.vfs.zip_archive import ZipArchive
+
+VALID_SCS_CATEGORIES: Final[frozenset[str]] = frozenset(
+    {
+        "truck",
+        "trailer",
+        "interior",
+        "tuning_parts",
+        "ai_traffic",
+        "sound",
+        "paint_job",
+        "cargo_pack",
+        "map",
+        "ui",
+        "weather_setup",
+        "physics",
+        "graphics",
+        "models",
+        "movers",
+        "walkers",
+        "prefabs",
+        "other",
+    }
+)
+ALLOWED_MANIFEST_ATTRS: Final[frozenset[str]] = frozenset(
+    {
+        "package_version",
+        "display_name",
+        "author",
+        "category",
+        "icon",
+        "description_file",
+        "compatible_versions",
+        "dlc_dependencies",
+        "mp_mod_optional",
+    }
+)
+FORBIDDEN_EXTENSIONS: Final[frozenset[str]] = frozenset(
+    {
+        ".aux",
+        ".base",
+        ".data",
+        ".desc",
+        ".layer",
+        ".py",
+        ".pyc",
+        ".json",
+        ".md",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".sh",
+        ".ps1",
+        ".bat",
+        ".exe",
+        ".dll",
+    }
+)
+MAX_ICON_BYTES: Final[int] = 1_048_576
+MAX_DESCRIPTION_BYTES: Final[int] = 1_048_576
+MAX_ICON_PIXELS: Final[int] = 4_000_000
+REQUIRED_ICON_SIZE: Final[tuple[int, int]] = (276, 162)
+
+EXPECTED_CORE_COUNTRY_SLUGS: Final[frozenset[str]] = frozenset(
+    {
+        "albania",
+        "austria",
+        "belgium",
+        "bosnia",
+        "bulgaria",
+        "croatia",
+        "czech",
+        "denmark",
+        "estonia",
+        "finland",
+        "france",
+        "germany",
+        "greece",
+        "hungary",
+        "iceland",
+        "italy",
+        "kosovo",
+        "latvia",
+        "lithuania",
+        "luxembourg",
+        "macedonia",
+        "montenegro",
+        "netherlands",
+        "norway",
+        "poland",
+        "portugal",
+        "romania",
+        "russia",
+        "serbia",
+        "slovakia",
+        "slovenia",
+        "spain",
+        "sweden",
+        "switzerland",
+        "turkey",
+        "uk",
+    }
+)
+
+_PACKAGE_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,256}$")
+_COUNTRY_SII_RE: Final[re.Pattern[str]] = re.compile(r"^def/country(?:\.[^/]+)?\.sii$")
+_COUNTRY_SUI_RE: Final[re.Pattern[str]] = re.compile(r"^def/country/([a-z0-9_]+)\.sui$")
+_SPEED_LIMITS_RE: Final[re.Pattern[str]] = re.compile(
+    r"^def/country/([a-z0-9_]+)/speed_limits\.sii$"
+)
+_LOCALE_CODE_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z]{2}_[a-z]{2}$")
+_WINDOWS_DRIVE_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z]:")
+_REQUIRED_VEHICLE_CLASSES: Final[frozenset[str]] = frozenset({"car", "truck", "bus"})
+
+
+def _load_optional_baselines(
+    baseline_dir: Path | None,
+) -> tuple[CountriesBaseline | None, SpeedLimitsBaseline | None, LocalesBaseline | None]:
+    if baseline_dir is None:
+        return None, None, None
+    bl_countries = CountriesBaseline.model_validate_json(
+        (baseline_dir / "countries.json").read_text("utf-8")
+    )
+    bl_speeds = SpeedLimitsBaseline.model_validate_json(
+        (baseline_dir / "speed_limits.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (baseline_dir / "locales.json").read_text("utf-8")
+    )
+    return bl_countries, bl_speeds, bl_locales
+
+
+def _has_unsafe_raw_path(raw_path: str) -> str | None:
+    if "\x00" in raw_path:
+        return "Path contains NUL byte"
+    if "\\" in raw_path:
+        return "Windows backslash separator '\\' is not allowed"
+    if raw_path.startswith("/"):
+        return "Leading '/' absolute archive path is not allowed"
+    if _WINDOWS_DRIVE_RE.match(raw_path) is not None:
+        return "Windows drive prefix is not allowed in archive path"
+    segments = raw_path.split("/")
+    if any(seg == ".." for seg in segments):
+        return "Parent directory traversal '..' is not allowed"
+    return None
+
+
+def _detect_unsupported_binary_magic(raw: bytes) -> str | None:
+    if raw.startswith(b"SCS#"):
+        return "HashFS binary archive ('SCS#') is not supported"
+    if raw.startswith(b"AEM!"):
+        return "Encrypted/protected 'AEM!' archive payload is not supported"
+    return None
+
+
+def _detect_non_jpeg_image_format(raw: bytes) -> str | None:
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "PNG"
+    if raw.startswith((b"GIF87a", b"GIF89a")):
+        return "GIF"
+    if len(raw) >= 12 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "WEBP"
+    if raw.startswith(b"BM"):
+        return "BMP"
+    if raw.startswith((b"II*\x00", b"MM\x00*")):
+        return "TIFF"
+    return None
+
+
+def _record_sii_hygiene(
+    raw: bytes,
+    rel_path: str,
+    *,
+    require_siinunit: bool,
+    collector: ValidationCollector,
+) -> bool:
+    """Run ``validate_sii_hygiene`` and emit mapped SCS codes; return True when clean."""
+    if detect_3nk(raw):
+        collector.error("00004", rel_path, "3nK\\x01 obfuscated SII/SUI payload is not allowed")
+        return False
+
+    magic_err = _detect_unsupported_binary_magic(raw)
+    if magic_err is not None:
+        collector.error("00007", rel_path, magic_err)
+        return False
+
+    diags = validate_sii_hygiene(raw, require_siinunit=require_siinunit)
+    for diag in diags:
+        if diag.code in {"path_backslash", "path_parent_traversal"}:
+            code = "00003"
+        elif diag.code in {"unit_segment_invalid", "unit_segment_too_long"}:
+            code = "00007"
+        else:
+            code = "00004"
+        collector.error(
+            code,
+            rel_path,
+            f"{diag.code} at {diag.line}:{diag.column}: {diag.message}",
+        )
+    return not diags
+
+
+def _validate_utf8_lf_text(
+    raw: bytes,
+    rel_path: str,
+    collector: ValidationCollector,
+    *,
+    max_bytes: int = MAX_DESCRIPTION_BYTES,
+) -> None:
+    """Validate UTF-8 no-BOM LF text hygiene and size bounds for description files."""
+    if len(raw) > max_bytes:
+        collector.error(
+            "00009",
+            rel_path,
+            f"Text file size {len(raw)} bytes exceeds {max_bytes} byte limit",
+        )
+        return
+
+    if detect_3nk(raw):
+        collector.error("00004", rel_path, "3nK\\x01 obfuscated payload is not allowed")
+        return
+
+    if raw.startswith(b"\xef\xbb\xbf"):
+        collector.error("00004", rel_path, "UTF-8 BOM (0xEF 0xBB 0xBF) is not allowed")
+    if b"\r" in raw:
+        collector.error("00004", rel_path, "CR/CRLF line endings are not allowed; use LF ('\\n')")
+
+    payload = raw[3:] if raw.startswith(b"\xef\xbb\xbf") else raw
+    try:
+        payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        collector.error("00004", rel_path, f"Invalid UTF-8 byte sequence: {exc}")
+
+
+def _validate_icon_bytes(
+    raw: bytes,
+    rel_path: str,
+    collector: ValidationCollector,
+) -> None:
+    """Verify JPEG icon bounds, SOI/EOI markers, format, and exact 276x162 dimensions."""
+    if len(raw) > MAX_ICON_BYTES:
+        collector.error(
+            "00009",
+            rel_path,
+            f"Icon size {len(raw)} bytes exceeds {MAX_ICON_BYTES} byte limit",
+        )
+        return
+
+    non_jpeg = _detect_non_jpeg_image_format(raw)
+    if non_jpeg is not None:
+        collector.error(
+            "00007",
+            rel_path,
+            f"Unsupported icon format {non_jpeg!r} renamed as .jpg; expected JPEG",
+        )
+        return
+
+    has_jpeg_soi = raw.startswith(b"\xff\xd8")
+    has_jpeg_eoi = raw.rstrip(b"\x00").endswith(b"\xff\xd9")
+
+    prev_limit = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = MAX_ICON_PIXELS
+    try:
+        with Image.open(io.BytesIO(raw)) as img:
+            fmt = img.format
+            size = img.size
+            img.verify()
+        with Image.open(io.BytesIO(raw)) as decoded:
+            decoded.load()
+    except Image.DecompressionBombError as exc:
+        collector.error("00009", rel_path, f"Icon exceeds pixel safety cap: {exc}")
+        return
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+        collector.error("00004", rel_path, f"Malformed or truncated JPEG icon: {exc}")
+        return
+    finally:
+        Image.MAX_IMAGE_PIXELS = prev_limit
+
+    if fmt != "JPEG":
+        collector.error("00007", rel_path, f"Unsupported icon format {fmt!r}; expected JPEG")
+        return
+    if not (has_jpeg_soi and has_jpeg_eoi):
+        collector.error(
+            "00004",
+            rel_path,
+            "Malformed JPEG icon: missing required SOI (FFD8) or EOI (FFD9) markers",
+        )
+        return
+    if size != REQUIRED_ICON_SIZE:
+        collector.error(
+            "00001",
+            rel_path,
+            f"Icon dimensions {size[0]}x{size[1]} do not match required 276x162",
+        )
+
+
+def _inspect_raw_zip(
+    zip_path: Path,
+    *,
+    prefix: str,
+    collector: ValidationCollector,
+) -> bool:
+    """Inspect raw ``zipfile.ZipFile.infolist()`` BEFORE VFS path normalization (T-02-09)."""
+    rel_prefix = f"{prefix}/" if prefix else ""
+
+    try:
+        with zip_path.open("rb") as fh:
+            header = fh.read(4)
+    except PermissionError as exc:
+        collector.error("00006", str(zip_path), f"Access denied reading archive: {exc}")
+        return False
+    except OSError as exc:
+        collector.error("00008", str(zip_path), f"Unable to open archive: {exc}")
+        return False
+
+    magic_err = _detect_unsupported_binary_magic(header)
+    if magic_err is not None:
+        collector.error("00007", str(zip_path), magic_err)
+        return False
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            infos = zf.infolist()
+    except PermissionError as exc:
+        collector.error("00006", str(zip_path), f"Access denied opening ZIP archive: {exc}")
+        return False
+    except (zipfile.BadZipFile, OSError) as exc:
+        collector.error("00008", str(zip_path), f"Corrupt or unreadable ZIP archive: {exc}")
+        return False
+
+    for info in infos:
+        raw_name = info.filename
+        display_path = f"{rel_prefix}{raw_name}"
+        unsafe_reason = _has_unsafe_raw_path(raw_name)
+        if unsafe_reason is not None:
+            collector.error(
+                "00003",
+                display_path,
+                f"Unsafe raw ZIP entry name {raw_name!r}: {unsafe_reason}",
+            )
+        if info.flag_bits & 0x41:
+            collector.error(
+                "00007",
+                display_path,
+                "Encrypted ZIP entry (flag_bits & 0x41) is not supported",
+            )
+        if info.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
+            collector.error(
+                "00007",
+                display_path,
+                f"Unsupported ZIP compression method {info.compress_type}",
+            )
+    return True
+
+
+def _map_archive_diagnostics(
+    archive: VfsArchive,
+    *,
+    prefix: str,
+    collector: ValidationCollector,
+) -> None:
+    rel_prefix = f"{prefix}/" if prefix else ""
+    for diag in archive.diagnostics:
+        entry_loc = (
+            f"{rel_prefix}{diag.entry_path}" if diag.entry_path else (prefix or str(archive.path))
+        )
+        if diag.kind == "path_traversal":
+            collector.error("00003", entry_loc, diag.detail)
+        elif diag.kind == "three_nk_obfuscated":
+            collector.error("00004", entry_loc, diag.detail)
+        elif diag.kind == "corrupt_archive":
+            collector.error("00008", entry_loc, diag.detail)
+        else:
+            collector.error("00007", entry_loc, diag.detail)
+
+
+def _is_valid_localized_description(
+    vfs_path: str,
+    desc_name: str,
+    valid_locales: frozenset[str] | None,
+) -> bool:
+    if "/" in vfs_path or not vfs_path.lower().endswith(".txt"):
+        return False
+    if vfs_path == desc_name:
+        return True
+    stem = desc_name[:-4] if desc_name.lower().endswith(".txt") else desc_name
+    prefix = f"{stem}."
+    if not vfs_path.startswith(prefix):
+        return False
+    locale_part = vfs_path[len(prefix) : -4]
+    if valid_locales is not None:
+        return locale_part in valid_locales
+    return _LOCALE_CODE_RE.fullmatch(locale_part) is not None
+
+
+def _read_archive_entry(
+    archive: VfsArchive,
+    vfs_path: str,
+    display_path: str,
+    collector: ValidationCollector,
+) -> bytes | None:
+    try:
+        return archive.read_bytes(vfs_path)
+    except PermissionError as exc:
+        collector.error("00006", display_path, f"Access denied reading {vfs_path!r}: {exc}")
+        return None
+    except (ProtectedPayloadError, UnsupportedCompressionError) as exc:
+        collector.error("00007", display_path, str(exc))
+        return None
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        collector.error("00008", display_path, f"Unable to load {vfs_path!r}: {exc}")
+        return None
+
+
+def _validate_manifest(
+    archive: VfsArchive,
+    *,
+    prefix: str,
+    workshop_mode: bool,
+    collector: ValidationCollector,
+) -> tuple[str | None, str | None]:
+    """Validate ``manifest.sii`` and return ``(icon_name, description_file)`` if declared."""
+    rel_prefix = f"{prefix}/" if prefix else ""
+    manifest_loc = f"{rel_prefix}manifest.sii"
+
+    if not archive.exists("manifest.sii"):
+        collector.error("00002", manifest_loc, "Missing required manifest.sii at package root")
+        return None, None
+
+    manifest_raw = _read_archive_entry(archive, "manifest.sii", manifest_loc, collector)
+    if manifest_raw is None:
+        return None, None
+
+    _record_sii_hygiene(
+        manifest_raw,
+        manifest_loc,
+        require_siinunit=True,
+        collector=collector,
+    )
+
+    try:
+        manifest_doc = SiiDocument.parse(manifest_raw, require_siinunit=True)
+    except SiiEncodingError as exc:
+        collector.error("00004", manifest_loc, str(exc))
+        return None, None
+
+    mod_units = manifest_doc.find_units(class_name="mod_package")
+    if len(mod_units) != 1:
+        collector.error(
+            "00001",
+            manifest_loc,
+            f"Expected exactly 1 mod_package unit in manifest.sii, found {len(mod_units)}",
+        )
+        return None, None
+
+    mod_unit = mod_units[0]
+    for diag in validate_unit_name_segments(
+        mod_unit.unit_name,
+        line=mod_unit.unit_name_line,
+        column=mod_unit.unit_name_column,
+    ):
+        collector.error("00007", manifest_loc, diag.message)
+
+    # Check unknown attributes & Workshop-disallowed attributes
+    for attr in mod_unit.attributes:
+        if attr.key not in ALLOWED_MANIFEST_ATTRS:
+            collector.warning(
+                "WARN 00002",
+                manifest_loc,
+                f"Unknown or unused mod_package attribute {attr.key!r}",
+            )
+
+    if workshop_mode:
+        if mod_unit.get_attributes("display_name"):
+            collector.warning(
+                "WARN 00001",
+                manifest_loc,
+                "display_name must be omitted from Steam Workshop manifest.sii",
+            )
+        if mod_unit.get_attributes("compatible_versions"):
+            collector.error(
+                "00010",
+                manifest_loc,
+                "compatible_versions[] is not allowed in Steam Workshop manifest.sii",
+            )
+            collector.warning(
+                "WARN 00002",
+                manifest_loc,
+                "Unused field compatible_versions[] set in Workshop manifest.sii",
+            )
+
+    # Required scalar attributes
+    for req_key in ("package_version", "author"):
+        scalar = mod_unit.get_scalar(req_key)
+        if scalar is None or not unquote_sii_string(scalar.raw_value)[0].strip():
+            collector.error(
+                "00005",
+                manifest_loc,
+                f"Missing required non-empty attribute {req_key!r} in mod_package",
+            )
+
+    # mp_mod_optional: true required
+    mp_attr = mod_unit.get_scalar("mp_mod_optional")
+    if mp_attr is None:
+        collector.error(
+            "00005",
+            manifest_loc,
+            "Missing required attribute 'mp_mod_optional: true' in mod_package",
+        )
+    else:
+        try:
+            mp_val = parse_sii_bool(mp_attr.raw_value)
+        except ValueError as exc:
+            collector.error("00004", manifest_loc, f"Invalid mp_mod_optional boolean: {exc}")
+        else:
+            if not mp_val:
+                collector.error(
+                    "00005",
+                    manifest_loc,
+                    "mp_mod_optional must be true for Core realism packages",
+                )
+
+    # category[] checks: 1..2 entries, all in 18 valid SCS categories
+    cat_attrs = mod_unit.get_attributes("category")
+    categories = [unquote_sii_string(attr.raw_value)[0] for attr in cat_attrs]
+    if not categories:
+        collector.error(
+            "00005",
+            manifest_loc,
+            "Missing required category[] attribute in mod_package",
+        )
+    else:
+        for cat in categories:
+            if cat not in VALID_SCS_CATEGORIES:
+                collector.error(
+                    "00005",
+                    manifest_loc,
+                    f"Invalid SCS category {cat!r}; must be one of the 18 official SCS categories",
+                )
+        if len(categories) > 2:
+            collector.warning(
+                "WARN 00001",
+                manifest_loc,
+                f"Too many category[] entries ({len(categories)}); SCS allows at most 2",
+            )
+
+    # icon attribute checks
+    icon_name: str | None = None
+    icon_attr = mod_unit.get_scalar("icon")
+    if icon_attr is None or not unquote_sii_string(icon_attr.raw_value)[0].strip():
+        collector.error("00005", manifest_loc, "Missing required 'icon' attribute in mod_package")
+    else:
+        for diag in validate_string_path_hygiene(
+            icon_attr.raw_value,
+            key="icon",
+            line=icon_attr.line,
+        ):
+            collector.error("00003", manifest_loc, diag.message)
+        raw_icon, _ = unquote_sii_string(icon_attr.raw_value)
+        if "/" in raw_icon or "\\" in raw_icon:
+            collector.error(
+                "00001",
+                manifest_loc,
+                f"icon {raw_icon!r} must be a filename in the same directory as manifest.sii",
+            )
+        elif not raw_icon.lower().endswith(".jpg"):
+            collector.error(
+                "00001",
+                manifest_loc,
+                f"icon {raw_icon!r} must use the .jpg extension",
+            )
+        else:
+            icon_name = raw_icon
+            icon_loc = f"{rel_prefix}{icon_name}"
+            if not archive.exists(icon_name):
+                collector.error("00002", icon_loc, f"Declared icon {icon_name!r} not found")
+            else:
+                icon_raw = _read_archive_entry(archive, icon_name, icon_loc, collector)
+                if icon_raw is not None:
+                    _validate_icon_bytes(icon_raw, icon_loc, collector)
+
+    # description_file attribute checks
+    desc_name: str | None = None
+    desc_attr = mod_unit.get_scalar("description_file")
+    if desc_attr is None or not unquote_sii_string(desc_attr.raw_value)[0].strip():
+        collector.error(
+            "00005",
+            manifest_loc,
+            "Missing required 'description_file' attribute in mod_package",
+        )
+    else:
+        for diag in validate_string_path_hygiene(
+            desc_attr.raw_value,
+            key="description_file",
+            line=desc_attr.line,
+        ):
+            collector.error("00003", manifest_loc, diag.message)
+        raw_desc, _ = unquote_sii_string(desc_attr.raw_value)
+        if "/" in raw_desc or "\\" in raw_desc:
+            collector.error(
+                "00001",
+                manifest_loc,
+                f"description_file {raw_desc!r} must be a filename beside manifest.sii",
+            )
+        elif not raw_desc.lower().endswith(".txt"):
+            collector.error(
+                "00001",
+                manifest_loc,
+                f"description_file {raw_desc!r} must use the .txt extension",
+            )
+        else:
+            desc_name = raw_desc
+            desc_loc = f"{rel_prefix}{desc_name}"
+            if not archive.exists(desc_name):
+                collector.error(
+                    "00002",
+                    desc_loc,
+                    f"Declared description_file {desc_name!r} not found",
+                )
+            else:
+                desc_raw = _read_archive_entry(archive, desc_name, desc_loc, collector)
+                if desc_raw is not None:
+                    _validate_utf8_lf_text(desc_raw, desc_loc, collector)
+
+    return icon_name, desc_name
+
+
+def _validate_country_required_fields(
+    model: CountryDataModel,
+    display_path: str,
+    collector: ValidationCollector,
+) -> None:
+    if model.country_id <= 0:
+        collector.error("00005", display_path, "Missing or invalid positive country_id")
+    if not model.name:
+        collector.error("00005", display_path, "Missing required country name")
+    if not model.country_code:
+        collector.error("00005", display_path, "Missing required country_code")
+    if not model.iso_country_code:
+        collector.error("00005", display_path, "Missing required iso_country_code")
+    if model.time_zone is None or model.time_zone_name is None:
+        collector.error("00005", display_path, "Missing required time_zone or time_zone_name")
+    if model.lights_mandatory is None:
+        collector.error("00005", display_path, "Missing required lights_mandatory attribute")
+    if not model.mass_limit_per_axle_count:
+        collector.error("00005", display_path, "Missing required mass_limit_per_axle_count[]")
+
+
+def _validate_speed_limits_required_blocks(
+    parsed: SpeedLimitsFile,
+    display_path: str,
+    collector: ValidationCollector,
+) -> None:
+    present = set(parsed.vehicle_classes)
+    missing = sorted(_REQUIRED_VEHICLE_CLASSES - present)
+    if missing:
+        collector.error(
+            "00005",
+            display_path,
+            f"Missing required vehicle_speed_class block(s): {', '.join(missing)}",
+        )
+    for block in parsed.blocks:
+        if not block.lanes:
+            collector.error(
+                "00005",
+                display_path,
+                f"Vehicle speed block {block.vehicle_speed_class!r} has zero lane rules",
+            )
+
+
+def _validate_package_contents(
+    archive: VfsArchive,
+    *,
+    prefix: str,
+    workshop_mode: bool,
+    expected_slugs: frozenset[str],
+    valid_locales: frozenset[str] | None,
+    collector: ValidationCollector,
+) -> tuple[dict[str, CountryDataModel], dict[str, SpeedLimitsFile]]:
+    """Audit all files inside a mounted package archive against SCS 00001-00010 & WARN rules."""
+    rel_prefix = f"{prefix}/" if prefix else ""
+
+    def _p(path: str) -> str:
+        return f"{rel_prefix}{path}"
+
+    icon_name, desc_name = _validate_manifest(
+        archive,
+        prefix=prefix,
+        workshop_mode=workshop_mode,
+        collector=collector,
+    )
+
+    country_models: dict[str, CountryDataModel] = {}
+    speed_models: dict[str, SpeedLimitsFile] = {}
+
+    for vfs_path in archive.list_paths():
+        display_path = _p(vfs_path)
+        unsafe_reason = _has_unsafe_raw_path(vfs_path)
+        if unsafe_reason is not None:
+            collector.error("00003", display_path, unsafe_reason)
+            continue
+
+        suffix = Path(vfs_path).suffix.lower()
+
+        if suffix in FORBIDDEN_EXTENSIONS:
+            collector.error(
+                "00003",
+                display_path,
+                f"Forbidden file extension {suffix!r} inside mod package",
+            )
+            continue
+
+        if suffix == ".scs":
+            raw_scs = _read_archive_entry(archive, vfs_path, display_path, collector)
+            if raw_scs is not None:
+                magic_err = _detect_unsupported_binary_magic(raw_scs)
+                if magic_err is not None:
+                    collector.error("00007", display_path, magic_err)
+                elif workshop_mode and raw_scs.startswith(b"PK\x03\x04"):
+                    collector.error(
+                        "00003",
+                        display_path,
+                        "ZIP archive renamed to .scs is not allowed in Workshop packages",
+                    )
+            if workshop_mode:
+                collector.error(
+                    "00003",
+                    display_path,
+                    ".scs archives are not allowed inside Workshop packages",
+                )
+            continue
+
+        if _COUNTRY_SII_RE.fullmatch(vfs_path) is not None:
+            collector.error(
+                "00003",
+                display_path,
+                "Core builds must not emit def/country.sii or def/country.*.sii (D-05)",
+            )
+            continue
+
+        if suffix in {".jpg", ".jpeg"}:
+            if icon_name is None or vfs_path != icon_name:
+                collector.error(
+                    "00003",
+                    display_path,
+                    f"Unreferenced image file {vfs_path!r} (does not match manifest icon)",
+                )
+            continue
+
+        if suffix == ".txt":
+            if desc_name is None or not _is_valid_localized_description(
+                vfs_path,
+                desc_name,
+                valid_locales,
+            ):
+                collector.error(
+                    "00003",
+                    display_path,
+                    f"Unreferenced text file {vfs_path!r} (not declared description_file)",
+                )
+            elif vfs_path != desc_name:
+                loc_raw = _read_archive_entry(archive, vfs_path, display_path, collector)
+                if loc_raw is not None:
+                    _validate_utf8_lf_text(loc_raw, display_path, collector)
+            continue
+
+        if vfs_path == "manifest.sii":
+            continue
+
+        if suffix in {".sii", ".sui"}:
+            raw = _read_archive_entry(archive, vfs_path, display_path, collector)
+            if raw is None:
+                continue
+
+            is_sii = suffix == ".sii"
+            _record_sii_hygiene(raw, display_path, require_siinunit=is_sii, collector=collector)
+
+            if not detect_3nk(raw) and _detect_unsupported_binary_magic(raw) is None:
+                try:
+                    doc = SiiDocument.parse(raw, require_siinunit=is_sii)
+                except SiiEncodingError:
+                    doc = None
+                if doc is not None and doc.find_units(class_name="mod_package"):
+                    collector.error(
+                        "00003",
+                        display_path,
+                        "mod_package unit is only allowed inside manifest.sii",
+                    )
+
+            sui_match = _COUNTRY_SUI_RE.fullmatch(vfs_path)
+            if sui_match is not None:
+                slug = sui_match.group(1)
+                try:
+                    country_model = parse_country_data(raw)
+                except (SiiEncodingError, ValueError, ValidationError) as exc:
+                    collector.error(
+                        "00008",
+                        display_path,
+                        f"Unable to load country_data unit: {exc}",
+                    )
+                else:
+                    _validate_country_required_fields(country_model, display_path, collector)
+                    country_models[slug] = country_model
+                continue
+
+            spd_match = _SPEED_LIMITS_RE.fullmatch(vfs_path)
+            if spd_match is not None:
+                slug = spd_match.group(1)
+                try:
+                    speed_model = parse_speed_limits(raw)
+                except (SiiEncodingError, ValueError, ValidationError) as exc:
+                    collector.error(
+                        "00008",
+                        display_path,
+                        f"Unable to load speed_limits.sii: {exc}",
+                    )
+                else:
+                    _validate_speed_limits_required_blocks(speed_model, display_path, collector)
+                    speed_models[slug] = speed_model
+                continue
+
+    # Check all expected 36 country .sui and speed_limits.sii files exist (SCS 00002)
+    for slug in sorted(expected_slugs):
+        sui_path = f"def/country/{slug}.sui"
+        spd_path = f"def/country/{slug}/speed_limits.sii"
+        if not archive.exists(sui_path):
+            collector.error(
+                "00002",
+                _p(sui_path),
+                f"Missing required country definition {sui_path!r}",
+            )
+        if not archive.exists(spd_path):
+            collector.error(
+                "00002",
+                _p(spd_path),
+                f"Missing required speed limits file {spd_path!r}",
+            )
+
+    _map_archive_diagnostics(archive, prefix=prefix, collector=collector)
+    return country_models, speed_models
+
+
+def validate_workshop_package(
+    workshop_dir: Path,
+    *,
+    baseline_dir: Path | None = None,
+) -> ValidationReport:
+    """Validate an unpacked Steam Workshop directory root against SCS rules and invariants."""
+    collector = ValidationCollector()
+    bl_countries, bl_speeds, bl_locales = _load_optional_baselines(baseline_dir)
+    expected_slugs = (
+        frozenset(c.slug for c in bl_countries.countries)
+        if bl_countries is not None
+        else EXPECTED_CORE_COUNTRY_SLUGS
+    )
+    valid_locales = frozenset(bl_locales.active_locales) if bl_locales is not None else None
+
+    if not workshop_dir.exists() or not workshop_dir.is_dir():
+        collector.error("00002", str(workshop_dir), "Workshop root directory not found")
+        return collector.build_report(workshop_dir, "workshop")
+
+    versions_path = workshop_dir / "versions.sii"
+    if not versions_path.is_file():
+        collector.error("00002", "versions.sii", "Missing required versions.sii at Workshop root")
+        return collector.build_report(workshop_dir, "workshop")
+
+    try:
+        versions_raw = versions_path.read_bytes()
+    except PermissionError as exc:
+        collector.error("00006", "versions.sii", f"Access denied reading versions.sii: {exc}")
+        return collector.build_report(workshop_dir, "workshop")
+    except OSError as exc:
+        collector.error("00008", "versions.sii", f"Unable to read versions.sii: {exc}")
+        return collector.build_report(workshop_dir, "workshop")
+
+    _record_sii_hygiene(versions_raw, "versions.sii", require_siinunit=True, collector=collector)
+
+    try:
+        versions_doc = SiiDocument.parse(versions_raw, require_siinunit=True)
+    except SiiEncodingError as exc:
+        collector.error("00004", "versions.sii", str(exc))
+        return collector.build_report(workshop_dir, "workshop")
+
+    if versions_doc.find_units(class_name="mod_package"):
+        collector.error(
+            "00003",
+            "versions.sii",
+            "mod_package unit is only allowed inside manifest.sii",
+        )
+
+    version_units = versions_doc.find_units(class_name="package_version_info")
+    if not version_units:
+        collector.error("00001", "versions.sii", "versions.sii defines zero package_version_info")
+        return collector.build_report(workshop_dir, "workshop")
+
+    universal_entries = [
+        unit for unit in version_units if not unit.get_attributes("compatible_versions")
+    ]
+    if len(universal_entries) != 1:
+        collector.error(
+            "00003",
+            "versions.sii",
+            f"versions.sii must contain strictly 1 universal entry, found {len(universal_entries)}",
+        )
+
+    declared_root_names: set[str] = {"versions.sii"}
+
+    for unit in version_units:
+        for diag in validate_unit_name_segments(
+            unit.unit_name,
+            line=unit.unit_name_line,
+            column=unit.unit_name_column,
+        ):
+            collector.error("00007", "versions.sii", diag.message)
+
+        pkg_attr = unit.get_scalar("package_name")
+        if pkg_attr is None:
+            collector.error("00005", "versions.sii", "Missing required package_name attribute")
+            continue
+
+        pkg_name, _ = unquote_sii_string(pkg_attr.raw_value)
+        if not pkg_name:
+            collector.error("00005", "versions.sii", "package_name must not be empty")
+            continue
+
+        if _PACKAGE_NAME_RE.fullmatch(pkg_name) is None:
+            collector.error(
+                "00003",
+                "versions.sii",
+                f"Invalid package_name {pkg_name!r}; must match ^[a-z0-9_]{{1,256}}$",
+            )
+            continue
+
+        pkg_dir = workshop_dir / pkg_name
+        pkg_zip = workshop_dir / f"{pkg_name}.zip"
+
+        if pkg_dir.exists() and pkg_zip.exists():
+            collector.error(
+                "00003",
+                pkg_name,
+                f"Side-by-side {pkg_name}/ directory and {pkg_name}.zip are not allowed",
+            )
+            declared_root_names.add(pkg_name)
+            declared_root_names.add(f"{pkg_name}.zip")
+            continue
+
+        if pkg_dir.is_dir():
+            declared_root_names.add(pkg_name)
+            try:
+                archive_dir = DirectoryArchive(pkg_dir)
+            except PermissionError as exc:
+                collector.error("00006", pkg_name, f"Access denied opening {pkg_name}/: {exc}")
+                continue
+            except OSError as exc:
+                collector.error("00008", pkg_name, f"Unable to open {pkg_name}/: {exc}")
+                continue
+            with archive_dir:
+                country_models, speed_models = _validate_package_contents(
+                    archive_dir,
+                    prefix=pkg_name,
+                    workshop_mode=True,
+                    expected_slugs=expected_slugs,
+                    valid_locales=valid_locales,
+                    collector=collector,
+                )
+            if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
+                validate_core_realism_invariants(
+                    country_models,
+                    speed_models,
+                    bl_countries,
+                    bl_speeds,
+                    bl_locales,
+                    collector,
+                    path_prefix=pkg_name,
+                )
+        elif pkg_zip.is_file():
+            declared_root_names.add(f"{pkg_name}.zip")
+            if _inspect_raw_zip(pkg_zip, prefix=f"{pkg_name}.zip", collector=collector):
+                with ZipArchive(pkg_zip) as archive_zip:
+                    country_models, speed_models = _validate_package_contents(
+                        archive_zip,
+                        prefix=f"{pkg_name}.zip",
+                        workshop_mode=True,
+                        expected_slugs=expected_slugs,
+                        valid_locales=valid_locales,
+                        collector=collector,
+                    )
+                if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
+                    validate_core_realism_invariants(
+                        country_models,
+                        speed_models,
+                        bl_countries,
+                        bl_speeds,
+                        bl_locales,
+                        collector,
+                        path_prefix=f"{pkg_name}.zip",
+                    )
+        else:
+            collector.error("00002", pkg_name, f"Declared package {pkg_name!r} not found")
+
+    # Reject any extraneous files or directories at the Workshop root (SCS 00003)
+    try:
+        root_entries = sorted(workshop_dir.iterdir(), key=lambda p: p.name)
+    except PermissionError as exc:
+        collector.error("00006", str(workshop_dir), f"Access denied listing Workshop root: {exc}")
+        return collector.build_report(workshop_dir, "workshop")
+
+    for entry in root_entries:
+        if entry.name not in declared_root_names:
+            collector.error(
+                "00003",
+                entry.name,
+                f"Extraneous root entry {entry.name!r} not allowed in Workshop root",
+            )
+            if entry.is_file() and entry.suffix.lower() == ".scs":
+                try:
+                    magic = entry.read_bytes()[:4]
+                except PermissionError as exc:
+                    collector.error(
+                        "00006", entry.name, f"Access denied reading {entry.name}: {exc}"
+                    )
+                except OSError:
+                    pass
+                else:
+                    magic_err = _detect_unsupported_binary_magic(magic)
+                    if magic_err is not None:
+                        collector.error("00007", entry.name, magic_err)
+
+    return collector.build_report(workshop_dir, "workshop")
+
+
+def validate_local_zip(
+    zip_path: Path,
+    *,
+    baseline_dir: Path | None = None,
+) -> ValidationReport:
+    """Validate a standalone local playtest ``.zip`` package against SCS rules and invariants."""
+    collector = ValidationCollector()
+    bl_countries, bl_speeds, bl_locales = _load_optional_baselines(baseline_dir)
+    expected_slugs = (
+        frozenset(c.slug for c in bl_countries.countries)
+        if bl_countries is not None
+        else EXPECTED_CORE_COUNTRY_SLUGS
+    )
+    valid_locales = frozenset(bl_locales.active_locales) if bl_locales is not None else None
+
+    if not zip_path.exists() or not zip_path.is_file():
+        collector.error("00002", str(zip_path), "Local ZIP archive not found")
+        return collector.build_report(zip_path, "local_zip")
+
+    if not _inspect_raw_zip(zip_path, prefix="", collector=collector):
+        return collector.build_report(zip_path, "local_zip")
+
+    try:
+        archive = ZipArchive(zip_path)
+    except PermissionError as exc:
+        collector.error("00006", str(zip_path), f"Access denied mounting ZIP archive: {exc}")
+        return collector.build_report(zip_path, "local_zip")
+    except (OSError, ValueError) as exc:
+        collector.error("00008", str(zip_path), f"Unable to mount ZIP archive: {exc}")
+        return collector.build_report(zip_path, "local_zip")
+
+    with archive:
+        country_models, speed_models = _validate_package_contents(
+            archive,
+            prefix="",
+            workshop_mode=False,
+            expected_slugs=expected_slugs,
+            valid_locales=valid_locales,
+            collector=collector,
+        )
+
+    if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
+        validate_core_realism_invariants(
+            country_models,
+            speed_models,
+            bl_countries,
+            bl_speeds,
+            bl_locales,
+            collector,
+        )
+
+    return collector.build_report(zip_path, "local_zip")

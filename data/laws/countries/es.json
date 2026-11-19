@@ -1,0 +1,171 @@
+{
+  "currency": "EUR",
+  "driving_tired_offence": true,
+  "ets2_slug": "spain",
+  "iana_timezone": "Europe/Madrid",
+  "iso2": "ES",
+  "iso3": "esp",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    46000,
+    60000
+  ],
+  "sources": [
+    "https://transport.ec.europa.eu/transport-themes/road-safety/going-abroad_en"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "RGC Art. 48: cars 90/90/120, trucks 80/90/90, buses 90/100/100 km/h year-round (no winter truck drop; fixes V1 100 km/h anomaly).",
+    "No general clear-daytime headlight mandate in Spain; preserves 60t EMS axle mass limit."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 120,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 120
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 120,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 120
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ]
+    }
+  }
+}

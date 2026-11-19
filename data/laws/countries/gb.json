@@ -1,0 +1,171 @@
+{
+  "currency": "GBP",
+  "driving_tired_offence": true,
+  "ets2_slug": "uk",
+  "iana_timezone": "Europe/London",
+  "iso2": "GB",
+  "iso3": "gbr",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.uk/speed-limits"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Imperial mph units (imperial_units: true): England/Wales Highway Code cars 60/70/70 mph, >7.5t HGV 50/60/60 mph, buses 50/60/70 mph (urban 30 mph).",
+    "No general clear-daytime headlight mandate; preserves 44t 6-axle limit."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  }
+}

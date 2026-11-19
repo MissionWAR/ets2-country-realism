@@ -1,0 +1,173 @@
+{
+  "currency": "SEK",
+  "driving_tired_offence": true,
+  "ets2_slug": "sweden",
+  "iana_timezone": "Europe/Stockholm",
+  "iso2": "SE",
+  "iso3": "swe",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    46000,
+    64000,
+    64000
+  ],
+  "sources": [
+    "https://rkrattsdb.gov.se/",
+    "https://transport.ec.europa.eu/transport-themes/road-safety/going-abroad_en"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Trafikforordningen: cars 70/110/110, articulated trucks >3.5t+trailer 70 (max_limit 80)/80/80, buses 70/90/90 km/h (winter limits are VMS-based).",
+    "Year-round mandatory daytime headlights/DRL; preserves 64t BK4 6-element axle mass ladder."
+  ],
+  "summer": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 110
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 110
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ]
+    }
+  }
+}

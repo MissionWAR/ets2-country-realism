@@ -1,0 +1,170 @@
+{
+  "currency": "EUR",
+  "driving_tired_offence": true,
+  "ets2_slug": "italy",
+  "iana_timezone": "Europe/Rome",
+  "iso2": "IT",
+  "iso3": "ita",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://transport.ec.europa.eu/transport-themes/road-safety/going-abroad_en"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Codice della Strada Art. 142 (dry default): cars 90/110/130, trucks >12t 70/80/80, buses 80/100/100 km/h.",
+    "Codice della Strada Art. 152: daytime headlights mandatory year-round outside built-up areas and on motorways; preserves 44t domestic axle cap."
+  ],
+  "summer": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 130
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 130
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ]
+    }
+  }
+}

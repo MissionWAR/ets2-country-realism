@@ -1,0 +1,172 @@
+{
+  "currency": "ISK",
+  "driving_tired_offence": true,
+  "ets2_slug": "iceland",
+  "iana_timezone": "Atlantic/Reykjavik",
+  "iso2": "IS",
+  "iso3": "isl",
+  "mass_limit_per_axle_count": [
+    18000,
+    29000,
+    38000,
+    46000,
+    60000
+  ],
+  "sources": [
+    "https://island.is/en/driving-in-iceland",
+    "https://www.samgongustofa.is/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Umferdarlog nr. 77/2019 Art. 37: fixes vanilla 1.62 heavy truck (>3500 kg) speed limit from 90 to 80 km/h outside urban areas across all three road classes.",
+    "Year-round mandatory DRL; preserves 5-element 60t Samgongustofa axle mass ladder [18000, 29000, 38000, 46000, 60000] (fixing reference-mod 3249064596 40t downgrade)."
+  ],
+  "summer": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ]
+    }
+  }
+}

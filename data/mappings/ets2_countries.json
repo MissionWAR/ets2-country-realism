@@ -1,0 +1,294 @@
+{
+  "baseline_game_version": "1.62.3.3",
+  "countries": [
+    {
+      "country_id": 14,
+      "ets2_slug": "albania",
+      "iso2": "AL",
+      "iso3": "alb",
+      "name_english": "Albania",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 1,
+      "ets2_slug": "austria",
+      "iso2": "AT",
+      "iso3": "aut",
+      "name_english": "Austria",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 2,
+      "ets2_slug": "belgium",
+      "iso2": "BE",
+      "iso3": "bel",
+      "name_english": "Belgium",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 17,
+      "ets2_slug": "bosnia",
+      "iso2": "BA",
+      "iso3": "bih",
+      "name_english": "Bosnia and Herzegovina",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 18,
+      "ets2_slug": "bulgaria",
+      "iso2": "BG",
+      "iso3": "bgr",
+      "name_english": "Bulgaria",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 19,
+      "ets2_slug": "croatia",
+      "iso2": "HR",
+      "iso3": "hrv",
+      "name_english": "Croatia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 3,
+      "ets2_slug": "czech",
+      "iso2": "CZ",
+      "iso3": "cze",
+      "name_english": "Czechia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 21,
+      "ets2_slug": "denmark",
+      "iso2": "DK",
+      "iso3": "dnk",
+      "name_english": "Denmark",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 22,
+      "ets2_slug": "estonia",
+      "iso2": "EE",
+      "iso3": "est",
+      "name_english": "Estonia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 23,
+      "ets2_slug": "finland",
+      "iso2": "FI",
+      "iso3": "fin",
+      "name_english": "Finland",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 4,
+      "ets2_slug": "france",
+      "iso2": "FR",
+      "iso3": "fra",
+      "name_english": "France",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 5,
+      "ets2_slug": "germany",
+      "iso2": "DE",
+      "iso3": "deu",
+      "name_english": "Germany",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 25,
+      "ets2_slug": "greece",
+      "iso2": "GR",
+      "iso3": "grc",
+      "name_english": "Greece",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 13,
+      "ets2_slug": "hungary",
+      "iso2": "HU",
+      "iso3": "hun",
+      "name_english": "Hungary",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 26,
+      "ets2_slug": "iceland",
+      "iso2": "IS",
+      "iso3": "isl",
+      "name_english": "Iceland",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 6,
+      "ets2_slug": "italy",
+      "iso2": "IT",
+      "iso3": "ita",
+      "name_english": "Italy",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 204,
+      "ets2_slug": "kosovo",
+      "iso2": "XK",
+      "iso3": "xxk",
+      "name_english": "Kosovo",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 28,
+      "ets2_slug": "latvia",
+      "iso2": "LV",
+      "iso3": "lva",
+      "name_english": "Latvia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 30,
+      "ets2_slug": "lithuania",
+      "iso2": "LT",
+      "iso3": "ltu",
+      "name_english": "Lithuania",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 12,
+      "ets2_slug": "luxembourg",
+      "iso2": "LU",
+      "iso3": "lux",
+      "name_english": "Luxembourg",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 203,
+      "ets2_slug": "macedonia",
+      "iso2": "MK",
+      "iso3": "mkd",
+      "name_english": "North Macedonia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 34,
+      "ets2_slug": "montenegro",
+      "iso2": "ME",
+      "iso3": "mne",
+      "name_english": "Montenegro",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 7,
+      "ets2_slug": "netherlands",
+      "iso2": "NL",
+      "iso3": "nld",
+      "name_english": "Netherlands",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 35,
+      "ets2_slug": "norway",
+      "iso2": "NO",
+      "iso3": "nor",
+      "name_english": "Norway",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 8,
+      "ets2_slug": "poland",
+      "iso2": "PL",
+      "iso3": "pol",
+      "name_english": "Poland",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 36,
+      "ets2_slug": "portugal",
+      "iso2": "PT",
+      "iso3": "prt",
+      "name_english": "Portugal",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 37,
+      "ets2_slug": "romania",
+      "iso2": "RO",
+      "iso3": "rou",
+      "name_english": "Romania",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 38,
+      "ets2_slug": "russia",
+      "iso2": "RU",
+      "iso3": "rus",
+      "name_english": "Russia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 40,
+      "ets2_slug": "serbia",
+      "iso2": "RS",
+      "iso3": "srb",
+      "name_english": "Serbia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 11,
+      "ets2_slug": "slovakia",
+      "iso2": "SK",
+      "iso3": "svk",
+      "name_english": "Slovakia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 41,
+      "ets2_slug": "slovenia",
+      "iso2": "SI",
+      "iso3": "svn",
+      "name_english": "Slovenia",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 42,
+      "ets2_slug": "spain",
+      "iso2": "ES",
+      "iso3": "esp",
+      "name_english": "Spain",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 43,
+      "ets2_slug": "sweden",
+      "iso2": "SE",
+      "iso3": "swe",
+      "name_english": "Sweden",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 9,
+      "ets2_slug": "switzerland",
+      "iso2": "CH",
+      "iso3": "che",
+      "name_english": "Switzerland",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 44,
+      "ets2_slug": "turkey",
+      "iso2": "TR",
+      "iso3": "tur",
+      "name_english": "Turkey",
+      "vanilla_1_62": true
+    },
+    {
+      "country_id": 10,
+      "ets2_slug": "uk",
+      "iso2": "GB",
+      "iso3": "gbr",
+      "name_english": "United Kingdom",
+      "vanilla_1_62": true
+    }
+  ],
+  "schema_version": 1
+}

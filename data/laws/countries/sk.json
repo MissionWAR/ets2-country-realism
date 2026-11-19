@@ -1,0 +1,171 @@
+{
+  "currency": "EUR",
+  "driving_tired_offence": true,
+  "ets2_slug": "slovakia",
+  "iana_timezone": "Europe/Bratislava",
+  "iso2": "SK",
+  "iso3": "svk",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    36000,
+    40000
+  ],
+  "sources": [
+    "https://www.slovensko.sk/en/title",
+    "https://transport.ec.europa.eu/transport-themes/road-safety/going-abroad_en"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Act 8/2009 §16: cars 90/130/130 (urban motorway 90), >3.5t trucks 90/90/90, buses 90/100/100 km/h.",
+    "Year-round mandatory daytime dipped headlights/DRL."
+  ],
+  "summer": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 100
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 90
+        }
+      ]
+    }
+  }
+}

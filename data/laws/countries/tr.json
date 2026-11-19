@@ -1,0 +1,213 @@
+{
+  "currency": "TRY",
+  "driving_tired_offence": true,
+  "ets2_slug": "turkey",
+  "iana_timezone": "Europe/Istanbul",
+  "iso2": "TR",
+  "iso3": "tur",
+  "mass_limit_per_axle_count": [
+    19000,
+    26000,
+    38000,
+    40000
+  ],
+  "sources": [
+    "https://www.kgm.gov.tr/Sayfalar/KGM/SiteTr/Trafik/HizSinirlari.aspx",
+    "https://www.irmaksrc.com.tr/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "KGM July 2022 motorway speed decree: fixes vanilla 1.62 car motorway limit from 120 to 130 km/h (urban_limit 130); trucks stay 80/85/90 km/h; preserves slow_road (30 km/h) and uncommon flags.",
+    "Law 2918 (Karayollari Trafik Kanunu) Art. 64: no clear-daytime headlight mandate (fixes reference-mod 3668352310 over-reach)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": false,
+          "urban_limit": 100
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 130
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": null,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 85,
+          "max_limit": 85,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": false,
+          "urban_limit": 90
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": false,
+          "urban_limit": 100
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 130,
+          "max_limit": null,
+          "uncommon": false,
+          "urban_limit": 130
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": null,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 85,
+          "max_limit": 85,
+          "uncommon": false,
+          "urban_limit": 50
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": false,
+          "urban_limit": 90
+        },
+        {
+          "lane_speed_class": "slow_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": true,
+          "urban_limit": 30
+        }
+      ]
+    }
+  }
+}

@@ -26,6 +26,7 @@ from ets2v2.package import (
     build_core_editions,
     generate_all_icons,
 )
+from ets2v2.publish import run_phase_a_release
 from ets2v2.registry import (
     DEFAULT_ANCHOR_YEAR,
     Season,
@@ -209,15 +210,15 @@ def _handle_registry_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-def _parse_iso_date_arg(raw_date: str | None) -> date | None:
+def _parse_iso_date_arg(raw_date: str | None, *, flag_name: str = "--date") -> date | None:
     if raw_date is None:
         return None
     try:
         parsed_date = date.fromisoformat(raw_date)
     except ValueError as exc:
-        raise ValueError(f"invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)") from exc
+        raise ValueError(f"invalid {flag_name} {raw_date!r} (expected ISO YYYY-MM-DD)") from exc
     if parsed_date.isoformat() != raw_date:
-        raise ValueError(f"invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)")
+        raise ValueError(f"invalid {flag_name} {raw_date!r} (expected ISO YYYY-MM-DD)")
     return parsed_date
 
 
@@ -377,6 +378,69 @@ def _handle_validate_local(args: argparse.Namespace) -> int:
         print(f"error: local ZIP validation failed: {exc}", file=sys.stderr)
         return 1
     return _emit_validation_report(report, as_json=as_json)
+
+
+def _handle_publish_release(args: argparse.Namespace) -> int:
+    state_path = cast(Path, args.state)
+    out_dir = cast(Path, args.out_dir)
+    changelogs_dir = cast(Path, args.changelogs_dir)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    baseline_dir = cast(Path, args.baseline_dir)
+    icons_dir = cast(Path, args.icons_dir)
+    raw_build_date = cast(str | None, args.build_date)
+    author = cast(str, args.author)
+    anchor_year = cast(int, args.anchor_year)
+    write_state = cast(bool, args.write_state)
+    force_run = cast(bool, args.force)
+    as_json = cast(bool, args.json)
+
+    try:
+        parsed_build_date = _parse_iso_date_arg(raw_build_date, flag_name="--build-date")
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        summary = run_phase_a_release(
+            state_path=state_path,
+            out_dir=out_dir,
+            changelogs_dir=changelogs_dir,
+            laws_dir=laws_dir,
+            mappings_path=mappings_path,
+            baseline_dir=baseline_dir,
+            icons_dir=icons_dir,
+            build_date=parsed_build_date,
+            author=author,
+            anchor_year=anchor_year,
+            write_state=write_state,
+            force_run=force_run,
+        )
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: Phase A release failed: {exc}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = summary.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0
+
+    changed_label = ", ".join(summary.changed_editions) if summary.changed_editions else "none"
+    print(
+        f"Phase A release complete ({summary.build_date}): "
+        f"any_changed={str(summary.any_changed).lower()}, "
+        f"changed_editions=[{changed_label}], "
+        f"force_run={str(summary.force_run).lower()}"
+    )
+    for edition in ("summer", "winter"):
+        res = summary.editions[edition]
+        status = "CHANGED" if res.changed else "NO-OP"
+        print(
+            f"  {edition}: {status} version={res.package_version} "
+            f"payload_sha256={res.payload_sha256[:12]}... "
+            f"snapshot_sha256={res.snapshot_sha256[:12]}..."
+        )
+    return 0
 
 
 def _make_help_handler(subparser: argparse.ArgumentParser) -> CommandHandler:
@@ -701,6 +765,97 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print validation report as JSON.",
     )
     validate_local.set_defaults(handler=_handle_validate_local)
+
+    publish_parser = subparsers.add_parser(
+        "publish",
+        help="Run Phase A diff-gated release orchestration and changelog generation.",
+    )
+    publish_parser.set_defaults(handler=_make_help_handler(publish_parser))
+    publish_subparsers = publish_parser.add_subparsers(
+        dest="publish_command",
+        metavar="SUBCOMMAND",
+    )
+
+    publish_release = publish_subparsers.add_parser(
+        "release",
+        help="Build, offline-validate, diff-gate, and emit Phase A seasonal Core releases.",
+    )
+    publish_release.add_argument(
+        "--state",
+        type=Path,
+        default=Path("state/published.json"),
+        help="Path to the v1 published release ledger (default: state/published.json).",
+    )
+    publish_release.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("dist"),
+        help="Output directory for workshop/, local/, snapshots/, and release_summary.json.",
+    )
+    publish_release.add_argument(
+        "--changelogs-dir",
+        type=Path,
+        default=Path("."),
+        help="Output directory for CHANGELOG_SUMMER.md and CHANGELOG_WINTER.md (default: .).",
+    )
+    publish_release.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    publish_release.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    publish_release.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    publish_release.add_argument(
+        "--icons-dir",
+        type=Path,
+        default=Path("assets/icons"),
+        help="Directory containing checked-in summer.jpg and winter.jpg icons.",
+    )
+    publish_release.add_argument(
+        "--build-date",
+        type=str,
+        default=None,
+        help="Optional ISO YYYY-MM-DD date used for ISO-week package_version resolution.",
+    )
+    publish_release.add_argument(
+        "--author",
+        type=str,
+        default=DEFAULT_AUTHOR,
+        help=f"Mod author string for manifest.sii (default: {DEFAULT_AUTHOR!r}).",
+    )
+    publish_release.add_argument(
+        "--anchor-year",
+        type=int,
+        default=DEFAULT_ANCHOR_YEAR,
+        help=f"Anchor year for seasonal DST resolution (default: {DEFAULT_ANCHOR_YEAR}).",
+    )
+    publish_release.add_argument(
+        "--write-state",
+        action="store_true",
+        help="Update --state published ledger file when one or more editions changed.",
+    )
+    publish_release.add_argument(
+        "--force",
+        action="store_true",
+        help="Emit validated changelogs and artifacts even when canonical hashes are unchanged.",
+    )
+    publish_release.add_argument(
+        "--json",
+        action="store_true",
+        help="Print PhaseAReleaseSummary as JSON.",
+    )
+    publish_release.set_defaults(handler=_handle_publish_release)
 
     return parser
 

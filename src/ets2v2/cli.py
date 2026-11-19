@@ -15,6 +15,7 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
+from ets2v2.registry import load_law_registry, validate_law_registry
 from ets2v2.vfs import (
     ProtectedPayloadError,
     UnsupportedCompressionError,
@@ -154,6 +155,37 @@ def _handle_baseline_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_registry_validate(args: argparse.Namespace) -> int:
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    baseline_dir = cast(Path, args.baseline_dir)
+    as_json = cast(bool, args.json)
+
+    issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
+    country_count = 0
+    if not issues:
+        bundle = load_law_registry(laws_dir, mappings_path)
+        country_count = len(bundle.laws_by_iso2)
+
+    if as_json:
+        payload: dict[str, object] = {
+            "country_count": country_count,
+            "issue_count": len(issues),
+            "issues": issues,
+            "ok": not issues,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0 if not issues else 1
+
+    if issues:
+        for issue in issues:
+            print(f"error: {issue}", file=sys.stderr)
+        return 1
+
+    print(f"Registry validation passed ({country_count} countries).")
+    return 0
+
+
 def _make_help_handler(subparser: argparse.ArgumentParser) -> CommandHandler:
     def _show_help(_args: argparse.Namespace) -> int:
         subparser.print_help()
@@ -248,6 +280,44 @@ def build_parser() -> argparse.ArgumentParser:
         help="Verify existing baseline JSONs match extraction with zero byte diff.",
     )
     baseline_extract.set_defaults(handler=_handle_baseline_extract)
+
+    registry_parser = subparsers.add_parser(
+        "registry",
+        help="Validate and inspect canonical per-country realism law registries.",
+    )
+    registry_parser.set_defaults(handler=_make_help_handler(registry_parser))
+    registry_subparsers = registry_parser.add_subparsers(
+        dest="registry_command",
+        metavar="SUBCOMMAND",
+    )
+    registry_validate = registry_subparsers.add_parser(
+        "validate",
+        help="Validate country law JSON files and mappings against the ETS2 baseline.",
+    )
+    registry_validate.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    registry_validate.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    registry_validate.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    registry_validate.add_argument(
+        "--json",
+        action="store_true",
+        help="Print validation report as JSON.",
+    )
+    registry_validate.set_defaults(handler=_handle_registry_validate)
 
     return parser
 

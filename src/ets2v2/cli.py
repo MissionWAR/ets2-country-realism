@@ -6,16 +6,29 @@ import argparse
 import json
 import sys
 from collections.abc import Callable, Sequence
+from datetime import date
 from pathlib import Path
 from typing import cast
 
+from pydantic import ValidationError
+
 from ets2v2 import __version__
 from ets2v2.baseline import (
+    BaselineManifest,
+    CountriesBaseline,
+    LocalesBaseline,
     extract_baseline,
     verify_baseline_bundle,
     write_baseline_bundle,
 )
-from ets2v2.registry import load_law_registry, validate_law_registry
+from ets2v2.registry import (
+    DEFAULT_ANCHOR_YEAR,
+    Season,
+    build_realism_snapshot,
+    load_law_registry,
+    validate_law_registry,
+    write_realism_snapshot,
+)
 from ets2v2.vfs import (
     ProtectedPayloadError,
     UnsupportedCompressionError,
@@ -186,6 +199,69 @@ def _handle_registry_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_registry_snapshot(args: argparse.Namespace) -> int:
+    season = cast(Season, args.season)
+    raw_date = cast(str | None, args.date)
+    anchor_year = cast(int, args.anchor_year)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    baseline_dir = cast(Path, args.baseline_dir)
+    out_path = cast(Path, args.out)
+
+    override_date: date | None = None
+    if raw_date is not None:
+        try:
+            parsed_date = date.fromisoformat(raw_date)
+        except ValueError:
+            print(
+                f"error: invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)",
+                file=sys.stderr,
+            )
+            return 1
+        if parsed_date.isoformat() != raw_date:
+            print(
+                f"error: invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)",
+                file=sys.stderr,
+            )
+            return 1
+        override_date = parsed_date
+
+    try:
+        registry = load_law_registry(laws_dir, mappings_path)
+        bl_countries = CountriesBaseline.model_validate_json(
+            (baseline_dir / "countries.json").read_text("utf-8")
+        )
+        bl_locales = LocalesBaseline.model_validate_json(
+            (baseline_dir / "locales.json").read_text("utf-8")
+        )
+        manifest_path = baseline_dir / "manifest.json"
+        if manifest_path.is_file():
+            bl_manifest = BaselineManifest.model_validate_json(manifest_path.read_text("utf-8"))
+            game_version = bl_manifest.game_version
+        else:
+            game_version = registry.mappings.baseline_game_version
+
+        snapshot = build_realism_snapshot(
+            registry,
+            bl_countries,
+            bl_locales,
+            season,
+            anchor_year=anchor_year,
+            override_date=override_date,
+            baseline_game_version=game_version,
+        )
+        write_realism_snapshot(snapshot, out_path)
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: snapshot export failed: {exc}", file=sys.stderr)
+        return 1
+
+    print(
+        f"Wrote realism snapshot ({snapshot.edition}, {snapshot.anchor_date}, "
+        f"{len(snapshot.countries)} countries) -> {out_path}"
+    )
+    return 0
+
+
 def _make_help_handler(subparser: argparse.ArgumentParser) -> CommandHandler:
     def _show_help(_args: argparse.Namespace) -> int:
         subparser.print_help()
@@ -318,6 +394,54 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print validation report as JSON.",
     )
     registry_validate.set_defaults(handler=_handle_registry_validate)
+
+    registry_snapshot = registry_subparsers.add_parser(
+        "snapshot",
+        help="Export a deterministic schema_version=1 realism-snapshot JSON file.",
+    )
+    registry_snapshot.add_argument(
+        "--season",
+        choices=("summer", "winter"),
+        required=True,
+        help="Seasonal edition to resolve (summer or winter).",
+    )
+    registry_snapshot.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Optional ISO YYYY-MM-DD override date for timezone resolution.",
+    )
+    registry_snapshot.add_argument(
+        "--anchor-year",
+        type=int,
+        default=DEFAULT_ANCHOR_YEAR,
+        help=f"Anchor year when --date is omitted (default: {DEFAULT_ANCHOR_YEAR}).",
+    )
+    registry_snapshot.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    registry_snapshot.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    registry_snapshot.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    registry_snapshot.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="Output JSON file path for the generated realism snapshot.",
+    )
+    registry_snapshot.set_defaults(handler=_handle_registry_snapshot)
 
     return parser
 

@@ -21,6 +21,11 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
+from ets2v2.package import (
+    DEFAULT_AUTHOR,
+    build_core_editions,
+    generate_all_icons,
+)
 from ets2v2.registry import (
     DEFAULT_ANCHOR_YEAR,
     Season,
@@ -199,6 +204,18 @@ def _handle_registry_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_iso_date_arg(raw_date: str | None) -> date | None:
+    if raw_date is None:
+        return None
+    try:
+        parsed_date = date.fromisoformat(raw_date)
+    except ValueError as exc:
+        raise ValueError(f"invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)") from exc
+    if parsed_date.isoformat() != raw_date:
+        raise ValueError(f"invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)")
+    return parsed_date
+
+
 def _handle_registry_snapshot(args: argparse.Namespace) -> int:
     season = cast(Season, args.season)
     raw_date = cast(str | None, args.date)
@@ -208,23 +225,11 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
     baseline_dir = cast(Path, args.baseline_dir)
     out_path = cast(Path, args.out)
 
-    override_date: date | None = None
-    if raw_date is not None:
-        try:
-            parsed_date = date.fromisoformat(raw_date)
-        except ValueError:
-            print(
-                f"error: invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)",
-                file=sys.stderr,
-            )
-            return 1
-        if parsed_date.isoformat() != raw_date:
-            print(
-                f"error: invalid --date {raw_date!r} (expected ISO YYYY-MM-DD)",
-                file=sys.stderr,
-            )
-            return 1
-        override_date = parsed_date
+    try:
+        override_date = _parse_iso_date_arg(raw_date)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
     try:
         registry = load_law_registry(laws_dir, mappings_path)
@@ -259,6 +264,73 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
         f"Wrote realism snapshot ({snapshot.edition}, {snapshot.anchor_date}, "
         f"{len(snapshot.countries)} countries) -> {out_path}"
     )
+    return 0
+
+
+def _handle_package_icons(args: argparse.Namespace) -> int:
+    out_dir = cast(Path, args.out_dir)
+    try:
+        written = generate_all_icons(out_dir)
+    except (OSError, ValueError) as exc:
+        print(f"error: icon generation failed: {exc}", file=sys.stderr)
+        return 1
+
+    for edition in ("summer", "winter"):
+        path = written[edition]
+        print(f"Generated {edition} icon ({path.stat().st_size} bytes) -> {path}")
+    return 0
+
+
+def _handle_package_build(args: argparse.Namespace) -> int:
+    edition_choice = cast(str, args.edition)
+    out_dir = cast(Path, args.out_dir)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    baseline_dir = cast(Path, args.baseline_dir)
+    icons_dir = cast(Path, args.icons_dir)
+    package_version = cast(str | None, args.package_version)
+    author = cast(str, args.author)
+    raw_date = cast(str | None, args.date)
+    anchor_year = cast(int, args.anchor_year)
+
+    try:
+        override_date = _parse_iso_date_arg(raw_date)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    editions: tuple[Season, ...] = (
+        ("summer", "winter")
+        if edition_choice == "all"
+        else ("summer",)
+        if edition_choice == "summer"
+        else ("winter",)
+    )
+
+    try:
+        built = build_core_editions(
+            out_dir,
+            editions=editions,
+            laws_dir=laws_dir,
+            mappings_path=mappings_path,
+            baseline_dir=baseline_dir,
+            icons_dir=icons_dir,
+            package_version=package_version,
+            author=author,
+            anchor_year=anchor_year,
+            override_date=override_date,
+        )
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: package build failed: {exc}", file=sys.stderr)
+        return 1
+
+    for edition in editions:
+        info = built[edition]
+        print(
+            f"Built {info.edition} Core ({info.package_version}): "
+            f"workshop={info.workshop_dir} ({info.workshop_file_count} files), "
+            f"local={info.local_zip_path} (sha256={info.local_zip_sha256[:12]}...)"
+        )
     return 0
 
 
@@ -442,6 +514,94 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output JSON file path for the generated realism snapshot.",
     )
     registry_snapshot.set_defaults(handler=_handle_registry_snapshot)
+
+    package_parser = subparsers.add_parser(
+        "package",
+        help="Generate clean-room icons and build seasonal Workshop/local Core packages.",
+    )
+    package_parser.set_defaults(handler=_make_help_handler(package_parser))
+    package_subparsers = package_parser.add_subparsers(
+        dest="package_command",
+        metavar="SUBCOMMAND",
+    )
+
+    package_icons = package_subparsers.add_parser(
+        "icons",
+        help="Generate clean-room 276x162 EXIF/ICC-stripped Summer and Winter JPEG icons.",
+    )
+    package_icons.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("assets/icons"),
+        help="Output directory for summer.jpg and winter.jpg (default: assets/icons).",
+    )
+    package_icons.set_defaults(handler=_handle_package_icons)
+
+    package_build = package_subparsers.add_parser(
+        "build",
+        help="Build unpacked Workshop roots and deterministic local ZIP Core mods.",
+    )
+    package_build.add_argument(
+        "--edition",
+        choices=("summer", "winter", "all"),
+        default="all",
+        help="Seasonal edition(s) to compile (default: all).",
+    )
+    package_build.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("dist"),
+        help="Root output directory for workshop/ and local/ targets (default: dist).",
+    )
+    package_build.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    package_build.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    package_build.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    package_build.add_argument(
+        "--icons-dir",
+        type=Path,
+        default=Path("assets/icons"),
+        help="Directory containing checked-in summer.jpg and winter.jpg icons.",
+    )
+    package_build.add_argument(
+        "--package-version",
+        type=str,
+        default=None,
+        help="Optional explicit package_version override (default: ISO week of anchor date).",
+    )
+    package_build.add_argument(
+        "--author",
+        type=str,
+        default=DEFAULT_AUTHOR,
+        help=f"Mod author string for manifest.sii (default: {DEFAULT_AUTHOR!r}).",
+    )
+    package_build.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Optional ISO YYYY-MM-DD override date for timezone resolution.",
+    )
+    package_build.add_argument(
+        "--anchor-year",
+        type=int,
+        default=DEFAULT_ANCHOR_YEAR,
+        help=f"Anchor year when --date is omitted (default: {DEFAULT_ANCHOR_YEAR}).",
+    )
+    package_build.set_defaults(handler=_handle_package_build)
 
     return parser
 

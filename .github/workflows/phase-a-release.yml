@@ -60,17 +60,18 @@ jobs:
             args+=(--force)
           fi
           uv run --offline ets2v2 publish release "${args[@]}"
-          uv run --offline python -c '
+          uv run --offline python - <<'PY'
           import json, os, pathlib
+
           summary = json.loads(pathlib.Path("dist/release_summary.json").read_text("utf-8"))
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           with out.open("a", encoding="utf-8") as fh:
-              fh.write(f"any_changed={str(summary[\"any_changed\"]).lower()}\n")
-              fh.write(f"summer_changed={str(summary[\"summer_changed\"]).lower()}\n")
-              fh.write(f"winter_changed={str(summary[\"winter_changed\"]).lower()}\n")
-              fh.write(f"changed_editions={\",\".join(summary[\"changed_editions\"])}\n")
-              fh.write(f"force_run={str(summary[\"force_run\"]).lower()}\n")
-          '
+              fh.write(f"any_changed={str(summary['any_changed']).lower()}\n")
+              fh.write(f"summer_changed={str(summary['summer_changed']).lower()}\n")
+              fh.write(f"winter_changed={str(summary['winter_changed']).lower()}\n")
+              fh.write(f"changed_editions={','.join(summary['changed_editions'])}\n")
+              fh.write(f"force_run={str(summary['force_run']).lower()}\n")
+          PY
 
       - name: Run explicit Offline SCS Workshop Validator checks
         run: |
@@ -99,7 +100,7 @@ jobs:
             CHANGELOG_WINTER.md
 
       - name: Create or update persistent Release PR
-        if: steps.release.outputs.any_changed == 'true'
+        if: steps.release.outputs.any_changed == 'true' && (github.event_name == 'schedule' || github.ref == 'refs/heads/master')
         env:
           GH_TOKEN: ${{ github.token }}
           CHANGED_EDITIONS: ${{ steps.release.outputs.changed_editions }}
@@ -109,7 +110,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           for f in state/published.json CHANGELOG_SUMMER.md CHANGELOG_WINTER.md; do
-            [ -f "$f" ] && git add "$f"
+            if [ -f "$f" ]; then git add "$f"; fi
           done
 
           if git diff --cached --quiet; then

@@ -188,7 +188,9 @@ def build_core_edition(
     out_dir.mkdir(parents=True, exist_ok=True)
     workshop_dir = out_dir / "workshop" / edition
     _ensure_contained(workshop_dir, out_dir)
-    if workshop_dir.exists():
+    if workshop_dir.is_symlink() or workshop_dir.is_file():
+        workshop_dir.unlink()
+    elif workshop_dir.exists():
         shutil.rmtree(workshop_dir)
     workshop_dir.mkdir(parents=True, exist_ok=True)
 

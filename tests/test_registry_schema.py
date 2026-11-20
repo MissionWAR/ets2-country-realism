@@ -440,3 +440,15 @@ def test_cli_registry_validate_tracer(
     out_fail = capsys.readouterr()
     assert exit_fail == 1
     assert out_fail.err.strip() != ""
+
+
+def test_validator_rejects_stray_subdirectory_and_uppercase_json_extension(
+    tmp_path: pathlib.Path,
+) -> None:
+    laws_dir, mappings_path, baseline_dir = _write_synthetic_registry(tmp_path)
+    (laws_dir / "countries" / "stray_subdir").mkdir()
+    (laws_dir / "countries" / "de.JSON").write_text("{}\n", encoding="utf-8")
+
+    issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
+    assert any("non-file" in issue.lower() and "stray_subdir" in issue for issue in issues)
+    assert any("non-json" in issue.lower() and "de.JSON" in issue for issue in issues)

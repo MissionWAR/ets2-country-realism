@@ -242,18 +242,19 @@ def _check_speed_limits_invariants(
 
         base_block = base_by_class.get(road_cls)
         if base_block is not None:
-            base_lanes = {lane.lane_speed_class: lane for lane in base_block.lanes}
-            cand_lanes = {lane.lane_speed_class: lane for lane in cand_block.lanes}
-            for lane_name, base_lane in base_lanes.items():
-                cand_lane = cand_lanes.get(lane_name)
-                if cand_lane is None:
-                    collector.error(
-                        "ETS2V2-INV-SPEED-BLOCKS",
-                        spd_path,
-                        f"Missing baseline lane_speed_class {lane_name!r} in {road_cls!r} "
-                        f"block for {slug!r}",
-                    )
-                    continue
+            base_lane_order = [lane.lane_speed_class for lane in base_block.lanes]
+            cand_lane_order = [lane.lane_speed_class for lane in cand_block.lanes]
+            if cand_lane_order != base_lane_order:
+                collector.error(
+                    "ETS2V2-INV-SPEED-BLOCKS",
+                    spd_path,
+                    f"lane_speed_class[] sequence mismatch in {road_cls!r} block for {slug!r}: "
+                    f"got {cand_lane_order!r}, expected {base_lane_order!r}",
+                )
+                continue
+
+            for base_lane, cand_lane in zip(base_block.lanes, cand_block.lanes, strict=True):
+                lane_name = base_lane.lane_speed_class
                 if lane_name == "slow_road" and cand_lane != base_lane:
                     collector.error(
                         "ETS2V2-INV-SPEED-BLOCKS",
@@ -261,11 +262,21 @@ def _check_speed_limits_invariants(
                         f"slow_road lane drifted from baseline in {road_cls!r} for {slug!r}: "
                         f"got {cand_lane!r}, expected {base_lane!r}",
                     )
-                elif base_lane.uncommon is not None and cand_lane.uncommon != base_lane.uncommon:
+                    continue
+                if cand_lane.uncommon != base_lane.uncommon:
                     collector.error(
                         "ETS2V2-INV-SPEED-BLOCKS",
                         spd_path,
-                        f"uncommon flag drifted on {lane_name!r} in {road_cls!r} for {slug!r}",
+                        f"uncommon flag drifted on {lane_name!r} in {road_cls!r} for {slug!r}: "
+                        f"got {cand_lane.uncommon!r}, expected {base_lane.uncommon!r}",
+                    )
+                if (cand_lane.max_limit is None) != (base_lane.max_limit is None):
+                    collector.error(
+                        "ETS2V2-INV-SPEED-BLOCKS",
+                        spd_path,
+                        f"max_limit nullability mismatch on {lane_name!r} in {road_cls!r} "
+                        f"for {slug!r}: got {cand_lane.max_limit!r}, "
+                        f"expected {'None' if base_lane.max_limit is None else 'non-None'}",
                     )
 
     for rail_cls in _RAIL_CLASSES:
@@ -296,8 +307,9 @@ def _check_speed_limits_invariants(
             )
         else:
             for lane in truck_block.lanes:
-                if lane.limit != _ICELAND_HEAVY_TRUCK_LIMIT or (
-                    lane.max_limit is not None and lane.max_limit != _ICELAND_HEAVY_TRUCK_LIMIT
+                if (
+                    lane.limit != _ICELAND_HEAVY_TRUCK_LIMIT
+                    or lane.max_limit != _ICELAND_HEAVY_TRUCK_LIMIT
                 ):
                     collector.error(
                         "ETS2V2-INV-ICELAND",

@@ -87,10 +87,9 @@ def test_synthesize_all_36_countries_round_trip_and_hygiene(season: Season) -> N
         assert parsed_country.iso_country_code == bl_country.iso_country_code
         assert parsed_country.iso_country_code_quoted is bl_country.iso_country_code_quoted
         assert parsed_country.pos == bl_country.pos
-        # D-05: preserve 1.62 baseline fuel_price verbatim
-        assert parsed_country.fuel_price == bl_country.fuel_price
+        assert parsed_country.fuel_price == resolved.fuel.eur_per_liter
         assert parsed_country.lights_mandatory is resolved.lights_mandatory
-        assert parsed_country.driving_tired_offence == bl_country.driving_tired_offence
+        assert parsed_country.driving_tired_offence is resolved.driving_tired_offence
         assert parsed_country.imperial_units == bl_country.imperial_units
         assert parsed_country.leftside_traffic == bl_country.leftside_traffic
         assert parsed_country.trailer_standalone == bl_country.trailer_standalone
@@ -311,3 +310,26 @@ def test_synthesize_rejects_slug_mismatch() -> None:
         synthesize_country_sui(bl_estonia, resolved_finland)
     with pytest.raises(ValueError, match="slug mismatch"):
         synthesize_speed_limits_sii(sp_estonia, resolved_finland)
+
+
+def test_synthesize_emits_resolved_fuel_price_and_driving_tired_offence() -> None:
+    bl_countries, _bl_speeds, _bl_locales, snapshots = _load_inputs()
+    bl_estonia = next(c for c in bl_countries.countries if c.slug == "estonia")
+    resolved_estonia = snapshots["summer"].countries["EE"]
+
+    mutated_resolved = resolved_estonia.model_copy(
+        update={
+            "driving_tired_offence": False,
+            "fuel": resolved_estonia.fuel.model_copy(update={"eur_per_liter": 1.999}),
+        }
+    )
+    sui_bytes = synthesize_country_sui(bl_estonia, mutated_resolved)
+    parsed = parse_country_data(sui_bytes)
+    assert parsed.driving_tired_offence is False
+    assert parsed.fuel_price == pytest.approx(1.999)
+
+    # Empty extra_attributes lists must not emit stray blank lines or invalid syntax
+    empty_extras_baseline = bl_estonia.model_copy(update={"extra_attributes": {"custom_flag": []}})
+    sui_empty_extras = synthesize_country_sui(empty_extras_baseline, resolved_estonia)
+    assert validate_sii_hygiene(sui_empty_extras, require_siinunit=False) == []
+    assert b"custom_flag" not in sui_empty_extras

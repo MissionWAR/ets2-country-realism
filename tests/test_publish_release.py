@@ -190,6 +190,9 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
     assert (forced_changelogs_dir / "CHANGELOG_SUMMER.md").is_file()
     assert (forced_changelogs_dir / "CHANGELOG_WINTER.md").is_file()
     assert state_path.read_bytes() == state_bytes_after_run1
+    forced_summer_md = (forced_changelogs_dir / "CHANGELOG_SUMMER.md").read_text("utf-8")
+    assert "**Previous Version:** unchanged (forced rebuild)" in forced_summer_md
+    assert "**Previous Version:** `1.62-2026.47`" not in forced_summer_md
 
 
 def test_single_edition_winter_change_keeps_summer_untouched(tmp_path: Path) -> None:
@@ -358,3 +361,114 @@ def test_cli_publish_release_end_to_end_json(
     parsed_2 = PhaseAReleaseSummary.model_validate_json(captured_2.out)
     assert parsed_2.any_changed is False
     assert parsed_2.changed_editions == []
+
+
+def test_changelog_diff_renders_max_limit_uncommon_currency_and_local_prices() -> None:
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    snap_prev = build_realism_snapshot(registry, bl_countries, bl_locales, "summer")
+
+    prev_ro = snap_prev.countries["RO"]
+    mut_truck_lanes = [
+        lane.model_copy(update={"max_limit": 100, "uncommon": True})
+        if lane.lane_speed_class == "motorway"
+        else lane
+        for lane in prev_ro.speed_limits["truck"]
+    ]
+    mut_ro = prev_ro.model_copy(
+        update={
+            "speed_limits": {**prev_ro.speed_limits, "truck": mut_truck_lanes},
+            "fuel": prev_ro.fuel.model_copy(
+                update={"currency": "EUR", "local_prices": {"diesel": 7.45}}
+            ),
+        }
+    )
+    snap_curr = snap_prev.model_copy(update={"countries": {**snap_prev.countries, "RO": mut_ro}})
+
+    rendered = render_edition_changelog(
+        "summer",
+        "1.62-2026.48",
+        "e" * 64,
+        "f" * 64,
+        snap_curr,
+        previous_snapshot=snap_prev,
+    ).decode("utf-8")
+    assert "[max=100]" in rendered
+    assert "[uncommon=true]" in rendered
+    assert "[RON]" in rendered and "[EUR]" in rendered
+    assert "local_prices(diesel: None -> 7.45)" in rendered
+
+
+def test_cli_publish_release_previous_snapshots_dir_and_registry_validate_error_guard(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Wire --previous-snapshots-dir with winter snapshot vs summer build to force structured diff
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    prev_snaps_dir = tmp_path / "prev_snaps"
+    prev_snaps_dir.mkdir()
+    winter_snap = build_realism_snapshot(registry, bl_countries, bl_locales, "winter")
+    (prev_snaps_dir / "realism-snapshot-summer.json").write_text(
+        winter_snap.model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    state_path = tmp_path / "state" / "published.json"
+    out_dir = tmp_path / "dist"
+    changelogs_dir = tmp_path / "changelogs"
+    write_published_ledger(PublishedLedger(), state_path)
+
+    exit_code = main(
+        [
+            "publish",
+            "release",
+            "--state",
+            str(state_path),
+            "--out-dir",
+            str(out_dir),
+            "--changelogs-dir",
+            str(changelogs_dir),
+            "--laws-dir",
+            str(LAWS_DIR),
+            "--mappings",
+            str(MAPPINGS_PATH),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--icons-dir",
+            str(ICONS_DIR),
+            "--build-date",
+            "2026-11-20",
+            "--previous-snapshots-dir",
+            str(prev_snaps_dir),
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0, captured.err
+    summer_md = (changelogs_dir / "CHANGELOG_SUMMER.md").read_text("utf-8")
+    assert "## Changes Since Previous Snapshot" in summer_md
+    assert "HR" in summer_md
+
+    # LO-05: _handle_registry_validate catches unexpected OSError cleanly
+    def _boom(*_args: object, **_kwargs: object) -> list[str]:
+        raise PermissionError("Simulated permission error")
+
+    monkeypatch.setattr("ets2v2.cli.validate_law_registry", _boom)
+    exit_err = main(["registry", "validate", "--json"])
+    err_out = capsys.readouterr()
+    assert exit_err == 1
+    payload = cast(dict[str, object], json.loads(err_out.out))
+    assert payload["ok"] is False
+    assert payload["issue_count"] == 1

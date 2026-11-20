@@ -48,11 +48,15 @@ def _check_raw_hygiene(raw: bytes, label: str, issues: list[str]) -> str | None:
 def _check_prohibited_scs_files(root: Path, label: str, issues: list[str]) -> None:
     if not root.is_dir():
         return
-    prohibited = sorted(
-        p.relative_to(root).as_posix()
-        for p in root.rglob("*")
-        if p.is_file() and p.suffix.lower() in {".sii", ".sui"}
-    )
+    try:
+        prohibited = sorted(
+            p.relative_to(root).as_posix()
+            for p in root.rglob("*")
+            if p.is_file() and p.suffix.lower() in {".sii", ".sui"}
+        )
+    except OSError as exc:
+        issues.append(f"Unable to scan {label} for prohibited SCS files: {exc}")
+        return
     for rel in prohibited:
         issues.append(f"Prohibited raw SCS file under {label}: {rel}")
 
@@ -80,7 +84,10 @@ def load_law_registry(laws_dir: Path | str, mappings_path: Path | str) -> LawReg
         seen_map_iso2.add(entry.iso2)
         seen_map_slugs.add(entry.ets2_slug)
 
-    law_files = sorted(countries_dir.glob("*.json"))
+    law_files = sorted(
+        (p for p in countries_dir.iterdir() if p.is_file() and p.suffix == ".json"),
+        key=lambda p: p.name,
+    )
     if not law_files:
         raise ValueError(f"No country law JSON files found under {countries_dir}")
 
@@ -228,20 +235,24 @@ def validate_law_registry(
     if not mappings_file.is_file():
         issues.append(f"Missing mappings file: {mappings_file}")
     else:
-        raw_map = mappings_file.read_bytes()
-        map_text = _check_raw_hygiene(raw_map, mappings_file.name, issues)
-        if map_text is not None:
-            try:
-                mappings = CountryMappingRegistry.model_validate_json(map_text)
-            except ValidationError as exc:
-                issues.append(f"Invalid mappings schema in {mappings_file.name}: {exc}")
-            else:
-                expected_map = serialize_registry_json_bytes(mappings)
-                if raw_map != expected_map:
-                    issues.append(
-                        f"Non-canonical JSON formatting in {mappings_file.name} "
-                        f"(must match sorted UTF-8 no-BOM LF)"
-                    )
+        try:
+            raw_map = mappings_file.read_bytes()
+        except OSError as exc:
+            issues.append(f"Unable to read {mappings_file.name}: {exc}")
+        else:
+            map_text = _check_raw_hygiene(raw_map, mappings_file.name, issues)
+            if map_text is not None:
+                try:
+                    mappings = CountryMappingRegistry.model_validate_json(map_text)
+                except ValidationError as exc:
+                    issues.append(f"Invalid mappings schema in {mappings_file.name}: {exc}")
+                else:
+                    expected_map = serialize_registry_json_bytes(mappings)
+                    if raw_map != expected_map:
+                        issues.append(
+                            f"Non-canonical JSON formatting in {mappings_file.name} "
+                            f"(must match sorted UTF-8 no-BOM LF)"
+                        )
 
     laws_by_iso2: dict[str, CountryLawRecord] = {}
     seen_law_slugs: dict[str, str] = {}
@@ -249,18 +260,30 @@ def validate_law_registry(
     if not countries_dir.is_dir():
         issues.append(f"Missing country laws directory: {countries_dir}")
     else:
-        non_json = sorted(
-            p.name for p in countries_dir.iterdir() if p.is_file() and p.suffix.lower() != ".json"
-        )
-        for stray in non_json:
-            issues.append(f"Unexpected non-JSON file in {countries_dir}: {stray}")
+        try:
+            country_entries = sorted(countries_dir.iterdir(), key=lambda p: p.name)
+        except OSError as exc:
+            issues.append(f"Unable to list country laws directory {countries_dir}: {exc}")
+            country_entries = []
 
-        law_files = sorted(countries_dir.glob("*.json"))
+        law_files: list[Path] = []
+        for entry in country_entries:
+            if not entry.is_file():
+                issues.append(f"Unexpected non-file entry in {countries_dir}: {entry.name}")
+            elif entry.suffix != ".json":
+                issues.append(f"Unexpected non-JSON file in {countries_dir}: {entry.name}")
+            else:
+                law_files.append(entry)
+
         if not law_files:
             issues.append(f"No country law JSON files found in {countries_dir}")
 
         for law_file in law_files:
-            raw_law = law_file.read_bytes()
+            try:
+                raw_law = law_file.read_bytes()
+            except OSError as exc:
+                issues.append(f"Unable to read {law_file.name}: {exc}")
+                continue
             law_text = _check_raw_hygiene(raw_law, law_file.name, issues)
             if law_text is None:
                 continue
@@ -325,7 +348,7 @@ def validate_law_registry(
             countries_bl = CountriesBaseline.model_validate_json(
                 bl_countries_path.read_text("utf-8")
             )
-        except ValidationError as exc:
+        except (OSError, UnicodeDecodeError, ValidationError) as exc:
             issues.append(f"Invalid baseline countries.json: {exc}")
 
     if not bl_speeds_path.is_file():
@@ -333,7 +356,7 @@ def validate_law_registry(
     else:
         try:
             speeds_bl = SpeedLimitsBaseline.model_validate_json(bl_speeds_path.read_text("utf-8"))
-        except ValidationError as exc:
+        except (OSError, UnicodeDecodeError, ValidationError) as exc:
             issues.append(f"Invalid baseline speed_limits.json: {exc}")
 
     if mappings is None:

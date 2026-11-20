@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -100,7 +101,8 @@ def test_phase_a_workflow_pinned_actions_commands_and_persistent_pr() -> None:
         "gh pr edit",
         "gh pr create",
         "GH_TOKEN: ${{ github.token }}",
-        '[ -f "$f" ] && git add "$f"',
+        'if [ -f "$f" ]; then git add "$f"; fi',
+        "(github.event_name == 'schedule' || github.ref == 'refs/heads/master')",
         "git push --force origin HEAD:release/phase-a-weekly",
     )
     for fragment in required_fragments:
@@ -153,3 +155,30 @@ def test_phase_a_workflow_injection_safety_and_job_level_force_run() -> None:
         assert "${{ github.event.inputs." not in block
         assert "${{ inputs." not in block
         assert "${{" not in block, f"Unsafe GitHub Actions expression inside run: block:\n{block}"
+
+
+def _extract_embedded_python_snippets(run_blocks: list[str]) -> list[str]:
+    """Extract embedded heredoc and ``python -c '...'`` snippets from workflow ``run:`` blocks."""
+    snippets: list[str] = []
+    heredoc_re = re.compile(
+        r"python(?:3)?\s+-\s+<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?\s*\n"
+        r"(.*?)\n[ \t]*\1(?:\s|$)",
+        re.DOTALL,
+    )
+    inline_c_re = re.compile(r"python(?:3)?\s+-c\s+'(.*?)'", re.DOTALL)
+    for block in run_blocks:
+        dedented = textwrap.dedent(block)
+        for match in heredoc_re.finditer(dedented):
+            snippets.append(textwrap.dedent(match.group(2)))
+        for match in inline_c_re.finditer(dedented):
+            snippets.append(textwrap.dedent(match.group(1)))
+    return snippets
+
+
+def test_phase_a_workflow_embedded_python_snippets_compile_cleanly() -> None:
+    text = WORKFLOW_PATH.read_text("utf-8")
+    run_blocks = _extract_run_blocks(text)
+    snippets = _extract_embedded_python_snippets(run_blocks)
+    assert len(snippets) >= 1, "Expected at least one embedded Python snippet in workflow"
+    for idx, snippet in enumerate(snippets):
+        compile(snippet, f"phase-a-release.yml:snippet-{idx}", "exec")

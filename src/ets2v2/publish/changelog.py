@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from ets2v2.publish.ledger import PublishedEditionState
-from ets2v2.registry.models import RoadVehicleClass, Season
+from ets2v2.registry.models import LaneSpeedOverride, RoadVehicleClass, Season
 from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 
 _VEHICLE_ORDER: tuple[RoadVehicleClass, ...] = ("car", "truck", "bus")
+
+
+def _format_lane_override(lane: LaneSpeedOverride) -> str:
+    token = f"{lane.limit}({lane.urban_limit})"
+    if lane.max_limit is not None and lane.max_limit != lane.limit:
+        token += f"[max={lane.max_limit}]"
+    if lane.uncommon is not None:
+        token += f"[uncommon={str(lane.uncommon).lower()}]"
+    return token
 
 
 def _format_speed_summary(country: RealismSnapshotCountry) -> str:
@@ -14,7 +23,7 @@ def _format_speed_summary(country: RealismSnapshotCountry) -> str:
     parts: list[str] = []
     for vclass in _VEHICLE_ORDER:
         lanes = country.speed_limits.get(vclass, [])
-        lane_str = "/".join(f"{lane.limit}({lane.urban_limit})" for lane in lanes)
+        lane_str = "/".join(_format_lane_override(lane) for lane in lanes)
         parts.append(f"{vclass}={lane_str}")
     return f"{'; '.join(parts)} {unit}"
 
@@ -49,10 +58,28 @@ def _diff_country(
             f"speed_limits: `{_format_speed_summary(prev)}` -> `{_format_speed_summary(curr)}`"
         )
     if prev.fuel != curr.fuel:
-        changes.append(
-            f"fuel: `{prev.fuel.eur_per_liter} EUR/L ({prev.fuel.source})` -> "
-            f"`{curr.fuel.eur_per_liter} EUR/L ({curr.fuel.source})`"
-        )
+        fuel_parts: list[str] = []
+        if (
+            prev.fuel.eur_per_liter != curr.fuel.eur_per_liter
+            or prev.fuel.source != curr.fuel.source
+            or prev.fuel.currency != curr.fuel.currency
+        ):
+            fuel_parts.append(
+                f"`{prev.fuel.eur_per_liter} EUR/L [{prev.fuel.currency}] ({prev.fuel.source})` "
+                f"-> `{curr.fuel.eur_per_liter} EUR/L [{curr.fuel.currency}] ({curr.fuel.source})`"
+            )
+        if prev.fuel.local_prices != curr.fuel.local_prices:
+            all_grades = sorted(set(prev.fuel.local_prices) | set(curr.fuel.local_prices))
+            grade_diffs = [
+                (
+                    f"{grade}: {prev.fuel.local_prices.get(grade)} -> "
+                    f"{curr.fuel.local_prices.get(grade)}"
+                )
+                for grade in all_grades
+                if prev.fuel.local_prices.get(grade) != curr.fuel.local_prices.get(grade)
+            ]
+            fuel_parts.append(f"local_prices({', '.join(grade_diffs)})")
+        changes.append(f"fuel: {'; '.join(fuel_parts)}")
     return changes
 
 
@@ -153,11 +180,12 @@ def render_edition_changelog(
 ) -> bytes:
     """Render deterministic UTF-8 no-BOM LF Markdown changelog bytes for one seasonal edition."""
     edition_title = "Summer" if edition == "summer" else "Winter"
-    prev_version = (
-        f"`{previous_state.package_version}`"
-        if previous_state is not None
-        else "none (initial release)"
-    )
+    if previous_state is None:
+        prev_version = "none (initial release)"
+    elif previous_state.package_version == package_version:
+        prev_version = "unchanged (forced rebuild)"
+    else:
+        prev_version = f"`{previous_state.package_version}`"
 
     lines: list[str] = [
         f"# ETS2 World Country Realism — {edition_title} Edition Changelog",

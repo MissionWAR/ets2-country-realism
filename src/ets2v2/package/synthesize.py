@@ -126,12 +126,10 @@ def synthesize_country_sui(
     lines.append(f"\tiso_country_code: {iso_literal}")
     if baseline.pos is not None:
         lines.append(f"\tpos: {_format_tuple3(baseline.pos)}")
-    if baseline.fuel_price is not None:
-        lines.append(f"\tfuel_price: {_format_fuel_price(baseline.fuel_price)}")
+    lines.append(f"\tfuel_price: {_format_fuel_price(resolved.fuel.eur_per_liter)}")
 
     lines.append(f"\tlights_mandatory: {_format_bool(resolved.lights_mandatory)}")
-    if baseline.driving_tired_offence is not None:
-        lines.append(f"\tdriving_tired_offence: {_format_bool(baseline.driving_tired_offence)}")
+    lines.append(f"\tdriving_tired_offence: {_format_bool(resolved.driving_tired_offence)}")
     if baseline.imperial_units is not None:
         lines.append(f"\timperial_units: {_format_bool(baseline.imperial_units)}")
     if baseline.leftside_traffic is not None:
@@ -168,20 +166,27 @@ def synthesize_country_sui(
             lines.append(f"\tregion_areas[]: {_format_tuple4(region_area)}")
 
     if baseline.extra_attributes:
-        lines.append("")
-        for key in sorted(baseline.extra_attributes):
-            safe_key = _format_token(key, field_name="extra_attribute_key")
-            raw_values = baseline.extra_attributes[key]
-            if len(raw_values) == 1:
-                val = raw_values[0]
-                if "\r" in val or "\n" in val or "\x00" in val:
-                    raise ValueError(f"Invalid control character in extra attribute {key!r}")
-                lines.append(f"\t{safe_key}: {val}")
-            else:
-                for val in raw_values:
+        non_empty_extras = [
+            (key, baseline.extra_attributes[key])
+            for key in sorted(baseline.extra_attributes)
+            if baseline.extra_attributes[key]
+        ]
+        if non_empty_extras:
+            lines.append("")
+            for key, raw_values in non_empty_extras:
+                safe_key = _format_token(key, field_name="extra_attribute_key")
+                if len(raw_values) == 1:
+                    val = raw_values[0]
                     if "\r" in val or "\n" in val or "\x00" in val:
                         raise ValueError(f"Invalid control character in extra attribute {key!r}")
-                    lines.append(f"\t{safe_key}[]: {val}")
+                    lines.append(f"\t{safe_key}: {val}")
+                else:
+                    for val in raw_values:
+                        if "\r" in val or "\n" in val or "\x00" in val:
+                            raise ValueError(
+                                f"Invalid control character in extra attribute {key!r}"
+                            )
+                        lines.append(f"\t{safe_key}[]: {val}")
 
     lines.append("}")
     raw = serialize_sii_text("\n".join(lines) + "\n")

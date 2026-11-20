@@ -342,3 +342,11 @@ def test_leftside_traffic_immutability_guard_and_armenia_edge_case() -> None:
         assert_leftside_traffic_immutable("uk", True, False)
     with pytest.raises(ValueError, match="leftside_traffic"):
         assert_leftside_traffic_immutable("uk", True, None)
+
+
+def test_permanent_standard_offset_change_does_not_report_observes_dst() -> None:
+    # Kazakhstan (Asia/Almaty) switched permanently from UTC+6 to UTC+5 on 2024-03-01 without DST.
+    resolved = resolve_ets2_timezone("Asia/Almaty", date(2024, 7, 15), EXPECTED_TWELVE_TZ_KEYS)
+    assert resolved.offset_minutes == 300
+    assert resolved.is_dst is False
+    assert resolved.observes_dst is False

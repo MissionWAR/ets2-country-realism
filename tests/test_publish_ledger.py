@@ -150,6 +150,37 @@ def test_resolve_next_package_version_lifecycle() -> None:
     version_next, changed_next = resolve_next_package_version(state_v3, hash_v4, friday_w48)
     assert (version_next, changed_next) == ("1.62-2026.48", True)
 
+    # Non-ASCII Unicode digit suffix (e.g. superscript '²') falls back safely to .2
+    state_unicode = _sample_edition_state(
+        package_version="1.62-2026.47.\u00b2",
+        payload_sha256=hash_v1,
+    )
+    version_u, changed_u = resolve_next_package_version(state_unicode, hash_v2, friday_w47)
+    assert (version_u, changed_u) == ("1.62-2026.47.2", True)
+
+
+def test_canonical_sha256_rejects_directory_junction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built = build_core_edition(
+        "summer",
+        tmp_path / "build",
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        package_version="1.62-2026.47",
+    )
+    target_dir = (built.workshop_dir / "universal").resolve()
+
+    def _fake_is_junction(self: Path) -> bool:
+        return self.resolve() == target_dir
+
+    monkeypatch.setattr(Path, "is_junction", _fake_is_junction, raising=False)
+    with pytest.raises(ValueError, match="junction"):
+        compute_workshop_canonical_sha256(built.workshop_dir)
+
 
 def test_published_ledger_round_trip_and_strict_validation(tmp_path: Path) -> None:
     summer_state = _sample_edition_state(

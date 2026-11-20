@@ -29,6 +29,7 @@ from ets2v2.package import (
 from ets2v2.publish import run_phase_a_release
 from ets2v2.registry import (
     DEFAULT_ANCHOR_YEAR,
+    RealismSnapshot,
     Season,
     build_realism_snapshot,
     load_law_registry,
@@ -185,11 +186,24 @@ def _handle_registry_validate(args: argparse.Namespace) -> int:
     baseline_dir = cast(Path, args.baseline_dir)
     as_json = cast(bool, args.json)
 
-    issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
-    country_count = 0
-    if not issues:
-        bundle = load_law_registry(laws_dir, mappings_path)
-        country_count = len(bundle.laws_by_iso2)
+    try:
+        issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
+        country_count = 0
+        if not issues:
+            bundle = load_law_registry(laws_dir, mappings_path)
+            country_count = len(bundle.laws_by_iso2)
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        if as_json:
+            payload_err: dict[str, object] = {
+                "country_count": 0,
+                "issue_count": 1,
+                "issues": [str(exc)],
+                "ok": False,
+            }
+            print(json.dumps(payload_err, indent=2, sort_keys=True, ensure_ascii=False))
+            return 1
+        print(f"error: registry validation failed: {exc}", file=sys.stderr)
+        return 1
 
     if as_json:
         payload: dict[str, object] = {
@@ -393,6 +407,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
     anchor_year = cast(int, args.anchor_year)
     write_state = cast(bool, args.write_state)
     force_run = cast(bool, args.force)
+    previous_snapshots_dir = cast(Path | None, args.previous_snapshots_dir)
     as_json = cast(bool, args.json)
 
     try:
@@ -402,6 +417,23 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
         return 1
 
     try:
+        previous_snapshots: dict[Season, RealismSnapshot] | None = None
+        if previous_snapshots_dir is not None:
+            if not previous_snapshots_dir.is_dir():
+                raise FileNotFoundError(
+                    f"--previous-snapshots-dir does not exist or is not a directory: "
+                    f"{previous_snapshots_dir}"
+                )
+            loaded_prev: dict[Season, RealismSnapshot] = {}
+            for edition_name in ("summer", "winter"):
+                snap_file = previous_snapshots_dir / f"realism-snapshot-{edition_name}.json"
+                if snap_file.is_file():
+                    loaded_prev[edition_name] = RealismSnapshot.model_validate_json(
+                        snap_file.read_text("utf-8")
+                    )
+            if loaded_prev:
+                previous_snapshots = loaded_prev
+
         summary = run_phase_a_release(
             state_path=state_path,
             out_dir=out_dir,
@@ -415,6 +447,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
             anchor_year=anchor_year,
             write_state=write_state,
             force_run=force_run,
+            previous_snapshots=previous_snapshots,
         )
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
         print(f"error: Phase A release failed: {exc}", file=sys.stderr)
@@ -849,6 +882,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Emit validated changelogs and artifacts even when canonical hashes are unchanged.",
+    )
+    publish_release.add_argument(
+        "--previous-snapshots-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional directory containing previous realism-snapshot-{summer,winter}.json "
+            "files for structured changelog diffing."
+        ),
     )
     publish_release.add_argument(
         "--json",

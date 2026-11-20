@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from datetime import date
 from pathlib import Path
 from typing import Final, Literal
@@ -56,24 +57,46 @@ def _normalize_manifest_bytes(raw: bytes) -> bytes:
     return doc.to_bytes()
 
 
+def _is_dir_junction(path: Path) -> bool:
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction()) if callable(is_junction) else False
+
+
 def compute_workshop_canonical_sha256(workshop_dir: Path) -> str:
     """Compute a length-prefixed SHA-256 over sorted POSIX files, ignoring ``package_version``."""
+    if workshop_dir.is_symlink() or _is_dir_junction(workshop_dir):
+        raise ValueError(f"Symlinks or junctions are not allowed as Workshop root: {workshop_dir}")
     if not workshop_dir.is_dir():
         raise FileNotFoundError(f"Workshop directory does not exist: {workshop_dir}")
 
     resolved_root = workshop_dir.resolve()
     entries: list[tuple[str, Path]] = []
-    for candidate in workshop_dir.rglob("*"):
-        if candidate.is_symlink():
-            raise ValueError(f"Symlinks are not allowed in Workshop payload: {candidate}")
-        if not candidate.is_file():
-            continue
-        resolved_candidate = candidate.resolve()
-        if not resolved_candidate.is_relative_to(resolved_root):
-            raise ValueError(f"Workshop entry escapes root directory: {candidate}")
-        rel_posix = candidate.relative_to(workshop_dir).as_posix()
-        clean_rel = normalize_vfs_path(rel_posix)
-        entries.append((clean_rel, candidate))
+    for dirpath_str, dirnames, filenames in os.walk(workshop_dir, followlinks=False):
+        cur_dir = Path(dirpath_str)
+        for dname in list(dirnames):
+            dpath = cur_dir / dname
+            if dpath.is_symlink() or _is_dir_junction(dpath):
+                raise ValueError(
+                    f"Symlinks or directory junctions are not allowed in Workshop payload: {dpath}"
+                )
+            if not dpath.resolve().is_relative_to(resolved_root):
+                raise ValueError(f"Workshop directory escapes root directory: {dpath}")
+        dirnames.sort()
+
+        for fname in sorted(filenames):
+            candidate = cur_dir / fname
+            if candidate.is_symlink() or _is_dir_junction(candidate):
+                raise ValueError(
+                    f"Symlinks or junctions are not allowed in Workshop payload: {candidate}"
+                )
+            if not candidate.is_file():
+                continue
+            resolved_candidate = candidate.resolve()
+            if not resolved_candidate.is_relative_to(resolved_root):
+                raise ValueError(f"Workshop entry escapes root directory: {candidate}")
+            rel_posix = candidate.relative_to(workshop_dir).as_posix()
+            clean_rel = normalize_vfs_path(rel_posix)
+            entries.append((clean_rel, candidate))
 
     entries.sort(key=lambda item: item[0])
     if not any(rel_path == _MANIFEST_REL_PATH for rel_path, _ in entries):
@@ -115,7 +138,7 @@ def resolve_next_package_version(
     same_week_prefix = f"{base_version}."
     if previous.package_version.startswith(same_week_prefix):
         suffix = previous.package_version[len(same_week_prefix) :]
-        if suffix.isdigit() and int(suffix) >= 2:
+        if suffix.isascii() and suffix.isdigit() and int(suffix) >= 2:
             return f"{base_version}.{int(suffix) + 1}", True
         return f"{base_version}.2", True
 

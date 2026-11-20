@@ -7,4 +7,4 @@ from pathlib import Path
 from ets2v2.package.icons import generate_all_icons
 
 if __name__ == "__main__":
-    generate_all_icons(Path("assets/icons"))
+    generate_all_icons(Path(__file__).resolve().parent.parent / "assets" / "icons")

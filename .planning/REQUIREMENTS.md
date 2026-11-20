@@ -16,12 +16,12 @@ Requirements for the V1 release (Phases 1–5), targeting Phase A Semi-Auto Stea
 
 ### Realism Registry, Seasonal Builds & Offline Validator (Phase A)
 
-- [ ] **SIM-01**: Maintain a canonical ISO country/territory realism registry (`data/laws/`, `data/mappings/`) supporting `Summer` and `Winter` speed-limit and DRL policies while fixing all known bugs from reference mods (`3249064596`, `3668352310`).
-- [ ] **SIM-02**: Compute accurate seasonal UTC offsets and abbreviations dynamically from stdlib `zoneinfo` + `tzdata`, emitting valid ETS2 integer minutes and plain strings (e.g., `"CET"`, `"WET"`) while respecting ETS2's 12 supported `@@tz_*@@` keys.
-- [ ] **SIM-03**: Package dual **Vanilla+DLC Core** mods (`Summer` and `Winter`) covering all 36 SCS countries with complete Workshop metadata (`manifest.sii`, description, `276x162` `.jpg` mod icon) built purely from open-source repository assets.
-- [ ] **PUB-01**: Run an Offline SCS Workshop Validator covering SCS validation error checks `00001`–`00010` and warnings `WARN 00001`/`00002` (encoding, icon dimensions/JPEG format, manifest integrity, unit/board references) before releasing any artifact.
-- [ ] **PUB-02**: Gate releases via a canonical SHA-256 hash ledger (`state/published.json`) comparing normalized package content against previously published state to prevent empty/no-op uploads and emit clean diffs.
-- [ ] **PUB-03**: Provide a Phase A Semi-Auto GitHub Actions CI & release workflow (scheduled Fridays aligned with the EC Weekly Oil Bulletin release plus manual dispatch) outputting validated `Summer` and `Winter` bundles, markdown changelogs, and `realism-snapshot-{summer|winter}.json` without storing Steam secrets.
+- [x] **SIM-01**: Maintain a canonical ISO country/territory realism registry (`data/laws/`, `data/mappings/`) supporting `Summer` and `Winter` speed-limit and DRL policies while fixing all known bugs from reference mods (`3249064596`, `3668352310`).
+- [x] **SIM-02**: Compute accurate seasonal UTC offsets and abbreviations dynamically from stdlib `zoneinfo` + `tzdata`, emitting valid ETS2 integer minutes and plain strings (e.g., `"CET"`, `"WET"`) while respecting ETS2's 12 supported `@@tz_*@@` keys.
+- [x] **SIM-03**: Package dual **Vanilla+DLC Core** mods (`Summer` and `Winter`) covering all 36 SCS countries with complete Workshop metadata (`manifest.sii`, description, `276x162` `.jpg` mod icon) built purely from open-source repository assets.
+- [x] **PUB-01**: Run an Offline SCS Workshop Validator covering SCS validation error checks `00001`–`00010` and warnings `WARN 00001`/`00002` (encoding, icon dimensions/JPEG format, manifest integrity, unit/board references) before releasing any artifact.
+- [x] **PUB-02**: Gate releases via a canonical SHA-256 hash ledger (`state/published.json`) comparing normalized package content against previously published state to prevent empty/no-op uploads and emit clean diffs.
+- [x] **PUB-03**: Provide a Phase A Semi-Auto GitHub Actions CI & release workflow (scheduled Fridays aligned with the EC Weekly Oil Bulletin release plus manual dispatch) outputting validated `Summer` and `Winter` bundles, markdown changelogs, and `realism-snapshot-{summer|winter}.json` without storing Steam secrets.
 
 ### Open European Fuel/FX Pipeline & Zero-DDS Totem Engine
 
@@ -74,12 +74,12 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 | VFS-02 | Phase 1 | Complete |
 | SII-01 | Phase 1 | Complete |
 | SII-02 | Phase 1 | Complete |
-| SIM-01 | Phase 2 | Pending |
-| SIM-02 | Phase 2 | Pending |
-| SIM-03 | Phase 2 | Pending |
-| PUB-01 | Phase 2 | Pending |
-| PUB-02 | Phase 2 | Pending |
-| PUB-03 | Phase 2 | Pending |
+| SIM-01 | Phase 2 | Complete |
+| SIM-02 | Phase 2 | Complete |
+| SIM-03 | Phase 2 | Complete |
+| PUB-01 | Phase 2 | Complete |
+| PUB-02 | Phase 2 | Complete |
+| PUB-03 | Phase 2 | Complete |
 | DAT-01 | Phase 3 | Pending |
 | DAT-02 | Phase 3 | Pending |
 | DAT-03 | Phase 3 | Pending |

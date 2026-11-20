@@ -309,3 +309,68 @@ def test_invariant_runs_on_local_zip_and_direct_auditor_catches_count_and_hct_tr
     codes = _issue_codes(report)
     assert "ETS2V2-INV-COUNTRY-COUNT" in codes
     assert "ETS2V2-INV-AXLE" in codes
+
+
+def test_invariant_md05_lane_sequence_uncommon_and_max_limit_nullability(
+    built_editions: dict[str, BuiltEditionPaths],
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    bl_countries, bl_speeds, bl_locales = baselines
+    countries, base_speeds = _load_models_from_workshop(built_editions["summer"].workshop_dir)
+
+    # 1. Duplicate / reordered lane_speed_class sequence -> ETS2V2-INV-SPEED-BLOCKS
+    de_speed = base_speeds["germany"]
+    de_reordered_blocks = [
+        block.model_copy(update={"lanes": list(reversed(block.lanes))})
+        if block.vehicle_speed_class == "car"
+        else block
+        for block in de_speed.blocks
+    ]
+    speeds_reorder = dict(base_speeds)
+    speeds_reorder["germany"] = de_speed.model_copy(update={"blocks": de_reordered_blocks})
+    c_reorder = ValidationCollector()
+    validate_core_realism_invariants(
+        countries, speeds_reorder, bl_countries, bl_speeds, bl_locales, c_reorder
+    )
+    assert "ETS2V2-INV-SPEED-BLOCKS" in _issue_codes(c_reorder.build_report("reorder", "workshop"))
+
+    # 2. Spurious uncommon=True where baseline has uncommon=None -> ETS2V2-INV-SPEED-BLOCKS
+    de_uncommon_blocks = [
+        block.model_copy(
+            update={
+                "lanes": [block.lanes[0].model_copy(update={"uncommon": True}), *block.lanes[1:]]
+            }
+        )
+        if block.vehicle_speed_class == "car"
+        else block
+        for block in de_speed.blocks
+    ]
+    speeds_uncommon = dict(base_speeds)
+    speeds_uncommon["germany"] = de_speed.model_copy(update={"blocks": de_uncommon_blocks})
+    c_uncommon = ValidationCollector()
+    validate_core_realism_invariants(
+        countries, speeds_uncommon, bl_countries, bl_speeds, bl_locales, c_uncommon
+    )
+    assert "ETS2V2-INV-SPEED-BLOCKS" in _issue_codes(
+        c_uncommon.build_report("uncommon", "workshop")
+    )
+
+    # 3. max_limit removed on Iceland truck block -> ETS2V2-INV-SPEED-BLOCKS + ETS2V2-INV-ICELAND
+    is_speed = base_speeds["iceland"]
+    is_missing_max_blocks = [
+        block.model_copy(
+            update={"lanes": [lane.model_copy(update={"max_limit": None}) for lane in block.lanes]}
+        )
+        if block.vehicle_speed_class == "truck"
+        else block
+        for block in is_speed.blocks
+    ]
+    speeds_is = dict(base_speeds)
+    speeds_is["iceland"] = is_speed.model_copy(update={"blocks": is_missing_max_blocks})
+    c_is = ValidationCollector()
+    validate_core_realism_invariants(
+        countries, speeds_is, bl_countries, bl_speeds, bl_locales, c_is
+    )
+    is_codes = _issue_codes(c_is.build_report("iceland_max", "workshop"))
+    assert "ETS2V2-INV-SPEED-BLOCKS" in is_codes
+    assert "ETS2V2-INV-ICELAND" in is_codes

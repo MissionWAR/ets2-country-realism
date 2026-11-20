@@ -11,7 +11,7 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
 - Decimal phases (`2.1`, `2.2`): Urgent insertions (created via `/gsd-phase --insert`)
 
 - [x] **Phase 1: VFS, 1.62 Baseline Extraction & Structural SII Engine** - Clean-room HashFS v1/v2 + ZIP + unpacked VFS reader, `1.62.3.3s` baseline extraction, and comment/region-preserving surgical SII/SUI engine. (completed 2026-11-16)
-- [ ] **Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)** - Canonical seasonal country laws, `zoneinfo`+`tzdata` DST derivation, dual 36-country Vanilla+DLC Core builds, Offline SCS Validator, SHA-256 diff gate, and Friday CI release pipeline.
+- [x] **Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)** - Canonical seasonal country laws, `zoneinfo`+`tzdata` DST derivation, dual 36-country Vanilla+DLC Core builds, Offline SCS Validator, SHA-256 diff gate, and Friday CI release pipeline. (completed 2026-11-20)
 - [ ] **Phase 3: Open European Fuel/FX Pipeline & Zero-DDS Totem Engine** - Multi-provider FX cross-validation, Tier 1 EU/EEA fuel APIs with `prices.lock.json` circuit breakers, and Option 4b Zero-DDS 43-locale fuel totems covering all active and placeholder `1.62` signs.
 - [ ] **Phase 4: ProMods Companion Builder & Local Map Combo Composer** - Versioned `realism-snapshot-{summer|winter}.json` contract, local ProMods `EU+ME+MA+TGS` builder, and `ets2v2 compose-local` with `FieldOwnershipPolicy` map-combo protection.
 - [ ] **Phase 5: Global Tier 1/2/3 Coverage & Internal OSM Audit** - Non-EU Tier 1 government APIs, Tier 2 guarded portals with isolated circuit breakers, Tier 3 curated baselines (`200+` territories), and CI-only OSM (`CC BY-SA`) speed-limit drift reporting.
@@ -47,11 +47,11 @@ Plans:
   4. Running a build with unchanged canonical content triggers the `state/published.json` SHA-256 no-op gate without bumping or emitting redundant updates, while material changes output Summer/Winter release bundles and markdown changelogs on Friday `06:00 UTC` CI without storing Steam secrets.
 **Plans**: 5 plans
 Plans:
-- [ ] `02-01-PLAN.md` — Runtime deps (`tzdata`, `pillow`), active-phase scaffold update, canonical 36-country realism registry (`data/laws/countries/<iso2>.json`, `data/mappings/ets2_countries.json`), Pydantic v2 models & loader (`SIM-01`)
-- [ ] `02-02-PLAN.md` — Dynamic `zoneinfo` + `tzdata` seasonal DST offset & `@@tz_*@@`/plain-abbreviation resolver (with numeric `tzname()` overrides + `Asia/Amman`/`Asia/Damascus` tests), `one-way` D-11 schema lock checkpoint, and `realism-snapshot` v1 contract (`SIM-02`)
-- [ ] `02-03-PLAN.md` — Clean-room `.sui`/`speed_limits.sii` synthesis, checked-in `276x162` `.jpg` icons (`assets/icons/{summer,winter}.jpg`), and dual 36-country Vanilla+DLC Core packager (`dist/workshop/{summer,winter}/` & `dist/local/*.zip`) (`SIM-03`)
-- [ ] `02-04-PLAN.md` — Offline SCS Workshop Validator enforcing `00001`–`00010`, `WARN 00001`/`00002`, unit token limits, raw ZIP hygiene, and `1.62` realism invariants (`PUB-01`)
-- [ ] `02-05-PLAN.md` — Canonical SHA-256 diff ledger (`state/published.json`), Markdown changelog generator, `realism-snapshot` release emission, and Phase A Friday `06:00 UTC` persistent-PR GitHub Actions workflow (`PUB-02`, `PUB-03`)
+- [x] `02-01-PLAN.md` — Runtime deps (`tzdata`, `pillow`), active-phase scaffold update, canonical 36-country realism registry (`data/laws/countries/<iso2>.json`, `data/mappings/ets2_countries.json`), Pydantic v2 models & loader (`SIM-01`)
+- [x] `02-02-PLAN.md` — Dynamic `zoneinfo` + `tzdata` seasonal DST offset & `@@tz_*@@`/plain-abbreviation resolver (with numeric `tzname()` overrides + `Asia/Amman`/`Asia/Damascus` tests), `one-way` D-11 schema lock checkpoint, and `realism-snapshot` v1 contract (`SIM-02`)
+- [x] `02-03-PLAN.md` — Clean-room `.sui`/`speed_limits.sii` synthesis, checked-in `276x162` `.jpg` icons (`assets/icons/{summer,winter}.jpg`), and dual 36-country Vanilla+DLC Core packager (`dist/workshop/{summer,winter}/` & `dist/local/*.zip`) (`SIM-03`)
+- [x] `02-04-PLAN.md` — Offline SCS Workshop Validator enforcing `00001`–`00010`, `WARN 00001`/`00002`, unit token limits, raw ZIP hygiene, and `1.62` realism invariants (`PUB-01`)
+- [x] `02-05-PLAN.md` — Canonical SHA-256 diff ledger (`state/published.json`), Markdown changelog generator, `realism-snapshot` release emission, and Phase A Friday `06:00 UTC` persistent-PR GitHub Actions workflow (`PUB-02`, `PUB-03`)
 
 ### Phase 3: Open European Fuel/FX Pipeline & Zero-DDS Totem Engine
 **Goal**: Core Summer and Winter editions automatically reflect live weekly European/EEA diesel and multi-grade pump prices converted cleanly between EUR/L (`fuel_price`) and authentic local-currency roadside totems across all 43 ETS2 `1.62` locales with zero DDS texture baking.
@@ -106,7 +106,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. VFS, 1.62 Baseline Extraction & Structural SII Engine | 4/4 | Complete | 2026-11-16 |
-| 2. Realism Registry, Core & Validator | 0/5 | Planned | - |
+| 2. Realism Registry, Core & Validator | 5/5 | Complete | 2026-11-20 |
 | 3. European Fuel/FX & Totems | 0/4 | Not started | - |
 | 4. ProMods Companion & Combo Composer | 0/4 | Not started | - |
 | 5. Global Tier 1/2/3 & OSM Audit | 0/4 | Not started | - |

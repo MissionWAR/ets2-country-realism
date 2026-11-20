@@ -34,6 +34,7 @@ from ets2v2.vfs.types import (
     UnsupportedCompressionError,
     VfsArchive,
     detect_3nk,
+    normalize_vfs_path,
 )
 from ets2v2.vfs.zip_archive import ZipArchive
 
@@ -70,6 +71,29 @@ ALLOWED_MANIFEST_ATTRS: Final[frozenset[str]] = frozenset(
         "compatible_versions",
         "dlc_dependencies",
         "mp_mod_optional",
+    }
+)
+ALLOWED_SCS_ASSET_EXTENSIONS: Final[frozenset[str]] = frozenset(
+    {
+        ".sii",
+        ".sui",
+        ".txt",
+        ".jpg",
+        ".dds",
+        ".tobj",
+        ".mat",
+        ".pmd",
+        ".pmg",
+        ".pmc",
+        ".pma",
+        ".ppd",
+        ".ogg",
+        ".bank",
+        ".guids",
+        ".soundref",
+        ".font",
+        ".mask",
+        ".sbd",
     }
 )
 FORBIDDEN_EXTENSIONS: Final[frozenset[str]] = frozenset(
@@ -269,12 +293,27 @@ def _validate_utf8_lf_text(
         collector.error("00004", rel_path, f"Invalid UTF-8 byte sequence: {exc}")
 
 
+def _is_dir_junction(path: Path) -> bool:
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction()) if callable(is_junction) else False
+
+
+def _is_unsafe_root_link(path: Path, resolved_root: Path) -> bool:
+    if path.is_symlink() or _is_dir_junction(path):
+        return True
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return True
+    return not resolved.is_relative_to(resolved_root)
+
+
 def _validate_icon_bytes(
     raw: bytes,
     rel_path: str,
     collector: ValidationCollector,
 ) -> None:
-    """Verify JPEG icon bounds, SOI/EOI markers, format, and exact 276x162 dimensions."""
+    """Verify JPEG icon bounds, SOI/EOI markers, baseline RGB format, and exact 276x162 size."""
     if len(raw) > MAX_ICON_BYTES:
         collector.error(
             "00009",
@@ -295,23 +334,18 @@ def _validate_icon_bytes(
     has_jpeg_soi = raw.startswith(b"\xff\xd8")
     has_jpeg_eoi = raw.rstrip(b"\x00").endswith(b"\xff\xd9")
 
-    prev_limit = Image.MAX_IMAGE_PIXELS
-    Image.MAX_IMAGE_PIXELS = MAX_ICON_PIXELS
     try:
         with Image.open(io.BytesIO(raw)) as img:
             fmt = img.format
             size = img.size
-            img.verify()
-        with Image.open(io.BytesIO(raw)) as decoded:
-            decoded.load()
+            mode = img.mode
+            is_progressive = bool(img.info.get("progressive") or img.info.get("progression"))
     except Image.DecompressionBombError as exc:
         collector.error("00009", rel_path, f"Icon exceeds pixel safety cap: {exc}")
         return
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
         collector.error("00004", rel_path, f"Malformed or truncated JPEG icon: {exc}")
         return
-    finally:
-        Image.MAX_IMAGE_PIXELS = prev_limit
 
     if fmt != "JPEG":
         collector.error("00007", rel_path, f"Unsupported icon format {fmt!r}; expected JPEG")
@@ -323,12 +357,45 @@ def _validate_icon_bytes(
             "Malformed JPEG icon: missing required SOI (FFD8) or EOI (FFD9) markers",
         )
         return
+    if size[0] * size[1] > MAX_ICON_PIXELS:
+        collector.error(
+            "00009",
+            rel_path,
+            f"Icon dimensions {size[0]}x{size[1]} ({size[0] * size[1]} pixels) exceed "
+            f"{MAX_ICON_PIXELS} pixel safety cap",
+        )
+        return
+    if mode != "RGB":
+        collector.error(
+            "00007",
+            rel_path,
+            f"Unsupported JPEG icon color mode {mode!r}; expected baseline 'RGB'",
+        )
+        return
+    if is_progressive:
+        collector.error(
+            "00007",
+            rel_path,
+            "Progressive JPEG icons are not supported; use baseline RGB JPEG",
+        )
+        return
     if size != REQUIRED_ICON_SIZE:
         collector.error(
             "00001",
             rel_path,
             f"Icon dimensions {size[0]}x{size[1]} do not match required 276x162",
         )
+        return
+
+    try:
+        with Image.open(io.BytesIO(raw)) as verify_img:
+            verify_img.verify()
+        with Image.open(io.BytesIO(raw)) as decoded:
+            decoded.load()
+    except Image.DecompressionBombError as exc:
+        collector.error("00009", rel_path, f"Icon exceeds pixel safety cap: {exc}")
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError) as exc:
+        collector.error("00004", rel_path, f"Malformed or truncated JPEG icon: {exc}")
 
 
 def _inspect_raw_zip(
@@ -365,6 +432,7 @@ def _inspect_raw_zip(
         collector.error("00008", str(zip_path), f"Corrupt or unreadable ZIP archive: {exc}")
         return False
 
+    seen_norm: set[str] = set()
     for info in infos:
         raw_name = info.filename
         display_path = f"{rel_prefix}{raw_name}"
@@ -375,6 +443,33 @@ def _inspect_raw_zip(
                 display_path,
                 f"Unsafe raw ZIP entry name {raw_name!r}: {unsafe_reason}",
             )
+        else:
+            is_dir = info.is_dir()
+            try:
+                norm = normalize_vfs_path(raw_name, allow_empty=is_dir)
+            except ValueError as exc:
+                collector.error(
+                    "00003",
+                    display_path,
+                    f"Non-canonical raw ZIP entry name {raw_name!r}: {exc}",
+                )
+            else:
+                expected_raw = f"{norm}/" if is_dir else norm
+                if not norm or raw_name != expected_raw:
+                    collector.error(
+                        "00003",
+                        display_path,
+                        f"Non-canonical ZIP entry path {raw_name!r} (expected {expected_raw!r})",
+                    )
+                if not is_dir and norm:
+                    if norm in seen_norm:
+                        collector.error(
+                            "00003",
+                            display_path,
+                            f"Duplicate normalized ZIP entry {norm!r} (raw {raw_name!r})",
+                        )
+                    else:
+                        seen_norm.add(norm)
         if info.flag_bits & 0x41:
             collector.error(
                 "00007",
@@ -481,6 +576,15 @@ def _validate_manifest(
         collector.error("00004", manifest_loc, str(exc))
         return None, None
 
+    for unit in manifest_doc.units:
+        if unit.class_name != "mod_package":
+            collector.error(
+                "00003",
+                manifest_loc,
+                f"Disallowed unit class {unit.class_name!r} in manifest.sii; "
+                "only 'mod_package' is allowed",
+            )
+
     mod_units = manifest_doc.find_units(class_name="mod_package")
     if len(mod_units) != 1:
         collector.error(
@@ -507,6 +611,21 @@ def _validate_manifest(
                 f"Unknown or unused mod_package attribute {attr.key!r}",
             )
 
+    for dn_attr in mod_unit.get_attributes("display_name"):
+        dn_val, dn_quoted = unquote_sii_string(dn_attr.raw_value)
+        if not dn_quoted:
+            collector.error(
+                "00004",
+                manifest_loc,
+                "Attribute 'display_name' in mod_package must be a quoted string literal",
+            )
+        elif not dn_val.strip():
+            collector.error(
+                "00005",
+                manifest_loc,
+                "Attribute 'display_name' in mod_package must not be empty",
+            )
+
     if workshop_mode:
         if mod_unit.get_attributes("display_name"):
             collector.warning(
@@ -529,12 +648,26 @@ def _validate_manifest(
     # Required scalar attributes
     for req_key in ("package_version", "author"):
         scalar = mod_unit.get_scalar(req_key)
-        if scalar is None or not unquote_sii_string(scalar.raw_value)[0].strip():
+        if scalar is None:
             collector.error(
                 "00005",
                 manifest_loc,
                 f"Missing required non-empty attribute {req_key!r} in mod_package",
             )
+        else:
+            req_val, req_quoted = unquote_sii_string(scalar.raw_value)
+            if not req_quoted:
+                collector.error(
+                    "00004",
+                    manifest_loc,
+                    f"Attribute {req_key!r} in mod_package must be a quoted string literal",
+                )
+            elif not req_val.strip():
+                collector.error(
+                    "00005",
+                    manifest_loc,
+                    f"Missing required non-empty attribute {req_key!r} in mod_package",
+                )
 
     # mp_mod_optional: true required
     mp_attr = mod_unit.get_scalar("mp_mod_optional")
@@ -557,107 +690,153 @@ def _validate_manifest(
                     "mp_mod_optional must be true for Core realism packages",
                 )
 
-    # category[] checks: 1..2 entries, all in 18 valid SCS categories
+    # category[] checks: array syntax, quoted strings, unique, 1..2 entries in 18 valid categories
     cat_attrs = mod_unit.get_attributes("category")
-    categories = [unquote_sii_string(attr.raw_value)[0] for attr in cat_attrs]
-    if not categories:
+    if not cat_attrs:
         collector.error(
             "00005",
             manifest_loc,
             "Missing required category[] attribute in mod_package",
         )
     else:
-        for cat in categories:
+        seen_categories: set[str] = set()
+        for attr in cat_attrs:
+            if not (attr.is_append or attr.index is not None):
+                collector.error(
+                    "00004",
+                    manifest_loc,
+                    "Attribute 'category' must use array syntax 'category[]' in mod_package",
+                )
+            cat, cat_quoted = unquote_sii_string(attr.raw_value)
+            if not cat_quoted:
+                collector.error(
+                    "00004",
+                    manifest_loc,
+                    "Attribute 'category[]' in mod_package must be a quoted string literal",
+                )
+                continue
             if cat not in VALID_SCS_CATEGORIES:
                 collector.error(
                     "00005",
                     manifest_loc,
                     f"Invalid SCS category {cat!r}; must be one of the 18 official SCS categories",
                 )
-        if len(categories) > 2:
+            elif cat in seen_categories:
+                collector.error(
+                    "00003",
+                    manifest_loc,
+                    f"Duplicate category[] entry {cat!r} in mod_package",
+                )
+            else:
+                seen_categories.add(cat)
+        if len(cat_attrs) > 2:
             collector.warning(
                 "WARN 00001",
                 manifest_loc,
-                f"Too many category[] entries ({len(categories)}); SCS allows at most 2",
+                f"Too many category[] entries ({len(cat_attrs)}); SCS allows at most 2",
             )
 
     # icon attribute checks
     icon_name: str | None = None
     icon_attr = mod_unit.get_scalar("icon")
-    if icon_attr is None or not unquote_sii_string(icon_attr.raw_value)[0].strip():
+    if icon_attr is None:
         collector.error("00005", manifest_loc, "Missing required 'icon' attribute in mod_package")
     else:
-        for diag in validate_string_path_hygiene(
-            icon_attr.raw_value,
-            key="icon",
-            line=icon_attr.line,
-        ):
-            collector.error("00003", manifest_loc, diag.message)
-        raw_icon, _ = unquote_sii_string(icon_attr.raw_value)
-        if "/" in raw_icon or "\\" in raw_icon:
+        raw_icon, icon_quoted = unquote_sii_string(icon_attr.raw_value)
+        if not icon_quoted:
             collector.error(
-                "00001",
+                "00004",
                 manifest_loc,
-                f"icon {raw_icon!r} must be a filename in the same directory as manifest.sii",
+                "Attribute 'icon' in mod_package must be a quoted string literal",
             )
-        elif not raw_icon.lower().endswith(".jpg"):
+        elif not raw_icon.strip():
             collector.error(
-                "00001",
-                manifest_loc,
-                f"icon {raw_icon!r} must use the .jpg extension",
+                "00005", manifest_loc, "Missing required 'icon' attribute in mod_package"
             )
         else:
-            icon_name = raw_icon
-            icon_loc = f"{rel_prefix}{icon_name}"
-            if not archive.exists(icon_name):
-                collector.error("00002", icon_loc, f"Declared icon {icon_name!r} not found")
+            for diag in validate_string_path_hygiene(
+                icon_attr.raw_value,
+                key="icon",
+                line=icon_attr.line,
+            ):
+                collector.error("00003", manifest_loc, diag.message)
+            if "/" in raw_icon or "\\" in raw_icon:
+                collector.error(
+                    "00001",
+                    manifest_loc,
+                    f"icon {raw_icon!r} must be a filename in the same directory as manifest.sii",
+                )
+            elif not raw_icon.lower().endswith(".jpg"):
+                collector.error(
+                    "00001",
+                    manifest_loc,
+                    f"icon {raw_icon!r} must use the .jpg extension",
+                )
             else:
-                icon_raw = _read_archive_entry(archive, icon_name, icon_loc, collector)
-                if icon_raw is not None:
-                    _validate_icon_bytes(icon_raw, icon_loc, collector)
+                icon_name = raw_icon
+                icon_loc = f"{rel_prefix}{icon_name}"
+                if not archive.exists(icon_name):
+                    collector.error("00002", icon_loc, f"Declared icon {icon_name!r} not found")
+                else:
+                    icon_raw = _read_archive_entry(archive, icon_name, icon_loc, collector)
+                    if icon_raw is not None:
+                        _validate_icon_bytes(icon_raw, icon_loc, collector)
 
     # description_file attribute checks
     desc_name: str | None = None
     desc_attr = mod_unit.get_scalar("description_file")
-    if desc_attr is None or not unquote_sii_string(desc_attr.raw_value)[0].strip():
+    if desc_attr is None:
         collector.error(
             "00005",
             manifest_loc,
             "Missing required 'description_file' attribute in mod_package",
         )
     else:
-        for diag in validate_string_path_hygiene(
-            desc_attr.raw_value,
-            key="description_file",
-            line=desc_attr.line,
-        ):
-            collector.error("00003", manifest_loc, diag.message)
-        raw_desc, _ = unquote_sii_string(desc_attr.raw_value)
-        if "/" in raw_desc or "\\" in raw_desc:
+        raw_desc, desc_quoted = unquote_sii_string(desc_attr.raw_value)
+        if not desc_quoted:
             collector.error(
-                "00001",
+                "00004",
                 manifest_loc,
-                f"description_file {raw_desc!r} must be a filename beside manifest.sii",
+                "Attribute 'description_file' in mod_package must be a quoted string literal",
             )
-        elif not raw_desc.lower().endswith(".txt"):
+        elif not raw_desc.strip():
             collector.error(
-                "00001",
+                "00005",
                 manifest_loc,
-                f"description_file {raw_desc!r} must use the .txt extension",
+                "Missing required 'description_file' attribute in mod_package",
             )
         else:
-            desc_name = raw_desc
-            desc_loc = f"{rel_prefix}{desc_name}"
-            if not archive.exists(desc_name):
+            for diag in validate_string_path_hygiene(
+                desc_attr.raw_value,
+                key="description_file",
+                line=desc_attr.line,
+            ):
+                collector.error("00003", manifest_loc, diag.message)
+            if "/" in raw_desc or "\\" in raw_desc:
                 collector.error(
-                    "00002",
-                    desc_loc,
-                    f"Declared description_file {desc_name!r} not found",
+                    "00001",
+                    manifest_loc,
+                    f"description_file {raw_desc!r} must be a filename beside manifest.sii",
+                )
+            elif not raw_desc.lower().endswith(".txt"):
+                collector.error(
+                    "00001",
+                    manifest_loc,
+                    f"description_file {raw_desc!r} must use the .txt extension",
                 )
             else:
-                desc_raw = _read_archive_entry(archive, desc_name, desc_loc, collector)
-                if desc_raw is not None:
-                    _validate_utf8_lf_text(desc_raw, desc_loc, collector)
+                desc_name = raw_desc
+                desc_loc = f"{rel_prefix}{desc_name}"
+                if not archive.exists(desc_name):
+                    collector.error(
+                        "00002",
+                        desc_loc,
+                        f"Declared description_file {desc_name!r} not found",
+                    )
+                else:
+                    desc_raw = _read_archive_entry(archive, desc_name, desc_loc, collector)
+                    if desc_raw is not None:
+                        _validate_utf8_lf_text(desc_raw, desc_loc, collector)
 
     return icon_name, desc_name
 
@@ -739,14 +918,6 @@ def _validate_package_contents(
 
         suffix = Path(vfs_path).suffix.lower()
 
-        if suffix in FORBIDDEN_EXTENSIONS:
-            collector.error(
-                "00003",
-                display_path,
-                f"Forbidden file extension {suffix!r} inside mod package",
-            )
-            continue
-
         if suffix == ".scs":
             raw_scs = _read_archive_entry(archive, vfs_path, display_path, collector)
             if raw_scs is not None:
@@ -759,12 +930,20 @@ def _validate_package_contents(
                         display_path,
                         "ZIP archive renamed to .scs is not allowed in Workshop packages",
                     )
-            if workshop_mode:
-                collector.error(
-                    "00003",
-                    display_path,
-                    ".scs archives are not allowed inside Workshop packages",
-                )
+            collector.error(
+                "00003",
+                display_path,
+                ".scs archives are not allowed inside mod packages",
+            )
+            continue
+
+        if not suffix or suffix not in ALLOWED_SCS_ASSET_EXTENSIONS:
+            detail = (
+                f"Extensionless file {vfs_path!r} is not allowed inside mod package"
+                if not suffix
+                else f"Unsupported file extension {suffix!r} inside mod package"
+            )
+            collector.error("00003", display_path, detail)
             continue
 
         if _COUNTRY_SII_RE.fullmatch(vfs_path) is not None:
@@ -775,7 +954,7 @@ def _validate_package_contents(
             )
             continue
 
-        if suffix in {".jpg", ".jpeg"}:
+        if suffix == ".jpg":
             if icon_name is None or vfs_path != icon_name:
                 collector.error(
                     "00003",
@@ -896,9 +1075,24 @@ def validate_workshop_package(
         collector.error("00002", str(workshop_dir), "Workshop root directory not found")
         return collector.build_report(workshop_dir, "workshop")
 
+    resolved_workshop_root = workshop_dir.resolve()
     versions_path = workshop_dir / "versions.sii"
+    if versions_path.is_symlink() or _is_dir_junction(versions_path):
+        collector.error(
+            "00003",
+            "versions.sii",
+            "Symlink or junction versions.sii is not allowed at Workshop root",
+        )
+        return collector.build_report(workshop_dir, "workshop")
     if not versions_path.is_file():
         collector.error("00002", "versions.sii", "Missing required versions.sii at Workshop root")
+        return collector.build_report(workshop_dir, "workshop")
+    if _is_unsafe_root_link(versions_path, resolved_workshop_root):
+        collector.error(
+            "00003",
+            "versions.sii",
+            "versions.sii escapes Workshop root directory",
+        )
         return collector.build_report(workshop_dir, "workshop")
 
     try:
@@ -918,12 +1112,14 @@ def validate_workshop_package(
         collector.error("00004", "versions.sii", str(exc))
         return collector.build_report(workshop_dir, "workshop")
 
-    if versions_doc.find_units(class_name="mod_package"):
-        collector.error(
-            "00003",
-            "versions.sii",
-            "mod_package unit is only allowed inside manifest.sii",
-        )
+    for unit in versions_doc.units:
+        if unit.class_name != "package_version_info":
+            collector.error(
+                "00003",
+                "versions.sii",
+                f"Disallowed unit class {unit.class_name!r} in versions.sii; "
+                "only 'package_version_info' is allowed",
+            )
 
     version_units = versions_doc.find_units(class_name="package_version_info")
     if not version_units:
@@ -941,6 +1137,7 @@ def validate_workshop_package(
         )
 
     declared_root_names: set[str] = {"versions.sii"}
+    seen_package_names: set[str] = set()
 
     for unit in version_units:
         for diag in validate_unit_name_segments(
@@ -955,7 +1152,15 @@ def validate_workshop_package(
             collector.error("00005", "versions.sii", "Missing required package_name attribute")
             continue
 
-        pkg_name, _ = unquote_sii_string(pkg_attr.raw_value)
+        pkg_name, pkg_quoted = unquote_sii_string(pkg_attr.raw_value)
+        if not pkg_quoted:
+            collector.error(
+                "00004",
+                "versions.sii",
+                "Attribute 'package_name' in package_version_info must be a quoted string literal",
+            )
+            continue
+
         if not pkg_name:
             collector.error("00005", "versions.sii", "package_name must not be empty")
             continue
@@ -968,10 +1173,23 @@ def validate_workshop_package(
             )
             continue
 
+        if pkg_name in seen_package_names:
+            collector.error(
+                "00003",
+                "versions.sii",
+                f"Duplicate package_name {pkg_name!r} in versions.sii",
+            )
+            continue
+        seen_package_names.add(pkg_name)
+
         pkg_dir = workshop_dir / pkg_name
         pkg_zip = workshop_dir / f"{pkg_name}.zip"
+        pkg_dir_link = pkg_dir.is_symlink() or _is_dir_junction(pkg_dir)
+        pkg_zip_link = pkg_zip.is_symlink() or _is_dir_junction(pkg_zip)
+        pkg_dir_present = pkg_dir.exists() or pkg_dir_link
+        pkg_zip_present = pkg_zip.exists() or pkg_zip_link
 
-        if pkg_dir.exists() and pkg_zip.exists():
+        if pkg_dir_present and pkg_zip_present:
             collector.error(
                 "00003",
                 pkg_name,
@@ -981,8 +1199,24 @@ def validate_workshop_package(
             declared_root_names.add(f"{pkg_name}.zip")
             continue
 
+        if pkg_dir_link:
+            declared_root_names.add(pkg_name)
+            collector.error(
+                "00003",
+                pkg_name,
+                f"Symlink or directory junction {pkg_name!r} is not allowed at Workshop root",
+            )
+            continue
+
         if pkg_dir.is_dir():
             declared_root_names.add(pkg_name)
+            if _is_unsafe_root_link(pkg_dir, resolved_workshop_root):
+                collector.error(
+                    "00003",
+                    pkg_name,
+                    f"Package directory {pkg_name!r} escapes Workshop root directory",
+                )
+                continue
             try:
                 archive_dir = DirectoryArchive(pkg_dir)
             except PermissionError as exc:
@@ -1010,10 +1244,41 @@ def validate_workshop_package(
                     collector,
                     path_prefix=pkg_name,
                 )
+        elif pkg_zip_link:
+            declared_root_names.add(f"{pkg_name}.zip")
+            collector.error(
+                "00003",
+                f"{pkg_name}.zip",
+                f"Symlink or junction archive {pkg_name}.zip is not allowed at Workshop root",
+            )
+            continue
         elif pkg_zip.is_file():
             declared_root_names.add(f"{pkg_name}.zip")
+            if _is_unsafe_root_link(pkg_zip, resolved_workshop_root):
+                collector.error(
+                    "00003",
+                    f"{pkg_name}.zip",
+                    f"Package archive {pkg_name}.zip escapes Workshop root directory",
+                )
+                continue
             if _inspect_raw_zip(pkg_zip, prefix=f"{pkg_name}.zip", collector=collector):
-                with ZipArchive(pkg_zip) as archive_zip:
+                try:
+                    archive_zip = ZipArchive(pkg_zip)
+                except PermissionError as exc:
+                    collector.error(
+                        "00006",
+                        f"{pkg_name}.zip",
+                        f"Access denied opening {pkg_name}.zip: {exc}",
+                    )
+                    continue
+                except (OSError, ValueError) as exc:
+                    collector.error(
+                        "00008",
+                        f"{pkg_name}.zip",
+                        f"Unable to open {pkg_name}.zip: {exc}",
+                    )
+                    continue
+                with archive_zip:
                     country_models, speed_models = _validate_package_contents(
                         archive_zip,
                         prefix=f"{pkg_name}.zip",
@@ -1051,7 +1316,8 @@ def validate_workshop_package(
             )
             if entry.is_file() and entry.suffix.lower() == ".scs":
                 try:
-                    magic = entry.read_bytes()[:4]
+                    with entry.open("rb") as fh:
+                        magic = fh.read(4)
                 except PermissionError as exc:
                     collector.error(
                         "00006", entry.name, f"Access denied reading {entry.name}: {exc}"

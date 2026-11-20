@@ -12,6 +12,7 @@ from ets2v2.validate.models import (
 )
 from ets2v2.validate.workshop import (
     ALLOWED_MANIFEST_ATTRS,
+    ALLOWED_SCS_ASSET_EXTENSIONS,
     FORBIDDEN_EXTENSIONS,
     MAX_DESCRIPTION_BYTES,
     MAX_ICON_BYTES,
@@ -24,6 +25,7 @@ from ets2v2.validate.workshop import (
 
 __all__ = [
     "ALLOWED_MANIFEST_ATTRS",
+    "ALLOWED_SCS_ASSET_EXTENSIONS",
     "FORBIDDEN_EXTENSIONS",
     "MAX_DESCRIPTION_BYTES",
     "MAX_ICON_BYTES",

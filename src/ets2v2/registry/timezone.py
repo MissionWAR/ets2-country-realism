@@ -81,11 +81,11 @@ def resolve_ets2_timezone(
 
     jan_month, jan_day = WINTER_ANCHOR_MONTH_DAY
     jul_month, jul_day = SUMMER_ANCHOR_MONTH_DAY
-    jan_offset = datetime(ref_date.year, jan_month, jan_day, 12, 0, tzinfo=tz).utcoffset()
-    jul_offset = datetime(ref_date.year, jul_month, jul_day, 12, 0, tzinfo=tz).utcoffset()
-    if jan_offset is None or jul_offset is None:
-        raise ValueError(f"Unable to compute seasonal UTC offsets for {iana_tz!r}")
-    observes_dst = jan_offset != jul_offset
+    jan_dst = datetime(ref_date.year, jan_month, jan_day, 12, 0, tzinfo=tz).dst()
+    jul_dst = datetime(ref_date.year, jul_month, jul_day, 12, 0, tzinfo=tz).dst()
+    if jan_dst is None or jul_dst is None:
+        raise ValueError(f"Unable to compute seasonal DST offsets for {iana_tz!r}")
+    observes_dst = bool(jan_dst) or bool(jul_dst)
 
     raw_abbr = dt.tzname()
     if raw_abbr is None or not raw_abbr or raw_abbr[0] in {"+", "-"}:

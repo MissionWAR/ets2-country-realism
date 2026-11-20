@@ -99,7 +99,18 @@ def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
                         violations.append(f"{py_file.name}: import {alias.name}")
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                if module == "ets2v2.package" or module.startswith("ets2v2.package."):
+                if node.level > 0:
+                    if module == "package" or module.startswith("package."):
+                        violations.append(
+                            f"{py_file.name}: from {'.' * node.level}{module} import ..."
+                        )
+                    elif module == "":
+                        for alias in node.names:
+                            if alias.name == "package":
+                                violations.append(
+                                    f"{py_file.name}: from {'.' * node.level} import package"
+                                )
+                elif module == "ets2v2.package" or module.startswith("ets2v2.package."):
                     violations.append(f"{py_file.name}: from {module} import ...")
                 elif module == "ets2v2":
                     for alias in node.names:
@@ -723,3 +734,204 @@ def test_scs_additional_edge_cases_hashfs_bzip2_braces_include_and_country_suffi
     codes = _issue_codes(r_edge)
     assert "00003" in codes
     assert "00004" in codes
+
+
+# ---------------------------------------------------------------------------
+# HI-02, HI-03, HI-04: Allowlist, Archive/Link Boundaries, and SCS Protocol
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad_filename",
+    [
+        "nested.zip",
+        "preview.png",
+        "backup.bak",
+        "debug.log",
+        "Thumbs.db",
+        ".DS_Store",
+        "LICENSE",
+    ],
+)
+def test_hi02_unsupported_and_extensionless_files_rejected_as_00003(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+    bad_filename: str,
+) -> None:
+    ws = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / f"ws_{bad_filename}")
+    (ws / "universal" / bad_filename).write_bytes(b"stray payload\n")
+    report = validate_workshop_package(ws)
+    assert report.ok is False
+    assert "00003" in _issue_codes(report)
+
+
+def test_hi03_pkg_zip_mount_errors_root_links_and_duplicate_noncanonical_zip_entries(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 1. ZipArchive(pkg_zip) PermissionError -> 00006, ValueError -> 00008
+    ws_zip = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_zip_err")
+    shutil.rmtree(ws_zip / "universal")
+    shutil.copyfile(built_editions["summer"].local_zip_path, ws_zip / "universal.zip")
+
+    def _raise_perm(_path: pathlib.Path) -> object:
+        raise PermissionError("Simulated pkg_zip permission denial")
+
+    def _raise_val(_path: pathlib.Path) -> object:
+        raise ValueError("Simulated pkg_zip corruption")
+
+    monkeypatch.setattr("ets2v2.validate.workshop.ZipArchive", _raise_perm)
+    r_perm = validate_workshop_package(ws_zip)
+    assert r_perm.ok is False
+    assert "00006" in _issue_codes(r_perm)
+
+    monkeypatch.setattr("ets2v2.validate.workshop.ZipArchive", _raise_val)
+    r_val = validate_workshop_package(ws_zip)
+    assert r_val.ok is False
+    assert "00008" in _issue_codes(r_val)
+    monkeypatch.undo()
+
+    # 2. Root symlink / junction detection on versions.sii and universal/ -> 00003
+    ws_link = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_root_link")
+    versions_file = (ws_link / "versions.sii").resolve()
+    orig_is_symlink = pathlib.Path.is_symlink
+
+    def _fake_versions_symlink(self: pathlib.Path) -> bool:
+        if self.exists() and self.resolve() == versions_file:
+            return True
+        return orig_is_symlink(self)
+
+    monkeypatch.setattr(pathlib.Path, "is_symlink", _fake_versions_symlink)
+    r_ver_link = validate_workshop_package(ws_link)
+    assert r_ver_link.ok is False
+    assert "00003" in _issue_codes(r_ver_link)
+    monkeypatch.undo()
+
+    univ_dir = (ws_link / "universal").resolve()
+
+    def _fake_univ_junction(self: pathlib.Path) -> bool:
+        return self.exists() and self.resolve() == univ_dir
+
+    monkeypatch.setattr(pathlib.Path, "is_junction", _fake_univ_junction, raising=False)
+    r_dir_junc = validate_workshop_package(ws_link)
+    assert r_dir_junc.ok is False
+    assert "00003" in _issue_codes(r_dir_junc)
+    monkeypatch.undo()
+
+    # 3. Duplicate normalized ZIP entry & non-canonical './' and '//' paths -> 00003
+    dup_zip = _rebuild_zip_with_mutations(
+        built_editions["summer"].local_zip_path,
+        tmp_path / "dup.zip",
+        extra_entries=[(zipfile.ZipInfo(filename="manifest.sii"), b"SiiNunit\n{\n}\n")],
+    )
+    r_dup = validate_local_zip(dup_zip)
+    assert r_dup.ok is False
+    assert "00003" in _issue_codes(r_dup)
+
+    dot_zip = _rebuild_zip_with_mutations(
+        built_editions["summer"].local_zip_path,
+        tmp_path / "dotslash.zip",
+        extra_entries=[(zipfile.ZipInfo(filename="./def/country/extra.sui"), b"")],
+    )
+    r_dot = validate_local_zip(dot_zip)
+    assert r_dot.ok is False
+    assert "00003" in _issue_codes(r_dot)
+
+    dbl_zip = _rebuild_zip_with_mutations(
+        built_editions["summer"].local_zip_path,
+        tmp_path / "doubleslash.zip",
+        extra_entries=[(zipfile.ZipInfo(filename="def//country/extra.sui"), b"")],
+    )
+    r_dbl = validate_local_zip(dbl_zip)
+    assert r_dbl.ok is False
+    assert "00003" in _issue_codes(r_dbl)
+
+
+def test_hi04_unquoted_strings_category_rules_stray_units_and_icon_checks(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    # 1. Unquoted author and scalar category -> 00004
+    ws_unq = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_unq")
+    m_unq = ws_unq / "universal" / "manifest.sii"
+    m_unq.write_bytes(
+        m_unq.read_bytes()
+        .replace(b'author: "ETS2 World Realism"', b"author: ETS2_Unquoted")
+        .replace(b'category[]: "other"', b'category: "other"')
+    )
+    r_unq = validate_workshop_package(ws_unq)
+    assert r_unq.ok is False
+    assert "00004" in _issue_codes(r_unq)
+
+    # 2. Duplicate category[] -> 00003
+    ws_dup_cat = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_dup_cat")
+    m_dup_cat = ws_dup_cat / "universal" / "manifest.sii"
+    m_dup_cat.write_bytes(
+        m_dup_cat.read_bytes().replace(b'category[]: "ai_traffic"', b'category[]: "other"')
+    )
+    r_dup_cat = validate_workshop_package(ws_dup_cat)
+    assert r_dup_cat.ok is False
+    assert "00003" in _issue_codes(r_dup_cat)
+
+    # 3. Stray unit class in manifest.sii and versions.sii + duplicate package_name -> 00003
+    ws_stray = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_stray")
+    m_stray = ws_stray / "universal" / "manifest.sii"
+    m_stray.write_bytes(
+        m_stray.read_bytes().replace(
+            b"\n}\n",
+            b"\ncountry_data : .stray\n{\n\tcountry_id: 1\n}\n}\n",
+            1,
+        )
+    )
+    (ws_stray / "versions.sii").write_bytes(
+        b"SiiNunit\n{\n"
+        b'package_version_info : .universal\n{\n\tpackage_name: "universal"\n}\n'
+        b'package_version_info : .dup\n{\n\tpackage_name: "universal"\n'
+        b'\tcompatible_versions[]: "1.62.*"\n}\n'
+        b"country_data : .stray\n{\n\tcountry_id: 1\n}\n"
+        b"}\n"
+    )
+    r_stray = validate_workshop_package(ws_stray)
+    assert r_stray.ok is False
+    assert "00003" in _issue_codes(r_stray)
+
+    # 4. Unquoted package_name in versions.sii -> 00004
+    ws_unq_pkg = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_unq_pkg")
+    (ws_unq_pkg / "versions.sii").write_bytes(
+        b"SiiNunit\n{\npackage_version_info : .universal\n{\n\tpackage_name: universal\n}\n}\n"
+    )
+    r_unq_pkg = validate_workshop_package(ws_unq_pkg)
+    assert r_unq_pkg.ok is False
+    assert "00004" in _issue_codes(r_unq_pkg)
+
+    # 5. CMYK JPEG icon -> 00007
+    ws_cmyk = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_cmyk")
+    cmyk_buf = io.BytesIO()
+    Image.new("CMYK", (276, 162), (0, 0, 0, 0)).save(cmyk_buf, format="JPEG", quality=90)
+    (ws_cmyk / "universal" / "mod_icon.jpg").write_bytes(cmyk_buf.getvalue())
+    r_cmyk = validate_workshop_package(ws_cmyk)
+    assert r_cmyk.ok is False
+    assert "00007" in _issue_codes(r_cmyk)
+
+    # 6. Progressive JPEG icon -> 00007
+    ws_prog = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_prog")
+    prog_buf = io.BytesIO()
+    Image.new("RGB", (276, 162), (20, 40, 80)).save(
+        prog_buf, format="JPEG", quality=90, progressive=True
+    )
+    (ws_prog / "universal" / "mod_icon.jpg").write_bytes(prog_buf.getvalue())
+    r_prog = validate_workshop_package(ws_prog)
+    assert r_prog.ok is False
+    assert "00007" in _issue_codes(r_prog)
+
+    # 7. Icon exceeding MAX_ICON_PIXELS -> 00009 without mutating Image.MAX_IMAGE_PIXELS
+    ws_bomb = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_bomb")
+    bomb_buf = io.BytesIO()
+    Image.new("RGB", (2500, 2500), (10, 20, 30)).save(bomb_buf, format="JPEG", quality=50)
+    (ws_bomb / "universal" / "mod_icon.jpg").write_bytes(bomb_buf.getvalue())
+    orig_max_pixels = Image.MAX_IMAGE_PIXELS
+    r_bomb = validate_workshop_package(ws_bomb)
+    assert orig_max_pixels == Image.MAX_IMAGE_PIXELS
+    assert r_bomb.ok is False
+    assert "00009" in _issue_codes(r_bomb)

@@ -18,7 +18,6 @@ from ets2v2.registry.models import (
 )
 from ets2v2.registry.timezone import (
     DEFAULT_ANCHOR_YEAR,
-    assert_leftside_traffic_immutable,
     resolve_ets2_timezone,
     resolve_season_anchor_date,
 )
@@ -94,12 +93,6 @@ def build_realism_snapshot(
         bl_country = baseline_by_slug.get(law.ets2_slug)
         if bl_country is None:
             raise ValueError(f"Missing baseline country entry for {iso2} ({law.ets2_slug!r})")
-
-        assert_leftside_traffic_immutable(
-            law.ets2_slug,
-            bl_country.leftside_traffic,
-            bl_country.leftside_traffic,
-        )
 
         if bl_country.fuel_price is None:
             raise ValueError(f"Missing baseline fuel_price for {iso2} ({law.ets2_slug!r})")

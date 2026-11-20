@@ -6,7 +6,7 @@ import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Final
 
@@ -131,7 +131,7 @@ def run_phase_a_release(
     previous_snapshots: Mapping[Season, RealismSnapshot] | None = None,
 ) -> PhaseAReleaseSummary:
     """Run the full Phase A build -> validate -> diff-gate -> snapshot -> changelog pipeline."""
-    effective_build_date = build_date if build_date is not None else date.today()
+    effective_build_date = build_date if build_date is not None else datetime.now(UTC).date()
 
     registry = load_law_registry(laws_dir, mappings_path)
     bl_countries = CountriesBaseline.model_validate_json(

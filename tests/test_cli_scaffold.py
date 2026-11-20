@@ -65,11 +65,22 @@ def test_active_phase_only_package_layout() -> None:
     assert pkg_root.is_dir()
 
     entries = {entry.name for entry in pkg_root.iterdir() if entry.name != "__pycache__"}
-    deferred_phase_dirs = {"fetch", "normalize", "merge", "validate", "package"}
-    allowed_phase1_entries = {"__init__.py", "py.typed", "cli.py", "vfs", "sii", "baseline"}
+    deferred_phase_dirs = {"fetch", "normalize", "merge"}
+    allowed_phase2_entries = {
+        "__init__.py",
+        "py.typed",
+        "cli.py",
+        "vfs",
+        "sii",
+        "baseline",
+        "registry",
+        "package",
+        "validate",
+        "publish",
+    }
 
     assert entries.isdisjoint(deferred_phase_dirs)
-    assert entries <= allowed_phase1_entries
+    assert entries <= allowed_phase2_entries
     assert {"__init__.py", "py.typed", "cli.py"} <= entries
 
 
@@ -85,7 +96,11 @@ def test_pyproject_metadata_and_quality_gates() -> None:
     assert project["version"] == "0.1.0"
     assert project["requires-python"] == ">=3.12"
     assert project["license"] == "MIT"
-    assert _as_str_list(project["dependencies"]) == ["pydantic>=2.14,<3"]
+    assert sorted(_as_str_list(project["dependencies"])) == [
+        "pillow>=12,<14",
+        "pydantic>=2.14,<3",
+        "tzdata>=2025.2",
+    ]
 
     scripts = _as_table(project["scripts"])
     assert scripts["ets2v2"] == "ets2v2.cli:main"
@@ -130,7 +145,15 @@ def test_uv_lock_contains_verified_packages() -> None:
         if isinstance(name, str):
             package_names.add(name)
 
-    expected = {"pydantic", "basedpyright", "pytest", "pytest-cov", "ruff"}
+    expected = {
+        "pydantic",
+        "tzdata",
+        "pillow",
+        "basedpyright",
+        "pytest",
+        "pytest-cov",
+        "ruff",
+    }
     assert expected <= package_names
 
 
@@ -166,3 +189,13 @@ def test_pydantic_distribution_metadata() -> None:
     major = int(parts[0])
     minor = int(parts[1])
     assert (major, minor) >= (2, 14)
+
+
+def test_phase2_runtime_distribution_metadata() -> None:
+    tzdata_version = importlib.metadata.version("tzdata")
+    tz_parts = [int(p) for p in tzdata_version.split(".")[:2]]
+    assert tuple(tz_parts) >= (2025, 2)
+
+    pillow_version = importlib.metadata.version("pillow")
+    pil_major = int(pillow_version.split(".")[0])
+    assert 12 <= pil_major < 14

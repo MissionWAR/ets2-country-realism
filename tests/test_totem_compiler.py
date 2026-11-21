@@ -224,6 +224,12 @@ def test_compile_totem_payloads_round_trips_all_460_boards_and_43_locales() -> N
     assert len(parsed_keys) == len(set(parsed_keys))
     parsed_token_map = {entry.key: entry.val for entry in parsed_entries}
     assert parsed_token_map == compiled.token_values
+    assert len(parsed_token_map) == 164
+    assert "<sup>" in parsed_token_map["fp_de_diesel_ets2v2"]
+    assert "<sup>" not in parsed_token_map["fp_de_diesel_3_ets2v2"]
+    assert "<sup>" not in parsed_token_map["fp_de_diesel_c_ets2v2"]
+    assert float(parsed_token_map["fp_gb_diesel_ets2v2"]) > 50.0  # UK pence/L
+    assert parsed_token_map["fp_is_diesel_ets2v2"].isdigit()  # Integer ISK
 
     for key, val in parsed_token_map.items():
         assert _TOKEN_KEY_RE.fullmatch(key) is not None, key

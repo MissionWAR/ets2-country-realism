@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Mapping
-from decimal import ROUND_HALF_UP, Decimal
 from typing import Final, Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -13,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from ets2v2.baseline.models import FuelBoardEntry, FuelBoardsBaseline, LocalesBaseline
 from ets2v2.normalize.models import CountryFuelLockEntry, PricesLockfile
 from ets2v2.normalize.totem_catalog import TotemBoardClassification, classify_all_fuel_boards
+from ets2v2.normalize.totem_format import resolve_totem_token_and_value
 from ets2v2.package.synthesize import format_sii_string
 from ets2v2.sii.hygiene import serialize_sii_text, validate_sii_hygiene
 
@@ -25,7 +25,6 @@ _UNIT_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\.?[a-z0-9_]+(\.[a-z0-9_]+
 _LOCALE_CODE_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z]{2}_[a-z]{2}$")
 _VALID_HALIGN: Final[frozenset[str]] = frozenset({"left", "center", "right"})
 _VALID_VALIGN: Final[frozenset[str]] = frozenset({"top", "center", "bottom"})
-_TWO_DECIMALS: Final[Decimal] = Decimal("0.01")
 
 
 class TotemTokenResolver(Protocol):
@@ -83,27 +82,6 @@ def _assert_hygiene(raw: bytes, *, label: str) -> None:
     if diagnostics:
         summary = "; ".join(f"{d.code}@{d.line}:{d.column}: {d.message}" for d in diagnostics)
         raise ValueError(f"Synthesized SII hygiene failure for {label}: {summary}")
-
-
-def _default_totem_token_resolver(
-    board: FuelBoardEntry,
-    classification: TotemBoardClassification,
-    entry: CountryFuelLockEntry,
-) -> tuple[str, str]:
-    """Default 03-03 dot-decimal ROUND_HALF_UP resolver (overridden by 03-04 SDF formatter)."""
-    _ = board
-    price = entry.local_prices.get(classification.grade)
-    if price is None:
-        raise ValueError(
-            f"Missing canonical grade {classification.grade!r} for {classification.iso2} "
-            f"in prices.lock.json"
-        )
-    if not math.isfinite(price) or price <= 0.0:
-        raise ValueError(
-            f"Invalid local price {price!r} for {classification.iso2}/{classification.grade}"
-        )
-    quantized = Decimal(str(price)).quantize(_TWO_DECIMALS, rounding=ROUND_HALF_UP)
-    return (f"{classification.token_base}_ets2v2", f"{quantized:.2f}")
 
 
 def synthesize_sign_board_sii(board: FuelBoardEntry, token_key: str) -> bytes:
@@ -234,7 +212,7 @@ def compile_totem_payloads(
 ) -> CompiledTotems:
     """Compile all identifiable fuel boards and synchronized active locale modules offline."""
     active_resolver: TotemTokenResolver = (
-        resolver if resolver is not None else _default_totem_token_resolver
+        resolver if resolver is not None else resolve_totem_token_and_value
     )
 
     classifications = classify_all_fuel_boards(fuel_boards)

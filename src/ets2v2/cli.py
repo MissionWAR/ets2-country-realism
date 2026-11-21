@@ -21,6 +21,7 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
+from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, run_fx_only_fetch
 from ets2v2.package import (
     DEFAULT_AUTHOR,
     build_core_editions,
@@ -476,6 +477,47 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_fetch(args: argparse.Namespace) -> int:
+    lock_path = cast(Path, args.lock_path)
+    fx_only = cast(bool, args.fx_only)
+    timeout = cast(float, args.timeout)
+    dry_run = cast(bool, args.dry_run)
+    as_json = cast(bool, args.json)
+
+    if not fx_only:
+        print(
+            "error: full fuel fetch pipeline is not yet enabled; pass --fx-only",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        report = run_fx_only_fetch(
+            lock_path=lock_path,
+            timeout=timeout,
+            write_lock=not dry_run,
+        )
+    except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
+        print(f"error: FX fetch failed: {exc}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = report.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0 if report.ok else 1
+
+    status_label = "OK" if report.ok else "FAILED"
+    mode_label = "dry-run" if report.dry_run else f"lock={report.lock_path}"
+    print(
+        f"FX fetch {status_label} ({mode_label}): "
+        f"{report.fx_currencies_validated} currencies validated, "
+        f"{len(report.alerts)} alerts."
+    )
+    for alert in report.alerts:
+        print(f"  {alert.severity.upper()} {alert.code} [{alert.scope}]: {alert.detail}")
+    return 0 if report.ok else 1
+
+
 def _make_help_handler(subparser: argparse.ArgumentParser) -> CommandHandler:
     def _show_help(_args: argparse.Namespace) -> int:
         subparser.print_help()
@@ -898,6 +940,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print PhaseAReleaseSummary as JSON.",
     )
     publish_release.set_defaults(handler=_handle_publish_release)
+
+    fetch_parser = subparsers.add_parser(
+        "fetch",
+        help="Fetch live European FX rates and open fuel data into state/prices.lock.json.",
+    )
+    fetch_parser.add_argument(
+        "--lock-path",
+        type=Path,
+        default=Path("state/prices.lock.json"),
+        help="Path to the prices.lock.json state file (default: state/prices.lock.json).",
+    )
+    fetch_parser.add_argument(
+        "--fx-only",
+        action="store_true",
+        help="Fetch and cross-validate multi-provider FX rates only.",
+    )
+    fetch_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help=f"Per-request HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS}).",
+    )
+    fetch_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate fetched data without modifying --lock-path on disk.",
+    )
+    fetch_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print FetchRunReport as JSON.",
+    )
+    fetch_parser.set_defaults(handler=_handle_fetch)
 
     return parser
 

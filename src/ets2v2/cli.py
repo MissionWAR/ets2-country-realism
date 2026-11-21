@@ -316,6 +316,7 @@ def _handle_package_build(args: argparse.Namespace) -> int:
     mappings_path = cast(Path, args.mappings)
     baseline_dir = cast(Path, args.baseline_dir)
     icons_dir = cast(Path, args.icons_dir)
+    prices_lock_path = cast(Path, args.prices_lock)
     package_version = cast(str | None, args.package_version)
     author = cast(str, args.author)
     raw_date = cast(str | None, args.date)
@@ -343,6 +344,7 @@ def _handle_package_build(args: argparse.Namespace) -> int:
             mappings_path=mappings_path,
             baseline_dir=baseline_dir,
             icons_dir=icons_dir,
+            prices_lock_path=prices_lock_path,
             package_version=package_version,
             author=author,
             anchor_year=anchor_year,
@@ -784,6 +786,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("assets/icons"),
         help="Directory containing checked-in summer.jpg and winter.jpg icons.",
+    )
+    package_build.add_argument(
+        "--prices-lock",
+        type=Path,
+        default=Path("state/prices.lock.json"),
+        help="Path to canonical state/prices.lock.json lockfile (default: state/prices.lock.json).",
     )
     package_build.add_argument(
         "--package-version",

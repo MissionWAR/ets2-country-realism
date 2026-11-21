@@ -15,9 +15,12 @@ from pydantic import BaseModel, ConfigDict
 from ets2v2.baseline.models import (
     BaselineManifest,
     CountriesBaseline,
+    FuelBoardsBaseline,
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
+from ets2v2.normalize.lockfile import load_prices_lockfile
+from ets2v2.normalize.models import PricesLockfile
 from ets2v2.package.metadata import (
     DEFAULT_AUTHOR,
     render_description_txt,
@@ -28,6 +31,7 @@ from ets2v2.package.synthesize import (
     synthesize_country_sui,
     synthesize_speed_limits_sii,
 )
+from ets2v2.package.totems import compile_totem_payloads
 from ets2v2.registry.loader import load_law_registry
 from ets2v2.registry.models import Season
 from ets2v2.registry.snapshot import build_realism_snapshot
@@ -111,6 +115,8 @@ def build_core_edition(
     mappings_path: Path = Path("data/mappings/ets2_countries.json"),
     baseline_dir: Path = Path("data/baselines/ets2_1.62_def"),
     icons_dir: Path = Path("assets/icons"),
+    prices_lock_path: Path = Path("state/prices.lock.json"),
+    prices_lock: PricesLockfile | None = None,
     package_version: str | None = None,
     author: str = DEFAULT_AUTHOR,
     anchor_year: int = DEFAULT_ANCHOR_YEAR,
@@ -129,8 +135,14 @@ def build_core_edition(
     bl_speeds = SpeedLimitsBaseline.model_validate_json(
         (baseline_dir / "speed_limits.json").read_text("utf-8")
     )
+    bl_fuel_boards = FuelBoardsBaseline.model_validate_json(
+        (baseline_dir / "fuel_boards.json").read_text("utf-8")
+    )
     bl_locales = LocalesBaseline.model_validate_json(
         (baseline_dir / "locales.json").read_text("utf-8")
+    )
+    resolved_lock = (
+        prices_lock if prices_lock is not None else load_prices_lockfile(prices_lock_path)
     )
 
     manifest_json_path = baseline_dir / "manifest.json"
@@ -159,6 +171,7 @@ def build_core_edition(
         anchor_year=anchor_year,
         override_date=override_date,
         baseline_game_version=game_version,
+        prices_lock=resolved_lock,
     )
 
     resolved_by_slug = {country.ets2_slug: country for country in snapshot.countries.values()}
@@ -183,6 +196,18 @@ def build_core_edition(
         speed_rel = _validate_rel_path(f"def/country/{slug}/speed_limits.sii")
         shared_payloads[sui_rel] = synthesize_country_sui(bl_country, resolved_country)
         shared_payloads[speed_rel] = synthesize_speed_limits_sii(bl_speed, resolved_country)
+
+    compiled_totems = compile_totem_payloads(bl_fuel_boards, bl_locales, resolved_lock)
+    for rel_path, payload in compiled_totems.board_files.items():
+        clean_rel = _validate_rel_path(rel_path)
+        if clean_rel in shared_payloads:
+            raise ValueError(f"Duplicate package payload path: {clean_rel!r}")
+        shared_payloads[clean_rel] = payload
+    for rel_path, payload in compiled_totems.locale_files.items():
+        clean_rel = _validate_rel_path(rel_path)
+        if clean_rel in shared_payloads:
+            raise ValueError(f"Duplicate package payload path: {clean_rel!r}")
+        shared_payloads[clean_rel] = payload
 
     # Target A: Workshop unpacked root (<out_dir>/workshop/<edition>/)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -245,6 +270,8 @@ def build_core_editions(
     mappings_path: Path = Path("data/mappings/ets2_countries.json"),
     baseline_dir: Path = Path("data/baselines/ets2_1.62_def"),
     icons_dir: Path = Path("assets/icons"),
+    prices_lock_path: Path = Path("state/prices.lock.json"),
+    prices_lock: PricesLockfile | None = None,
     package_version: str | None = None,
     package_versions: Mapping[Season, str] | None = None,
     author: str = DEFAULT_AUTHOR,
@@ -266,6 +293,8 @@ def build_core_editions(
             mappings_path=mappings_path,
             baseline_dir=baseline_dir,
             icons_dir=icons_dir,
+            prices_lock_path=prices_lock_path,
+            prices_lock=prices_lock,
             package_version=edition_version,
             author=author,
             anchor_year=anchor_year,

@@ -10,18 +10,22 @@ import pytest
 
 from ets2v2.baseline.models import (
     CountriesBaseline,
+    FuelBoardsBaseline,
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
 from ets2v2.package import BuiltEditionPaths, build_core_editions
 from ets2v2.sii.country import CountryDataModel, parse_country_data
 from ets2v2.sii.document import SiiDocument
+from ets2v2.sii.localization import LocalizationEntry, parse_localization_db
+from ets2v2.sii.sign_board import SignBoardTemplate, parse_sign_board
 from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
 from ets2v2.validate import (
     ValidationCollector,
     ValidationReport,
     validate_core_realism_invariants,
     validate_local_zip,
+    validate_totem_invariants,
     validate_workshop_package,
 )
 
@@ -374,3 +378,172 @@ def test_invariant_md05_lane_sequence_uncommon_and_max_limit_nullability(
     is_codes = _issue_codes(c_is.build_report("iceland_max", "workshop"))
     assert "ETS2V2-INV-SPEED-BLOCKS" in is_codes
     assert "ETS2V2-INV-ICELAND" in is_codes
+
+
+# ---------------------------------------------------------------------------
+# D-12: Totem Locale Sync & 460-Board Integrity Invariants
+# ---------------------------------------------------------------------------
+
+
+def _load_totems_from_workshop(
+    workshop_dir: pathlib.Path,
+) -> tuple[dict[str, SignBoardTemplate], dict[str, list[LocalizationEntry]]]:
+    board_dir = workshop_dir / "universal" / "def" / "sign" / "board"
+    boards = {p.stem: parse_sign_board(p.read_bytes()) for p in sorted(board_dir.glob("*.sii"))}
+    locale_root = workshop_dir / "universal" / "locale"
+    locales = {
+        p.parent.name: parse_localization_db(p.read_bytes())
+        for p in sorted(locale_root.glob("*/local_module.ets2v2_fuel.sii"))
+    }
+    return boards, locales
+
+
+def test_d12_locale_sync_fault_injections(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    bl_fuel_boards = FuelBoardsBaseline.model_validate_json(
+        (BASELINE_DIR / "fuel_boards.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+
+    # 1. Missing 1 of 43 active locales -> ETS2V2-INV-LOCALE-SYNC
+    ws_miss = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_miss_loc")
+    (ws_miss / "universal" / "locale" / "de_de" / "local_module.ets2v2_fuel.sii").unlink()
+    r_miss = validate_workshop_package(ws_miss, baseline_dir=BASELINE_DIR)
+    assert r_miss.ok is False
+    assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(r_miss)
+
+    # 2. Stray deprecated fr_qc locale -> ETS2V2-INV-LOCALE-SYNC
+    ws_frqc = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_fr_qc")
+    fr_qc_dir = ws_frqc / "universal" / "locale" / "fr_qc"
+    fr_qc_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        ws_frqc / "universal" / "locale" / "fr_ca" / "local_module.ets2v2_fuel.sii",
+        fr_qc_dir / "local_module.ets2v2_fuel.sii",
+    )
+    r_frqc = validate_workshop_package(ws_frqc, baseline_dir=BASELINE_DIR)
+    assert r_frqc.ok is False
+    assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(r_frqc)
+
+    # 3. Mismatched val[] in a single locale -> ETS2V2-INV-LOCALE-SYNC
+    ws_drift = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_loc_drift")
+    fr_loc = ws_drift / "universal" / "locale" / "fr_fr" / "local_module.ets2v2_fuel.sii"
+    fr_loc.write_bytes(fr_loc.read_bytes().replace(b'val[]: "1', b'val[]: "9', 1))
+    r_drift = validate_workshop_package(ws_drift, baseline_dir=BASELINE_DIR)
+    assert r_drift.ok is False
+    assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(r_drift)
+
+    # 4. Direct auditor checks: duplicate key, bad key name, comma decimal, currency symbol
+    boards, base_locales = _load_totems_from_workshop(built_editions["summer"].workshop_dir)
+
+    for bad_entry in (
+        LocalizationEntry(key=base_locales["en_gb"][0].key, val=base_locales["en_gb"][0].val),
+        LocalizationEntry(key="fp_de_diesel_missing_suffix", val="1.79"),
+        LocalizationEntry(key="fp_de_extra_ets2v2", val="1,78"),
+        LocalizationEntry(key="fp_de_extra_ets2v2", val="1.78€"),
+    ):
+        mut_locales = {lang: [*entries, bad_entry] for lang, entries in base_locales.items()}
+        col = ValidationCollector()
+        validate_totem_invariants(boards, mut_locales, bl_fuel_boards, bl_locales, col)
+        rep = col.build_report("bad_locale_entry", "workshop")
+        assert rep.ok is False
+        assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(rep), bad_entry
+
+
+def test_d12_totem_boards_fault_injections(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    bl_fuel_boards = FuelBoardsBaseline.model_validate_json(
+        (BASELINE_DIR / "fuel_boards.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+
+    # 1. Dangling token in def/sign/board/gas_de_big_diesel.sii -> ETS2V2-INV-TOTEM-BOARDS
+    ws_dang = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_dangling")
+    de_big = ws_dang / "universal" / "def" / "sign" / "board" / "gas_de_big_diesel.sii"
+    de_big.write_bytes(
+        de_big.read_bytes().replace(b"@@fp_de_diesel_ets2v2@@", b"@@fp_xx_missing_ets2v2@@")
+    )
+    r_dang = validate_workshop_package(ws_dang, baseline_dir=BASELINE_DIR)
+    assert r_dang.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_dang)
+
+    # 2. Orphan unused key in local_module.ets2v2_fuel.sii -> ETS2V2-INV-TOTEM-BOARDS
+    boards, base_locales = _load_totems_from_workshop(built_editions["summer"].workshop_dir)
+    orphan_entry = LocalizationEntry(key="fp_zz_unused_ets2v2", val="1.99")
+    orphan_locales = {
+        lang: sorted([*entries, orphan_entry], key=lambda e: e.key)
+        for lang, entries in base_locales.items()
+    }
+    col_orphan = ValidationCollector()
+    validate_totem_invariants(boards, orphan_locales, bl_fuel_boards, bl_locales, col_orphan)
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(
+        col_orphan.build_report("orphan_token", "workshop")
+    )
+
+    # 3. Emitted gas_empty.sii and emitted highway sign fi_oulu_95.sii -> ETS2V2-INV-TOTEM-BOARDS
+    ws_empty = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_empty")
+    sample_raw = (
+        ws_empty / "universal" / "def" / "sign" / "board" / "gas_de_big_diesel.sii"
+    ).read_bytes()
+    (ws_empty / "universal" / "def" / "sign" / "board" / "gas_empty.sii").write_bytes(sample_raw)
+    r_empty = validate_workshop_package(ws_empty, baseline_dir=BASELINE_DIR)
+    assert r_empty.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_empty)
+
+    ws_hw = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_highway")
+    (ws_hw / "universal" / "def" / "sign" / "board" / "fi_oulu_95.sii").write_bytes(sample_raw)
+    r_hw = validate_workshop_package(ws_hw, baseline_dir=BASELINE_DIR)
+    assert r_hw.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_hw)
+
+    # 4. Mutated visual/geometry attributes (font_color, font_face, coords_r, width)
+    ws_attr = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_attr")
+    board_file = ws_attr / "universal" / "def" / "sign" / "board" / "gas_de_big_diesel.sii"
+    orig_board_raw = board_file.read_bytes()
+    for target_bytes, repl_bytes in (
+        (b"font_color: 200", b"font_color: 16777215"),
+        (
+            b'font_face: "/font/sign/gas_roadgeek_2005_mittelschrift.font"',
+            b'font_face: "/font/sign/gas_karnivore_lite.font"',
+        ),
+        (b"coords_r: 1.262711883", b"coords_r: 2.5"),
+        (b"width: 1.5", b"width: 2.0"),
+    ):
+        assert target_bytes in orig_board_raw, f"Expected {target_bytes!r} in gas_de_big_diesel.sii"
+        board_file.write_bytes(orig_board_raw.replace(target_bytes, repl_bytes, 1))
+        r_attr = validate_workshop_package(ws_attr, baseline_dir=BASELINE_DIR)
+        assert r_attr.ok is False
+        assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_attr), target_bytes
+    board_file.write_bytes(orig_board_raw)
+
+    # 5. Swapped D-09 gas_is_yokull_95 token -> ETS2V2-INV-TOTEM-BOARDS
+    ws_swap = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_swap")
+    yokull = ws_swap / "universal" / "def" / "sign" / "board" / "gas_is_yokull_95.sii"
+    yokull.write_bytes(
+        yokull.read_bytes().replace(b"@@fp_is_petrol_95_ets2v2@@", b"@@fp_is_diesel_ets2v2@@")
+    )
+    r_swap = validate_workshop_package(ws_swap, baseline_dir=BASELINE_DIR)
+    assert r_swap.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_swap)
+
+    # 6. Local ZIP board corruption triggers ETS2V2-INV-TOTEM-BOARDS
+    bad_zip = tmp_path / "bad_totem.zip"
+    with (
+        zipfile.ZipFile(built_editions["summer"].local_zip_path, "r") as zin,
+        zipfile.ZipFile(bad_zip, "w", compression=zipfile.ZIP_DEFLATED) as zout,
+    ):
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename == "def/sign/board/gas_is_yokull_95.sii":
+                data = data.replace(b"@@fp_is_petrol_95_ets2v2@@", b"@@fp_is_diesel_ets2v2@@")
+            zout.writestr(info, data)
+    r_zip = validate_local_zip(bad_zip, baseline_dir=BASELINE_DIR)
+    assert r_zip.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_zip)

@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from ets2v2.baseline.models import (
     CountriesBaseline,
+    FuelBoardsBaseline,
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
@@ -25,8 +26,14 @@ from ets2v2.sii.hygiene import (
     validate_unit_name_segments,
 )
 from ets2v2.sii.lexer import parse_sii_bool, unquote_sii_string
+from ets2v2.sii.localization import LocalizationEntry, parse_localization_db
+from ets2v2.sii.sign_board import SignBoardTemplate, parse_sign_board
 from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
-from ets2v2.validate.invariants import validate_core_realism_invariants
+from ets2v2.validate.invariants import (
+    validate_core_realism_invariants,
+    validate_fuel_locale_modules_consistency,
+    validate_totem_invariants,
+)
 from ets2v2.validate.models import ValidationCollector, ValidationReport
 from ets2v2.vfs.dir_archive import DirectoryArchive
 from ets2v2.vfs.types import (
@@ -73,14 +80,13 @@ ALLOWED_MANIFEST_ATTRS: Final[frozenset[str]] = frozenset(
         "mp_mod_optional",
     }
 )
+FORBIDDEN_TOTEM_EXTENSIONS: Final[frozenset[str]] = frozenset({".dds", ".tobj"})
 ALLOWED_SCS_ASSET_EXTENSIONS: Final[frozenset[str]] = frozenset(
     {
         ".sii",
         ".sui",
         ".txt",
         ".jpg",
-        ".dds",
-        ".tobj",
         ".mat",
         ".pmd",
         ".pmg",
@@ -169,6 +175,10 @@ _COUNTRY_SUI_RE: Final[re.Pattern[str]] = re.compile(r"^def/country/([a-z0-9_]+)
 _SPEED_LIMITS_RE: Final[re.Pattern[str]] = re.compile(
     r"^def/country/([a-z0-9_]+)/speed_limits\.sii$"
 )
+_SIGN_BOARD_RE: Final[re.Pattern[str]] = re.compile(r"^def/sign/board/([a-z0-9_]+)\.sii$")
+_FUEL_LOCALE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^locale/([^/]+)/local_module\.ets2v2_fuel\.sii$"
+)
 _LOCALE_CODE_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z]{2}_[a-z]{2}$")
 _WINDOWS_DRIVE_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z]:")
 _REQUIRED_VEHICLE_CLASSES: Final[frozenset[str]] = frozenset({"car", "truck", "bus"})
@@ -176,9 +186,14 @@ _REQUIRED_VEHICLE_CLASSES: Final[frozenset[str]] = frozenset({"car", "truck", "b
 
 def _load_optional_baselines(
     baseline_dir: Path | None,
-) -> tuple[CountriesBaseline | None, SpeedLimitsBaseline | None, LocalesBaseline | None]:
+) -> tuple[
+    CountriesBaseline | None,
+    SpeedLimitsBaseline | None,
+    LocalesBaseline | None,
+    FuelBoardsBaseline | None,
+]:
     if baseline_dir is None:
-        return None, None, None
+        return None, None, None, None
     bl_countries = CountriesBaseline.model_validate_json(
         (baseline_dir / "countries.json").read_text("utf-8")
     )
@@ -188,7 +203,10 @@ def _load_optional_baselines(
     bl_locales = LocalesBaseline.model_validate_json(
         (baseline_dir / "locales.json").read_text("utf-8")
     )
-    return bl_countries, bl_speeds, bl_locales
+    bl_fuel_boards = FuelBoardsBaseline.model_validate_json(
+        (baseline_dir / "fuel_boards.json").read_text("utf-8")
+    )
+    return bl_countries, bl_speeds, bl_locales, bl_fuel_boards
 
 
 def _has_unsafe_raw_path(raw_path: str) -> str | None:
@@ -892,7 +910,12 @@ def _validate_package_contents(
     expected_slugs: frozenset[str],
     valid_locales: frozenset[str] | None,
     collector: ValidationCollector,
-) -> tuple[dict[str, CountryDataModel], dict[str, SpeedLimitsFile]]:
+) -> tuple[
+    dict[str, CountryDataModel],
+    dict[str, SpeedLimitsFile],
+    dict[str, SignBoardTemplate],
+    dict[str, list[LocalizationEntry]],
+]:
     """Audit all files inside a mounted package archive against SCS 00001-00010 & WARN rules."""
     rel_prefix = f"{prefix}/" if prefix else ""
 
@@ -908,6 +931,8 @@ def _validate_package_contents(
 
     country_models: dict[str, CountryDataModel] = {}
     speed_models: dict[str, SpeedLimitsFile] = {}
+    sign_boards: dict[str, SignBoardTemplate] = {}
+    fuel_locales: dict[str, list[LocalizationEntry]] = {}
 
     for vfs_path in archive.list_paths():
         display_path = _p(vfs_path)
@@ -917,6 +942,14 @@ def _validate_package_contents(
             continue
 
         suffix = Path(vfs_path).suffix.lower()
+
+        if suffix in FORBIDDEN_TOTEM_EXTENSIONS:
+            collector.error(
+                "ETS2V2-INV-ZERO-DDS",
+                display_path,
+                f"Zero-DDS policy forbids {suffix!r} texture/object assets in Core packages",
+            )
+            continue
 
         if suffix == ".scs":
             raw_scs = _read_archive_entry(archive, vfs_path, display_path, collector)
@@ -1035,6 +1068,36 @@ def _validate_package_contents(
                     speed_models[slug] = speed_model
                 continue
 
+            board_match = _SIGN_BOARD_RE.fullmatch(vfs_path)
+            if board_match is not None:
+                board_name = board_match.group(1)
+                try:
+                    board_model = parse_sign_board(raw)
+                except (SiiEncodingError, ValueError, ValidationError) as exc:
+                    collector.error(
+                        "00008",
+                        display_path,
+                        f"Unable to load sign_board_template: {exc}",
+                    )
+                else:
+                    sign_boards[board_name] = board_model
+                continue
+
+            fuel_loc_match = _FUEL_LOCALE_RE.fullmatch(vfs_path)
+            if fuel_loc_match is not None:
+                locale_code = fuel_loc_match.group(1)
+                try:
+                    loc_entries = parse_localization_db(raw)
+                except (SiiEncodingError, ValueError, ValidationError) as exc:
+                    collector.error(
+                        "00008",
+                        display_path,
+                        f"Unable to load fuel localization_db: {exc}",
+                    )
+                else:
+                    fuel_locales[locale_code] = loc_entries
+                continue
+
     # Check all expected 36 country .sui and speed_limits.sii files exist (SCS 00002)
     for slug in sorted(expected_slugs):
         sui_path = f"def/country/{slug}.sui"
@@ -1053,7 +1116,7 @@ def _validate_package_contents(
             )
 
     _map_archive_diagnostics(archive, prefix=prefix, collector=collector)
-    return country_models, speed_models
+    return country_models, speed_models, sign_boards, fuel_locales
 
 
 def validate_workshop_package(
@@ -1063,7 +1126,7 @@ def validate_workshop_package(
 ) -> ValidationReport:
     """Validate an unpacked Steam Workshop directory root against SCS rules and invariants."""
     collector = ValidationCollector()
-    bl_countries, bl_speeds, bl_locales = _load_optional_baselines(baseline_dir)
+    bl_countries, bl_speeds, bl_locales, bl_fuel_boards = _load_optional_baselines(baseline_dir)
     expected_slugs = (
         frozenset(c.slug for c in bl_countries.countries)
         if bl_countries is not None
@@ -1226,13 +1289,15 @@ def validate_workshop_package(
                 collector.error("00008", pkg_name, f"Unable to open {pkg_name}/: {exc}")
                 continue
             with archive_dir:
-                country_models, speed_models = _validate_package_contents(
-                    archive_dir,
-                    prefix=pkg_name,
-                    workshop_mode=True,
-                    expected_slugs=expected_slugs,
-                    valid_locales=valid_locales,
-                    collector=collector,
+                country_models, speed_models, sign_boards, fuel_locales = (
+                    _validate_package_contents(
+                        archive_dir,
+                        prefix=pkg_name,
+                        workshop_mode=True,
+                        expected_slugs=expected_slugs,
+                        valid_locales=valid_locales,
+                        collector=collector,
+                    )
                 )
             if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
                 validate_core_realism_invariants(
@@ -1241,6 +1306,21 @@ def validate_workshop_package(
                     bl_countries,
                     bl_speeds,
                     bl_locales,
+                    collector,
+                    path_prefix=pkg_name,
+                )
+            if bl_fuel_boards is not None and bl_locales is not None:
+                validate_totem_invariants(
+                    sign_boards,
+                    fuel_locales,
+                    bl_fuel_boards,
+                    bl_locales,
+                    collector,
+                    path_prefix=pkg_name,
+                )
+            elif fuel_locales:
+                validate_fuel_locale_modules_consistency(
+                    fuel_locales,
                     collector,
                     path_prefix=pkg_name,
                 )
@@ -1279,13 +1359,15 @@ def validate_workshop_package(
                     )
                     continue
                 with archive_zip:
-                    country_models, speed_models = _validate_package_contents(
-                        archive_zip,
-                        prefix=f"{pkg_name}.zip",
-                        workshop_mode=True,
-                        expected_slugs=expected_slugs,
-                        valid_locales=valid_locales,
-                        collector=collector,
+                    country_models, speed_models, sign_boards, fuel_locales = (
+                        _validate_package_contents(
+                            archive_zip,
+                            prefix=f"{pkg_name}.zip",
+                            workshop_mode=True,
+                            expected_slugs=expected_slugs,
+                            valid_locales=valid_locales,
+                            collector=collector,
+                        )
                     )
                 if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
                     validate_core_realism_invariants(
@@ -1294,6 +1376,21 @@ def validate_workshop_package(
                         bl_countries,
                         bl_speeds,
                         bl_locales,
+                        collector,
+                        path_prefix=f"{pkg_name}.zip",
+                    )
+                if bl_fuel_boards is not None and bl_locales is not None:
+                    validate_totem_invariants(
+                        sign_boards,
+                        fuel_locales,
+                        bl_fuel_boards,
+                        bl_locales,
+                        collector,
+                        path_prefix=f"{pkg_name}.zip",
+                    )
+                elif fuel_locales:
+                    validate_fuel_locale_modules_consistency(
+                        fuel_locales,
                         collector,
                         path_prefix=f"{pkg_name}.zip",
                     )
@@ -1314,6 +1411,12 @@ def validate_workshop_package(
                 entry.name,
                 f"Extraneous root entry {entry.name!r} not allowed in Workshop root",
             )
+            if entry.is_file() and entry.suffix.lower() in FORBIDDEN_TOTEM_EXTENSIONS:
+                collector.error(
+                    "ETS2V2-INV-ZERO-DDS",
+                    entry.name,
+                    f"Zero-DDS policy forbids {entry.suffix.lower()!r} assets at Workshop root",
+                )
             if entry.is_file() and entry.suffix.lower() == ".scs":
                 try:
                     with entry.open("rb") as fh:
@@ -1339,7 +1442,7 @@ def validate_local_zip(
 ) -> ValidationReport:
     """Validate a standalone local playtest ``.zip`` package against SCS rules and invariants."""
     collector = ValidationCollector()
-    bl_countries, bl_speeds, bl_locales = _load_optional_baselines(baseline_dir)
+    bl_countries, bl_speeds, bl_locales, bl_fuel_boards = _load_optional_baselines(baseline_dir)
     expected_slugs = (
         frozenset(c.slug for c in bl_countries.countries)
         if bl_countries is not None
@@ -1364,7 +1467,7 @@ def validate_local_zip(
         return collector.build_report(zip_path, "local_zip")
 
     with archive:
-        country_models, speed_models = _validate_package_contents(
+        country_models, speed_models, sign_boards, fuel_locales = _validate_package_contents(
             archive,
             prefix="",
             workshop_mode=False,
@@ -1382,5 +1485,15 @@ def validate_local_zip(
             bl_locales,
             collector,
         )
+    if bl_fuel_boards is not None and bl_locales is not None:
+        validate_totem_invariants(
+            sign_boards,
+            fuel_locales,
+            bl_fuel_boards,
+            bl_locales,
+            collector,
+        )
+    elif fuel_locales:
+        validate_fuel_locale_modules_consistency(fuel_locales, collector)
 
     return collector.build_report(zip_path, "local_zip")

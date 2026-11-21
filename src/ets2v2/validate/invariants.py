@@ -11,20 +11,40 @@ from ets2v2.baseline.models import (
     BaselineCountry,
     BaselineSpeedLimit,
     CountriesBaseline,
+    FuelBoardEntry,
+    FuelBoardsBaseline,
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
 from ets2v2.sii.country import CountryDataModel
+from ets2v2.sii.localization import LocalizationEntry
+from ets2v2.sii.sign_board import SignBoardTemplate
 from ets2v2.sii.speed_limits import SpeedLimitsFile
 from ets2v2.validate.models import ValidationCollector
 
 _TZ_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"@@([^@]+)@@")
 _NUMERIC_TZ_RE: Final[re.Pattern[str]] = re.compile(r"^[+-]\d{2}(?::?\d{2})?$")
+_TOTEM_TOKEN_KEY_RE: Final[re.Pattern[str]] = re.compile(r"^fp_[a-z]{2}_[a-z0-9_]+_ets2v2$")
+_TOTEM_VALUE_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9]+(?:\.[0-9]+)?(?:<sup>[0-9]</sup>)?$")
 _ICELAND_AXLES: Final[list[int]] = [18000, 29000, 38000, 46000, 60000]
 _ICELAND_HEAVY_TRUCK_LIMIT: Final[int] = 80
 _REQUIRED_ROAD_CLASSES: Final[tuple[str, ...]] = ("car", "truck", "bus")
 _RAIL_CLASSES: Final[tuple[str, ...]] = ("train", "tram")
 _FLOAT_TOL: Final[float] = 1e-5
+_D09_EXACT_BOARD_TOKEN_BASES: Final[dict[str, str]] = {
+    "gas_is_ip1_98": "fp_is_petrol_98",
+    "gas_is_yokull_95": "fp_is_petrol_95",
+    "gas_is_yokull_diesel": "fp_is_diesel",
+    "gas_ba_apus_lpg": "fp_ba_lpg",
+    "gas_ba_bts_lpg": "fp_ba_lpg",
+    "gas_dk_92": "fp_dk_petrol_92",
+}
+
+
+def _float_close(a: float | None, b: float | None) -> bool:
+    if a is None or b is None:
+        return a is b
+    return math.isclose(a, b, rel_tol=_FLOAT_TOL, abs_tol=_FLOAT_TOL)
 
 
 def _tuple_close(a: Sequence[float], b: Sequence[float]) -> bool:
@@ -408,3 +428,343 @@ def validate_core_realism_invariants(
             spd_path,
             collector,
         )
+
+
+def _token_matches_base(token: str, token_base: str) -> bool:
+    return token in {
+        f"{token_base}_ets2v2",
+        f"{token_base}_3_ets2v2",
+        f"{token_base}_c_ets2v2",
+    }
+
+
+def _check_single_totem_board(
+    board_name: str,
+    candidate: SignBoardTemplate,
+    baseline: FuelBoardEntry,
+    canonical_tokens: frozenset[str],
+    board_path: str,
+    collector: ValidationCollector,
+) -> str | None:
+    if not candidate.is_single_text_fuel_candidate or len(candidate.text_slots) != 1:
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"Board {board_name!r} is not a single-text empty-model fuel totem "
+            f"(model_name={candidate.model_name!r}, items_count={candidate.items_count}, "
+            f"slots={len(candidate.text_slots)})",
+        )
+        return None
+
+    if candidate.unit_name != baseline.unit_name:
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"unit_name mismatch on {board_name!r}: got {candidate.unit_name!r}, "
+            f"expected {baseline.unit_name!r}",
+        )
+    if candidate.board_name != baseline.template_board_name:
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"board_name mismatch on {board_name!r}: got {candidate.board_name!r}, "
+            f"expected {baseline.template_board_name!r}",
+        )
+    if not _float_close(candidate.width, baseline.width):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"width mismatch on {board_name!r}: got {candidate.width!r}, "
+            f"expected {baseline.width!r}",
+        )
+    if not _float_close(candidate.height, baseline.height):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"height mismatch on {board_name!r}: got {candidate.height!r}, "
+            f"expected {baseline.height!r}",
+        )
+    if candidate.dynamic_attributes != baseline.dynamic_attributes:
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"dynamic_attributes mismatch on {board_name!r}: got {candidate.dynamic_attributes!r}, "
+            f"expected {baseline.dynamic_attributes!r}",
+        )
+
+    slot = candidate.text_slots[0]
+    base_slot = baseline.slot
+
+    discrete_checks: tuple[tuple[str, object, object], ...] = (
+        ("slot.unit_name", slot.unit_name, base_slot.unit_name),
+        ("font_face", slot.font_face, base_slot.font_face),
+        ("text_halign", slot.text_halign, base_slot.text_halign),
+        ("text_valign", slot.text_valign, base_slot.text_valign),
+        ("font_color", slot.font_color, base_slot.font_color),
+        ("id", slot.text_id, base_slot.text_id),
+        ("area_name", slot.area_name, base_slot.area_name),
+        ("area_idx", slot.area_idx, base_slot.area_idx),
+        ("z_order", slot.z_order, base_slot.z_order),
+        ("tag", slot.tag, base_slot.tag),
+    )
+    for attr_name, actual_val, expected_val in discrete_checks:
+        if actual_val != expected_val:
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                board_path,
+                f"{attr_name} drifted on {board_name!r}: got {actual_val!r}, "
+                f"expected {expected_val!r}",
+            )
+
+    float_checks: tuple[tuple[str, float | None, float | None], ...] = (
+        ("font_size", slot.font_size, base_slot.font_size),
+        ("font_opacity", slot.font_opacity, base_slot.font_opacity),
+        ("line_spacing", slot.line_spacing, base_slot.line_spacing),
+        ("letter_spacing", slot.letter_spacing, base_slot.letter_spacing),
+        ("coords_l", slot.coords_l, base_slot.coords_l),
+        ("coords_r", slot.coords_r, base_slot.coords_r),
+        ("coords_t", slot.coords_t, base_slot.coords_t),
+        ("coords_b", slot.coords_b, base_slot.coords_b),
+    )
+    for attr_name, actual_f, expected_f in float_checks:
+        if not _float_close(actual_f, expected_f):
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                board_path,
+                f"{attr_name} drifted on {board_name!r}: got {actual_f!r}, expected {expected_f!r}",
+            )
+
+    if slot.font_opacity is None or not math.isclose(slot.font_opacity, 1.0, abs_tol=_FLOAT_TOL):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"font_opacity on identifiable board {board_name!r} must be 1.0, "
+            f"got {slot.font_opacity!r}",
+        )
+
+    token = slot.localization_key
+    if token is None or _TOTEM_TOKEN_KEY_RE.fullmatch(token) is None or slot.text != f"@@{token}@@":
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"Invalid totem localization reference {slot.text!r} on {board_name!r}; "
+            "expected @@fp_<cc>_<grade>[_<variant>]_ets2v2@@",
+        )
+        return None
+
+    if canonical_tokens and token not in canonical_tokens:
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"Dangling totem token {token!r} on {board_name!r} missing from "
+            "local_module.ets2v2_fuel.sii",
+        )
+
+    # Explicit D-09 regression checks
+    expected_base = _D09_EXACT_BOARD_TOKEN_BASES.get(board_name)
+    if expected_base is not None and not _token_matches_base(token, expected_base):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"D-09 mapping regression on {board_name!r}: got {token!r}, "
+            f"expected base {expected_base!r}",
+        )
+    if board_name.startswith("gas_ie_") and not token.startswith("fp_ie_"):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"D-09 Irish board {board_name!r} must map to fp_ie_*, got {token!r}",
+        )
+    if board_name.startswith("gas_bi_") and not token.startswith("fp_gb_"):
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            board_path,
+            f"D-09 British Isles board {board_name!r} must map to fp_gb_*, got {token!r}",
+        )
+
+    return token
+
+
+def validate_fuel_locale_modules_consistency(
+    fuel_locales: Mapping[str, Sequence[LocalizationEntry]],
+    collector: ValidationCollector,
+    *,
+    expected_locales: frozenset[str] | None = None,
+    path_prefix: str = "",
+) -> frozenset[str]:
+    """Validate D-12 fuel locale module parity, key/value hygiene, and fr_qc exclusion."""
+    rel_prefix = f"{path_prefix}/" if path_prefix else ""
+
+    if "fr_qc" in fuel_locales:
+        collector.error(
+            "ETS2V2-INV-LOCALE-SYNC",
+            f"{rel_prefix}locale/fr_qc/local_module.ets2v2_fuel.sii",
+            "Deprecated locale 'fr_qc' must not be emitted (D-09 / D-12)",
+        )
+
+    if expected_locales is not None:
+        actual_locales = frozenset(fuel_locales)
+        if actual_locales != expected_locales:
+            missing = sorted(expected_locales - actual_locales)
+            extra = sorted(actual_locales - expected_locales)
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                f"{rel_prefix}locale",
+                f"Expected exact {len(expected_locales)} active fuel locale modules "
+                f"(missing={missing}, extra={extra})",
+            )
+
+    reference_lang: str | None = None
+    reference_pairs: list[tuple[str, str]] | None = None
+    canonical_tokens: frozenset[str] = frozenset()
+
+    for lang in sorted(fuel_locales):
+        loc_path = f"{rel_prefix}locale/{lang}/local_module.ets2v2_fuel.sii"
+        entries = list(fuel_locales[lang])
+        if not entries:
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                loc_path,
+                f"Fuel locale module for {lang!r} has zero key/val entries",
+            )
+            continue
+
+        keys = [entry.key for entry in entries]
+        if len(keys) != len(set(keys)):
+            seen: set[str] = set()
+            dup_set: set[str] = set()
+            for k in keys:
+                if k in seen:
+                    dup_set.add(k)
+                else:
+                    seen.add(k)
+            dups = sorted(dup_set)
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                loc_path,
+                f"Duplicate localization keys in {lang!r}: {dups}",
+            )
+
+        if keys != sorted(keys):
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                loc_path,
+                f"Localization keys in {lang!r} are not strictly sorted",
+            )
+
+        for entry in entries:
+            if _TOTEM_TOKEN_KEY_RE.fullmatch(entry.key) is None:
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"Invalid fuel localization key {entry.key!r}; "
+                    "expected ^fp_[a-z]{2}_[a-z0-9_]+_ets2v2$",
+                )
+            if not entry.val or _TOTEM_VALUE_RE.fullmatch(entry.val) is None:
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"Invalid fuel localization value {entry.val!r} for key {entry.key!r}; "
+                    "only digits, uniform '.', and optional <sup>[0-9]</sup> allowed",
+                )
+
+        pairs = [(entry.key, entry.val) for entry in entries]
+        if reference_pairs is None:
+            reference_lang = lang
+            reference_pairs = pairs
+            canonical_tokens = frozenset(keys)
+        elif pairs != reference_pairs:
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                loc_path,
+                f"Locale {lang!r} fuel entries diverge from reference locale {reference_lang!r}",
+            )
+
+    return canonical_tokens
+
+
+def validate_totem_invariants(
+    sign_boards: Mapping[str, SignBoardTemplate],
+    fuel_locales: Mapping[str, Sequence[LocalizationEntry]],
+    baseline_fuel_boards: FuelBoardsBaseline,
+    baseline_locales: LocalesBaseline,
+    collector: ValidationCollector,
+    *,
+    path_prefix: str = "",
+) -> None:
+    """Audit emitted Option 4b fuel totem boards and 43 locale modules against D-12 invariants."""
+    rel_prefix = f"{path_prefix}/" if path_prefix else ""
+    expected_locales = frozenset(baseline_locales.active_locales)
+
+    canonical_tokens = validate_fuel_locale_modules_consistency(
+        fuel_locales,
+        collector,
+        expected_locales=expected_locales,
+        path_prefix=path_prefix,
+    )
+
+    excluded_highways = frozenset(baseline_fuel_boards.excluded_fuel_keyword_boards)
+    base_by_name = {board.board_name: board for board in baseline_fuel_boards.boards}
+    spacers = frozenset(
+        board.board_name
+        for board in baseline_fuel_boards.boards
+        if board.board_name == "gas_empty"
+        or (board.slot.font_size == 0.0 and board.slot.font_opacity == 0.0)
+    )
+    expected_boards = frozenset(
+        name for name in base_by_name if name not in spacers and name not in excluded_highways
+    )
+
+    for spacer in sorted(spacers):
+        if spacer in sign_boards:
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                f"{rel_prefix}def/sign/board/{spacer}.sii",
+                f"Structural spacer board {spacer!r} must not be emitted (D-09 / D-12)",
+            )
+
+    for hw in sorted(excluded_highways):
+        if hw in sign_boards:
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                f"{rel_prefix}def/sign/board/{hw}.sii",
+                f"Excluded multi-item highway sign {hw!r} must not be emitted (D-09 / D-12)",
+            )
+
+    actual_boards = frozenset(sign_boards)
+    if actual_boards != expected_boards:
+        missing = sorted(expected_boards - actual_boards)
+        extra = sorted(actual_boards - expected_boards)
+        collector.error(
+            "ETS2V2-INV-TOTEM-BOARDS",
+            f"{rel_prefix}def/sign/board",
+            f"Expected exact {len(expected_boards)} identifiable fuel boards "
+            f"(got {len(actual_boards)}; missing={missing[:10]}, extra={extra[:10]})",
+        )
+
+    referenced_tokens: set[str] = set()
+    for board_name in sorted(sign_boards):
+        baseline = base_by_name.get(board_name)
+        if baseline is None or board_name in spacers or board_name in excluded_highways:
+            continue
+        board_path = f"{rel_prefix}def/sign/board/{board_name}.sii"
+        resolved_token = _check_single_totem_board(
+            board_name,
+            sign_boards[board_name],
+            baseline,
+            canonical_tokens,
+            board_path,
+            collector,
+        )
+        if resolved_token is not None:
+            referenced_tokens.add(resolved_token)
+
+    if canonical_tokens and sign_boards:
+        orphans = sorted(canonical_tokens - referenced_tokens)
+        if orphans:
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                f"{rel_prefix}locale",
+                f"Orphan unused totem localization keys in local_module.ets2v2_fuel.sii: "
+                f"{orphans[:10]}",
+            )

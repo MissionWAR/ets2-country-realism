@@ -1,4 +1,4 @@
-"""Pure offline currency normalization, FX cross-validation, and prices.lock.json models."""
+"""Pure offline currency normalization, FX cross-validation, fuel bounds, and lockfile I/O."""
 
 from __future__ import annotations
 
@@ -13,6 +13,17 @@ from ets2v2.normalize.currencies import (
     VANILLA_36_ISO2S,
     VANILLA_SLUG_TO_ISO2,
     VOLATILE_NON_ECB_CURRENCIES,
+)
+from ets2v2.normalize.fuel import (
+    MAX_EUR_PER_LITER,
+    MAX_WOW_JUMP_RATIO,
+    MIN_EUR_PER_LITER,
+    SECONDARY_GRADE_SPREADS,
+    FuelNormalizationResult,
+    compute_secondary_grade_prices,
+    normalize_country_fuel_prices,
+    normalize_iso2_alias,
+    round_local_price,
 )
 from ets2v2.normalize.fx import (
     CBR_FX_PROVIDER,
@@ -30,11 +41,15 @@ from ets2v2.normalize.fx import (
     round_eur_per_liter,
 )
 from ets2v2.normalize.lockfile import (
+    BASELINE_SEEDED_LICENSE,
     BASELINE_SEEDED_SOURCE,
+    EXTRA_EU_SEED_EUR_PRICES,
     FALLBACK_STALE_DAYS,
+    REFERENCE_FX_RATES,
     TIER1_STALE_DAYS,
     evaluate_lockfile_staleness,
     load_prices_lockfile,
+    seed_initial_lockfile,
     serialize_lockfile_bytes,
     write_prices_lockfile,
 )
@@ -51,6 +66,7 @@ from ets2v2.normalize.models import (
 
 __all__ = [
     "BAM_FIXED_PEG_PER_EUR",
+    "BASELINE_SEEDED_LICENSE",
     "BASELINE_SEEDED_SOURCE",
     "CANONICAL_FUEL_GRADES",
     "CBR_FX_PROVIDER",
@@ -59,12 +75,18 @@ __all__ = [
     "ECB_COVERED_CURRENCIES",
     "ECB_FX_PROVIDER",
     "EUROPEAN_TERRITORY_ISO2S",
+    "EXTRA_EU_SEED_EUR_PRICES",
     "EXTRA_EU_TERRITORY_ISO2S",
     "FALLBACK_STALE_DAYS",
     "FAWAZ_FX_PROVIDER",
     "MAJOR_DIVERGENCE_WARN_PCT",
     "MAJOR_ECB_CURRENCIES",
+    "MAX_EUR_PER_LITER",
+    "MAX_WOW_JUMP_RATIO",
+    "MIN_EUR_PER_LITER",
     "PRIMARY_FX_PROVIDER",
+    "REFERENCE_FX_RATES",
+    "SECONDARY_GRADE_SPREADS",
     "TERRITORY_CURRENCIES",
     "TIER1_STALE_DAYS",
     "VANILLA_36_ISO2S",
@@ -74,6 +96,7 @@ __all__ = [
     "AlertSeverity",
     "CountryFuelLockEntry",
     "FuelGrade",
+    "FuelNormalizationResult",
     "FxProviderQuote",
     "FxRateLockEntry",
     "FxValidationResult",
@@ -81,11 +104,16 @@ __all__ = [
     "NormalizedCurrencyPrice",
     "PricesLockfile",
     "compute_divergence_pct",
+    "compute_secondary_grade_prices",
     "convert_local_to_eur_and_local",
     "cross_validate_fx_rates",
     "evaluate_lockfile_staleness",
     "load_prices_lockfile",
+    "normalize_country_fuel_prices",
+    "normalize_iso2_alias",
     "round_eur_per_liter",
+    "round_local_price",
+    "seed_initial_lockfile",
     "serialize_lockfile_bytes",
     "write_prices_lockfile",
 ]

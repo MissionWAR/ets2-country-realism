@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 2 complete — ready for Phase 3 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
+**Current focus:** Phase 3 context gathered — ready to plan Phase 3 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 2 of 5 (Realism Registry, Seasonal Core Builds & Offline Validator (Phase A))
-Plan: 5 of 5 in current phase
-Status: Phase 2 complete, verified (`24/24`), security-audited (`16/16 SECURED`), and code-review hardened (`249 passed`)
-Last activity: 2026-11-20 — Completed Phase 2 (`02-01`..`02-05`), resolved all code-review findings (`CR-01`, `HI-01`..`HI-04`, `MD-01`..`MD-05`, `LO-01`..`LO-05`, `IN-03`), and closed out Phase 2
+Phase: 3 of 5 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
+Plan: 0 of 4 in current phase
+Status: Phase 3 context gathered (`03-CONTEXT.md` + `03-DISCUSSION-LOG.md`)
+Last activity: 2026-11-21 — Completed `/gsd-discuss-phase 3` locking D-01..D-16 across non-EU vanilla pricing, circuit breakers, Zero-DDS 43-locale totem formatting, and v1 snapshot/changelog provenance
 
 Progress: [██████████] 100%
 
@@ -64,11 +64,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None blocking Phase 2 planning.
+None blocking Phase 3 planning.
 
 ## Session Continuity
 
-Last session: 2026-11-20
-Stopped at: Phase 2 complete, verified, security-audited, code-review hardened, and merged to `master`
-Resume file: .planning/ROADMAP.md
-Next action: Run `/gsd-discuss-phase 3` or `/gsd-plan-phase 3` to begin Phase 3 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
+Last session: 2026-11-21
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-open-european-fuel-fx-pipeline-zero-dds-totem-engine/03-CONTEXT.md
+Next action: Run `/gsd-plan-phase 3` to research and plan Phase 3 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)

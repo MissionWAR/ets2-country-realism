@@ -217,3 +217,363 @@ def test_fetch_fuel_prices_eu_parses_is_live_eur_and_rejects_ok_false() -> None:
         failed = fetch_fuel_prices_eu(client, sleep_fn=lambda _: None)
     assert failed.ok is False
     assert failed.error is not None
+
+
+def test_fetch_uk_desnz_discovers_csv_blocks_ssrf_and_converts_pence_to_gbp() -> None:
+    from ets2v2.fetch.national import (
+        UK_DESNZ_LANDING_URL,
+        discover_uk_desnz_csv_url,
+        fetch_uk_desnz,
+    )
+
+    csv_url = "https://assets.publishing.service.gov.uk/media/abc123/weekly_road_fuel_prices.csv"
+    good_html = f'<html><body><a href="{csv_url}">Weekly road fuel prices (CSV)</a></body></html>'
+    assert discover_uk_desnz_csv_url(good_html, UK_DESNZ_LANDING_URL) == csv_url
+
+    with pytest.raises(ValueError, match="allowlist"):
+        discover_uk_desnz_csv_url(
+            '<a href="https://evil.example/weekly_road_fuel_prices.csv">'
+            "Weekly road fuel prices</a>",
+            UK_DESNZ_LANDING_URL,
+        )
+
+    csv_body = (
+        "Date,ULSP: Pump price in pence/litre,ULSD: Pump price in pence/litre\n"
+        "09/11/2026,137.5,141.8\n"
+        "16/11/2026,138.4,142.9\n"
+    )
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == UK_DESNZ_LANDING_URL:
+            return httpx.Response(200, text=good_html)
+        if url == csv_url:
+            return httpx.Response(200, text=csv_body)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        result = fetch_uk_desnz(client, sleep_fn=lambda _: None)
+
+    assert result.ok is True
+    assert result.tier == "tier1"
+    assert result.data_date == "2026-11-16"
+    assert len(result.quotes) == 1
+    quote = result.quotes[0]
+    assert quote.iso2 == "GB"
+    assert quote.currency == "GBP"
+    assert quote.unit_basis == "local_per_liter"
+    assert quote.license == "OGL v3.0"
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.384)
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.429)
+
+
+def test_fetch_no_ssb_09654_parses_json_stat2_latest_non_null_month() -> None:
+    from ets2v2.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
+
+    json_stat2 = {
+        "id": ["Drivstoff", "ContentsCode", "Tid"],
+        "size": [2, 1, 3],
+        "dimension": {
+            "Drivstoff": {
+                "category": {
+                    "index": {"01": 0, "02": 1},
+                    "label": {
+                        "01": "Unleaded gasoline 95 octane",
+                        "02": "Auto diesel (dutiable)",
+                    },
+                }
+            },
+            "ContentsCode": {
+                "category": {
+                    "index": {"Pris": 0},
+                    "label": {"Pris": "Average retail price (NOK/l)"},
+                }
+            },
+            "Tid": {
+                "category": {
+                    "index": {"2026M08": 0, "2026M09": 1, "2026M10": 2},
+                    "label": {"2026M08": "2026M08", "2026M09": "2026M09", "2026M10": "2026M10"},
+                }
+            },
+        },
+        # Row-major: Drivstoff=01 (M08=21.10, M09=21.85, M10=None),
+        # Drivstoff=02 (M08=20.20, M09=20.95, M10=None)
+        "value": [21.10, 21.85, None, 20.20, 20.95, None],
+    }
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == NO_SSB_09654_URL:
+            return httpx.Response(200, json=json_stat2)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        result = fetch_no_ssb_09654(client, sleep_fn=lambda _: None)
+
+    assert result.ok is True
+    assert result.tier == "tier1"
+    assert result.data_date == "2026-09-01"
+    quote = result.quotes[0]
+    assert quote.iso2 == "NO"
+    assert quote.currency == "NOK"
+    assert quote.unit_basis == "local_per_liter"
+    assert quote.license == "CC BY 4.0 (NLOD)"
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(21.85)
+    assert quote.prices_by_grade["diesel"] == pytest.approx(20.95)
+
+
+def test_fetch_fr_economie_parses_multigrade_and_e10_fallback() -> None:
+    from ets2v2.fetch.national import fetch_fr_economie
+
+    def _handler_full(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "total_count": 1,
+                "results": [
+                    {
+                        "diesel": 1.682,
+                        "petrol_95": 1.789,
+                        "petrol_98": 1.879,
+                        "e10": 1.745,
+                        "e85": 0.889,
+                        "lpg": 0.995,
+                    }
+                ],
+            },
+        )
+
+    with create_http_client(transport=httpx.MockTransport(_handler_full)) as client:
+        res = fetch_fr_economie(client, sleep_fn=lambda _: None)
+
+    assert res.ok is True
+    quote = res.quotes[0]
+    assert quote.iso2 == "FR"
+    assert quote.license == "Licence Ouverte v2.0"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.682)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.789)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(1.879)
+    assert quote.prices_by_grade["e85"] == pytest.approx(0.889)
+    assert quote.prices_by_grade["lpg"] == pytest.approx(0.995)
+
+    # When sp95 is null, fall back to e10 for petrol_95
+    def _handler_e10(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "total_count": 1,
+                "results": [
+                    {
+                        "diesel": 1682.0,  # Guard milli-EUR scaling
+                        "petrol_95": None,
+                        "e10": 1.745,
+                    }
+                ],
+            },
+        )
+
+    with create_http_client(transport=httpx.MockTransport(_handler_e10)) as client:
+        res_e10 = fetch_fr_economie(client, sleep_fn=lambda _: None)
+
+    assert res_e10.ok is True
+    assert res_e10.quotes[0].prices_by_grade["diesel"] == pytest.approx(1.682)
+    assert res_e10.quotes[0].prices_by_grade["petrol_95"] == pytest.approx(1.745)
+
+
+def test_fetch_de_tankerkoenig_keyless_skip_keyed_median_and_secret_redaction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ets2v2.fetch.national import TANKERKOENIG_CITIES, fetch_de_tankerkoenig
+
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+
+    # Keyless mode MUST issue zero HTTP requests and return ok=True, skipped=True
+    def _must_not_call(_request: httpx.Request) -> httpx.Response:
+        raise AssertionError("HTTP call must not be made when TANKERKOENIG_API_KEY is unset")
+
+    with create_http_client(transport=httpx.MockTransport(_must_not_call)) as client:
+        skipped = fetch_de_tankerkoenig(client, sleep_fn=lambda _: None)
+
+    assert skipped.ok is True
+    assert skipped.skipped is True
+    assert skipped.quotes == []
+    assert skipped.feed_name == "de_tankerkoenig"
+
+    # Keyed mode: 5 deterministic cities median over open stations only
+    secret_key = "tk-super-secret-live-key-987654"
+    calls: list[str] = []
+
+    def _keyed_handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        assert request.url.params.get("apikey") == secret_key
+        return httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "stations": [
+                    {"diesel": 1.639, "e5": 1.749, "e10": 1.689, "isOpen": True},
+                    {"diesel": 1.659, "e5": 1.769, "e10": 1.709, "isOpen": True},
+                    {"diesel": 9.999, "e5": 9.999, "isOpen": False},  # Closed -> ignored
+                ],
+            },
+        )
+
+    with create_http_client(transport=httpx.MockTransport(_keyed_handler)) as client:
+        keyed = fetch_de_tankerkoenig(client, api_key=secret_key, sleep_fn=lambda _: None)
+
+    assert len(calls) == len(TANKERKOENIG_CITIES) == 5
+    assert keyed.ok is True
+    assert keyed.skipped is False
+    quote = keyed.quotes[0]
+    assert quote.iso2 == "DE"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.649)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.759)
+
+    # HTTP 401/500 MUST NEVER leak TANKERKOENIG_API_KEY in RawFuelFeedResult.error (T-03-07)
+    def _fail_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, text=f"unauthorized for key {secret_key}")
+
+    with create_http_client(transport=httpx.MockTransport(_fail_handler)) as client:
+        errored = fetch_de_tankerkoenig(client, api_key=secret_key, sleep_fn=lambda _: None)
+
+    assert errored.ok is False
+    assert errored.skipped is False
+    assert errored.error is not None
+    assert secret_key not in errored.error
+
+
+def test_fetch_es_miteco_comma_decimal_median_resilient_to_outliers() -> None:
+    from ets2v2.fetch.national import ES_MITECO_URL, fetch_es_miteco
+
+    payload = {
+        "Fecha": "20/11/2026 07:30:00",
+        "ListaEESSPrecio": [
+            {
+                "Precio Gasoleo A": "1,489",
+                "Precio Gasoleo Premium": "1,599",
+                "Precio Gasolina 95 E5": "1,569",
+                "Precio Gasolina 98 E5": "1,719",
+                "Precio Gases licuados del petróleo": "0,939",
+            },
+            {
+                "Precio Gasoleo A": "1,499",
+                "Precio Gasoleo Premium": "1,609",
+                "Precio Gasolina 95 E5": "1,579",
+                "Precio Gasolina 98 E5": "1,729",
+                "Precio Gases licuados del petróleo": "0,949",
+            },
+            {
+                # Typo outlier station defeated by median
+                "Precio Gasoleo A": "99,990",
+                "Precio Gasoleo Premium": "",
+                "Precio Gasolina 95 E5": "1,589",
+                "Precio Gasolina 98 E5": "1,739",
+                "Precio Gases licuados del petróleo": "0,959",
+            },
+        ],
+    }
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == ES_MITECO_URL:
+            assert request.headers.get("accept") == "application/json"
+            return httpx.Response(200, json=payload)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        result = fetch_es_miteco(client, sleep_fn=lambda _: None)
+
+    assert result.ok is True
+    assert result.data_date == "2026-11-20"
+    quote = result.quotes[0]
+    assert quote.iso2 == "ES"
+    assert quote.license == "Spanish Open Gov Data (MITECO)"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.499)
+    assert quote.prices_by_grade["diesel_plus"] == pytest.approx(1.604)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.579)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(1.729)
+    assert quote.prices_by_grade["lpg"] == pytest.approx(0.949)
+
+
+def test_fetch_it_mimit_strips_banner_sniffs_delimiter_and_filters_isself() -> None:
+    from ets2v2.fetch.national import IT_MIMIT_URL, fetch_it_mimit
+
+    csv_text = (
+        "Estrazione del 2026-11-20 08:00:00\n"
+        "idImpianto;descCarburante;prezzo;isSelf;dtComu\n"
+        "1001;Gasolio;1.699;1;20/11/2026 07:00:00\n"
+        "1002;Gasolio;1.719;1;20/11/2026 07:00:00\n"
+        "1003;Gasolio;2.099;0;20/11/2026 07:00:00\n"  # Attended (isSelf=0) -> ignored
+        "1001;Benzina;1.799;1;20/11/2026 07:00:00\n"
+        "1002;Benzina;1.819;1;20/11/2026 07:00:00\n"
+        "1001;GPL;0.739;1;20/11/2026 07:00:00\n"
+        "1001;Blue Diesel;1.849;1;20/11/2026 07:00:00\n"
+        "1001;Blu Super;1.959;1;20/11/2026 07:00:00\n"
+    )
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == IT_MIMIT_URL:
+            return httpx.Response(200, text=csv_text)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        result = fetch_it_mimit(client, sleep_fn=lambda _: None)
+
+    assert result.ok is True
+    assert result.data_date == "2026-11-20"
+    quote = result.quotes[0]
+    assert quote.iso2 == "IT"
+    assert quote.license == "IODL 2.0"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.709)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.809)
+    assert quote.prices_by_grade["lpg"] == pytest.approx(0.739)
+    assert quote.prices_by_grade["diesel_plus"] == pytest.approx(1.849)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(1.959)
+
+
+def test_fetch_nl_cbs_80416ned_filters_daily_perioden_and_rejects_annual_rows() -> None:
+    from ets2v2.fetch.national import NL_CBS_80416NED_URL, fetch_nl_cbs_80416ned
+
+    odata_payload = {
+        "value": [
+            {
+                "Perioden": "2026JJ00",  # Annual summary row MUST be rejected
+                "BenzineEuro95_1": 9.999,
+                "Diesel_2": 9.999,
+                "Lpg_3": 9.999,
+            },
+            {
+                "Perioden": "2026MM11",  # Monthly summary row MUST be rejected
+                "BenzineEuro95_1": 8.888,
+                "Diesel_2": 8.888,
+                "Lpg_3": 8.888,
+            },
+            {
+                "Perioden": "20261119",
+                "BenzineEuro95_1": 1.985,
+                "Diesel_2": 1.742,
+                "Lpg_3": 0.895,
+            },
+            {
+                "Perioden": "20261118",
+                "BenzineEuro95_1": 1.970,
+                "Diesel_2": 1.730,
+                "Lpg_3": 0.890,
+            },
+        ]
+    }
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == NL_CBS_80416NED_URL:
+            return httpx.Response(200, json=odata_payload)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        result = fetch_nl_cbs_80416ned(client, sleep_fn=lambda _: None)
+
+    assert result.ok is True
+    assert result.data_date == "2026-11-19"
+    quote = result.quotes[0]
+    assert quote.iso2 == "NL"
+    assert quote.license == "CC BY 4.0 (CBS)"
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.985)
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1.742)
+    assert quote.prices_by_grade["lpg"] == pytest.approx(0.895)

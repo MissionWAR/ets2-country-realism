@@ -176,6 +176,27 @@ def test_render_description_txt_hygiene_attribution_and_no_volatile_tokens(
     assert "36" in text
     assert "1.62" in text
     assert edition.capitalize() in text
-    # Must NOT embed volatile ISO dates or ISO-week package_version strings
+    assert "Zero-DDS" in text
+    assert "43" in text
+
+    # D-16 complete open-data source & license attributions
+    required_attributions = (
+        "EC Weekly Oil Bulletin CC BY 4.0",
+        "fuel-prices.eu CC BY 4.0",
+        "UK DESNZ OGL v3",
+        "Norway SSB CC BY 4.0",
+        "France Licence Ouverte",
+        "Italy MIMIT IODL 2.0",
+        "Spain MITECO",
+        "Netherlands CBS",
+        "Germany Tankerkönig CC BY 4.0",
+        "Frankfurter v2 MIT",
+        "ECB",
+        "fawazahmed0 CC0",
+    )
+    for attribution in required_attributions:
+        assert attribution in text, f"Missing D-16 attribution in description.txt: {attribution!r}"
+
+    # Must NOT embed volatile ISO dates or ISO-week package_version strings (TRAP 4)
     assert re.search(r"\b20\d{2}-\d{2}-\d{2}\b", text) is None
     assert re.search(r"1\.62-\d{4}\.\d{2}", text) is None

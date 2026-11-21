@@ -406,6 +406,7 @@ def _handle_validate_local(args: argparse.Namespace) -> int:
 
 def _handle_publish_release(args: argparse.Namespace) -> int:
     state_path = cast(Path, args.state)
+    prices_lock_path = cast(Path, args.prices_lock)
     out_dir = cast(Path, args.out_dir)
     changelogs_dir = cast(Path, args.changelogs_dir)
     laws_dir = cast(Path, args.laws_dir)
@@ -446,6 +447,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
 
         summary = run_phase_a_release(
             state_path=state_path,
+            prices_lock_path=prices_lock_path,
             out_dir=out_dir,
             changelogs_dir=changelogs_dir,
             laws_dir=laws_dir,
@@ -892,6 +894,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("state/published.json"),
         help="Path to the v1 published release ledger (default: state/published.json).",
+    )
+    publish_release.add_argument(
+        "--prices-lock",
+        type=Path,
+        default=Path("state/prices.lock.json"),
+        help="Path to canonical state/prices.lock.json lockfile (default: state/prices.lock.json).",
     )
     publish_release.add_argument(
         "--out-dir",

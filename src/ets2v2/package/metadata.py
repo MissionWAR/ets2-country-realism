@@ -112,10 +112,16 @@ def render_description_txt(edition: Season) -> bytes:
         "  Albania, and Turkey optional in clear daylight).\n"
         "- Preserves ETS2 1.62 country regions[], Kaliningrad secondary timezone, axle\n"
         "  weight ceilings (incl. Iceland 60t 5-axle), slow_road/uncommon, and train/tram.\n"
+        "- Option 4b Zero-DDS roadside fuel totems across 460 sign boards and all 43 active\n"
+        "  ETS2 1.62 locales with native-currency pump formatting (zero .dds/.tobj assets).\n"
         "- Convoy multiplayer optional (mp_mod_optional: true).\n\n"
         "Open-Source Attribution & Licensing:\n"
         "- Generator & build pipeline: MIT License (ETS2 World Realism).\n"
         "- Canonical statutory country registry data: CC BY 4.0.\n"
+        "- Open European fuel data: EC Weekly Oil Bulletin CC BY 4.0, fuel-prices.eu CC BY 4.0,\n"
+        "  UK DESNZ OGL v3, Norway SSB CC BY 4.0, France Licence Ouverte, Italy MIMIT IODL 2.0,\n"
+        "  Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.\n"
+        "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.\n"
         "- Clean-room synthesis from open statutory records and ETS2 1.62 metadata schemas.\n"
     )
     return serialize_sii_text(body)

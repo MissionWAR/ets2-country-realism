@@ -63,11 +63,12 @@ Plans:
   2. Tier 1 collectors ingest live weekly/daily EU27 + EEA + UK fuel prices (`EC Weekly Oil Bulletin` dynamic XLSX + `FionnHughes`/`fuel-prices.eu` fallback, `UK DESNZ`, `NO SSB`, and `FR`/`DE`/`ES`/`IT`/`NL` multi-grade feeds) while falling back safely to `prices.lock.json` on upstream outages and enforcing `0.01–5.00 EUR/L` bounds plus `±25%` change alerts.
   3. All 43 active ETS2 `1.62` locales (with dead `fr_qc` excluded and `fr_ca` fully synchronized) receive consistent `locale/<lang>/local_module.ets2v2_fuel.sii` modules backing namespaced `@@fp_*_ets2v2@@` `def/sign/board/*.sii` rewrites with zero `.dds`/`.tobj` files generated.
   4. Roadside totems display authentic multi-grade (`95`, `98`, `100`, `Diesel`, `Diesel+`, `E85`, `LPG`) native-currency formats (UK pence vs GBP, NL eurocents vs EUR, `<sup>9</sup>` tenth-cents, Bulgaria `EUR`) and populate all 17 active unmapped `1.62` signs (`gas_bi_*`, `gas_ie_*`, `gas_ba_*_lpg`, `gas_dk_92`), `gas_is_ip1_98`, and the 69 placeholder/blank boards without Offline SCS Validator errors.
-**Plans**: TBD
-  - [ ] `03-01`: Multi-provider FX fetcher & cross-validator (`Frankfurter v2`, `ECB`, `fawazahmed0`, `CBR`) with typed `eur_per_liter` vs `local_display_price` models (`DAT-01`)
-  - [ ] `03-02`: Tier 1 EU/EEA fuel collectors (`EC Weekly Oil Bulletin` dynamic XLSX + fallbacks, `UK DESNZ`, `NO SSB`, `FR`/`DE`/`ES`/`IT`/`NL`) & `prices.lock.json` circuit breaker (`DAT-02`, `DAT-03`)
-  - [ ] `03-03`: Option 4b Zero-DDS totem compiler generating `@@fp_*_ets2v2@@` `def/sign/board/*.sii` overrides and 43-locale `local_module.ets2v2_fuel.sii` files (`TOT-01`)
-  - [ ] `03-04`: Native currency/sub-unit multi-grade formatter (`<sup>9</sup>`, pence/eurocents, BG `EUR`) and repair of all 17 active + 69 placeholder/blank `1.62` sign boards (`TOT-02`)
+**Plans**: 4 plans
+Plans:
+- [ ] `03-01-PLAN.md` — Phase 3 runtime deps (`httpx`, `openpyxl`, `types-openpyxl`), 4 AST offline DAG isolation walls, pure `ets2v2.normalize` 39-territory FX cross-validator & `PricesLockfile` v1, and hardened `ets2v2.fetch` FX providers (`Frankfurter v2`, `ECB`, `fawazahmed0`, `CBR`) (`DAT-01`)
+- [ ] `03-02-PLAN.md` — Tier 1 EU/EEA fuel collectors (`EC Weekly Oil Bulletin` dynamic XLSX + `FionnHughes`/`fuel-prices.eu`, `UK DESNZ`, `NO SSB 09654`, `FR`/`DE`/`ES`/`IT`/`NL`), `0.01–5.00 EUR/L` & `±25%` WoW circuit breakers, committed 39-territory `state/prices.lock.json`, and locked `RealismSnapshot` v1 price injection (`DAT-02`, `DAT-03`)
+- [ ] `03-03-PLAN.md` — Extended 24-attribute `1.62` sign board parser & refreshed `fuel_boards.json`, deterministic 460-board classifier (`37` countries, fixing all `17` active unmapped + `47` placeholder + `40` blank boards, `gas_is_ip1_98`, `gas_is_yokull` swap), and Option 4b Zero-DDS 43-locale totem compiler wired into Summer/Winter Core builds (`TOT-01`)
+- [ ] `03-04-PLAN.md` — 6-font SDF native-currency formatter (`<sup>9</sup>`, `_3_ets2v2`, `_c_ets2v2`, UK pence, BG `EUR`, integer currencies), hard Offline SCS Validator `D-12` invariants (`ETS2V2-INV-ZERO-DDS`, `ETS2V2-INV-LOCALE-SYNC`, `ETS2V2-INV-TOTEM-BOARDS`), `D-16` fuel tables/alerts/attributions, and Friday CI `fetch` + Release PR wiring (`TOT-02`)
 
 ### Phase 4: ProMods Companion Builder & Local Map Combo Composer
 **Goal**: ProMods players receive locally built Summer and Winter ProMods Editions (`EU + ME + MA + TGS`), and multi-map combo users can run `ets2v2 compose-local` offline against CI snapshots to generate a conflict-free `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs` preserving every map's geometry, regions, axles, and multi-timezone zones.
@@ -107,7 +108,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. VFS, 1.62 Baseline Extraction & Structural SII Engine | 4/4 | Complete | 2026-11-16 |
 | 2. Realism Registry, Core & Validator | 5/5 | Complete | 2026-11-20 |
-| 3. European Fuel/FX & Totems | 0/4 | Not started | - |
+| 3. European Fuel/FX & Totems | 0/4 | Planned | - |
 | 4. ProMods Companion & Combo Composer | 0/4 | Not started | - |
 | 5. Global Tier 1/2/3 & OSM Audit | 0/4 | Not started | - |
 

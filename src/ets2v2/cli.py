@@ -21,7 +21,8 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
-from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, run_fx_only_fetch
+from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, run_price_fetch
+from ets2v2.normalize import PricesLockfile, load_prices_lockfile
 from ets2v2.package import (
     DEFAULT_AUTHOR,
     build_core_editions,
@@ -244,6 +245,7 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
     laws_dir = cast(Path, args.laws_dir)
     mappings_path = cast(Path, args.mappings)
     baseline_dir = cast(Path, args.baseline_dir)
+    prices_lock_path = cast(Path | None, args.prices_lock)
     out_path = cast(Path, args.out)
 
     try:
@@ -267,6 +269,10 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
         else:
             game_version = registry.mappings.baseline_game_version
 
+        loaded_prices_lock: PricesLockfile | None = (
+            load_prices_lockfile(prices_lock_path) if prices_lock_path is not None else None
+        )
+
         snapshot = build_realism_snapshot(
             registry,
             bl_countries,
@@ -275,6 +281,7 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
             anchor_year=anchor_year,
             override_date=override_date,
             baseline_game_version=game_version,
+            prices_lock=loaded_prices_lock,
         )
         write_realism_snapshot(snapshot, out_path)
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
@@ -479,26 +486,26 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
 
 def _handle_fetch(args: argparse.Namespace) -> int:
     lock_path = cast(Path, args.lock_path)
+    baseline_dir = cast(Path, args.baseline_dir)
+    allow_jumps = cast(list[str] | None, args.allow_jump) or []
     fx_only = cast(bool, args.fx_only)
+    seed_offline = cast(bool, args.seed_offline)
     timeout = cast(float, args.timeout)
     dry_run = cast(bool, args.dry_run)
     as_json = cast(bool, args.json)
 
-    if not fx_only:
-        print(
-            "error: full fuel fetch pipeline is not yet enabled; pass --fx-only",
-            file=sys.stderr,
-        )
-        return 1
-
     try:
-        report = run_fx_only_fetch(
+        report = run_price_fetch(
             lock_path=lock_path,
+            baseline_dir=baseline_dir,
+            allow_jump_iso2=frozenset(code.strip().upper() for code in allow_jumps if code.strip()),
+            fx_only=fx_only,
+            seed_offline=seed_offline,
             timeout=timeout,
             write_lock=not dry_run,
         )
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
-        print(f"error: FX fetch failed: {exc}", file=sys.stderr)
+        print(f"error: price fetch failed: {exc}", file=sys.stderr)
         return 1
 
     if as_json:
@@ -508,13 +515,24 @@ def _handle_fetch(args: argparse.Namespace) -> int:
 
     status_label = "OK" if report.ok else "FAILED"
     mode_label = "dry-run" if report.dry_run else f"lock={report.lock_path}"
-    print(
-        f"FX fetch {status_label} ({mode_label}): "
-        f"{report.fx_currencies_validated} currencies validated, "
-        f"{len(report.alerts)} alerts."
-    )
+    if report.fx_only:
+        print(
+            f"FX fetch {status_label} ({mode_label}): "
+            f"{report.fx_currencies_validated} currencies validated, "
+            f"{len(report.alerts)} alerts."
+        )
+    else:
+        print(
+            f"Price fetch {status_label} ({mode_label}): "
+            f"tier1={report.tier1_feeds_succeeded} ok/{report.tier1_feeds_failed} failed, "
+            f"countries={report.countries_updated} updated/{report.countries_fallback} fallback, "
+            f"fx={report.fx_currencies_validated}, alerts={len(report.alerts)}."
+        )
     for alert in report.alerts:
-        print(f"  {alert.severity.upper()} {alert.code} [{alert.scope}]: {alert.detail}")
+        print(
+            f"  {alert.severity.upper()} {alert.code} [{alert.scope}]: {alert.detail}",
+            file=sys.stderr if alert.severity == "error" else sys.stdout,
+        )
     return 0 if report.ok else 1
 
 
@@ -690,6 +708,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/baselines/ets2_1.62_def"),
         help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    registry_snapshot.add_argument(
+        "--prices-lock",
+        type=Path,
+        default=None,
+        help="Optional path to state/prices.lock.json to inject live/locked fuel prices.",
     )
     registry_snapshot.add_argument(
         "--out",
@@ -952,9 +976,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the prices.lock.json state file (default: state/prices.lock.json).",
     )
     fetch_parser.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    fetch_parser.add_argument(
+        "--allow-jump",
+        action="append",
+        default=None,
+        help="Explicitly allow >25%% WoW price jump for an ISO-2 country code (repeatable).",
+    )
+    fetch_parser.add_argument(
         "--fx-only",
         action="store_true",
         help="Fetch and cross-validate multi-provider FX rates only.",
+    )
+    fetch_parser.add_argument(
+        "--seed-offline",
+        action="store_true",
+        help="Deterministically seed state/prices.lock.json offline from 1.62 baseline.",
     )
     fetch_parser.add_argument(
         "--timeout",

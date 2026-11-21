@@ -1,0 +1,1366 @@
+{
+  "alerts": [],
+  "countries": {
+    "AL": {
+      "currency": "ALL",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.301,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AL",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 226.6485,
+        "diesel_plus": 242.5139,
+        "e85": 168.0804,
+        "lpg": 112.0536,
+        "mpo": 169.9864,
+        "petrol_100": 261.4584,
+        "petrol_92": 224.1072,
+        "petrol_95": 233.445,
+        "petrol_98": 247.4517
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "AT": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.138,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AT",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.138,
+        "diesel_plus": 2.2877,
+        "e85": 1.5854,
+        "lpg": 1.057,
+        "mpo": 1.6035,
+        "petrol_100": 2.4662,
+        "petrol_92": 2.1139,
+        "petrol_95": 2.202,
+        "petrol_98": 2.3341
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "BA": {
+      "currency": "BAM",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.924,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "BA",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 3.763,
+        "diesel_plus": 4.0264,
+        "e85": 2.7911,
+        "lpg": 1.8607,
+        "mpo": 2.8223,
+        "petrol_100": 4.3417,
+        "petrol_92": 3.7214,
+        "petrol_95": 3.8765,
+        "petrol_98": 4.1091
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "BE": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.313,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "BE",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.313,
+        "diesel_plus": 2.4749,
+        "e85": 1.715,
+        "lpg": 1.1434,
+        "mpo": 1.7348,
+        "petrol_100": 2.6678,
+        "petrol_92": 2.2867,
+        "petrol_95": 2.382,
+        "petrol_98": 2.5249
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "BG": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.918,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "BG",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.918,
+        "diesel_plus": 2.0523,
+        "e85": 1.4227,
+        "lpg": 0.9485,
+        "mpo": 1.4385,
+        "petrol_100": 2.2131,
+        "petrol_92": 1.897,
+        "petrol_95": 1.976,
+        "petrol_98": 2.0946
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "CH": {
+      "currency": "CHF",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.629,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "CH",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.4713,
+        "diesel_plus": 2.6443,
+        "e85": 1.8328,
+        "lpg": 1.2218,
+        "mpo": 1.8535,
+        "petrol_100": 2.851,
+        "petrol_92": 2.4437,
+        "petrol_95": 2.5455,
+        "petrol_98": 2.6982
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "CY": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.52,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "CY",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.52,
+        "diesel_plus": 1.6264,
+        "e85": 1.0656,
+        "lpg": 0.7104,
+        "mpo": 1.14,
+        "petrol_100": 1.6576,
+        "petrol_92": 1.4208,
+        "petrol_95": 1.48,
+        "petrol_98": 1.5688
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "CZ": {
+      "currency": "CZK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.074,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "CZ",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 52.2648,
+        "diesel_plus": 55.9233,
+        "e85": 38.7556,
+        "lpg": 25.8371,
+        "mpo": 39.1986,
+        "petrol_100": 60.2865,
+        "petrol_92": 51.6741,
+        "petrol_95": 53.8272,
+        "petrol_98": 57.0568
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "DE": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.244,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "DE",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.244,
+        "diesel_plus": 2.4011,
+        "e85": 1.6639,
+        "lpg": 1.1093,
+        "mpo": 1.683,
+        "petrol_100": 2.5883,
+        "petrol_92": 2.2186,
+        "petrol_95": 2.311,
+        "petrol_98": 2.4497
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "DK": {
+      "currency": "DKK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.647,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "DK",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 19.7466,
+        "diesel_plus": 21.1289,
+        "e85": 14.6419,
+        "lpg": 9.7613,
+        "mpo": 14.81,
+        "petrol_100": 22.7763,
+        "petrol_92": 19.5226,
+        "petrol_95": 20.336,
+        "petrol_98": 21.5562
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "EE": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.137,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "EE",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.137,
+        "diesel_plus": 2.2866,
+        "e85": 1.5847,
+        "lpg": 1.0565,
+        "mpo": 1.6028,
+        "petrol_100": 2.4651,
+        "petrol_92": 2.113,
+        "petrol_95": 2.201,
+        "petrol_98": 2.3331
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "ES": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.896,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "ES",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.896,
+        "diesel_plus": 2.0287,
+        "e85": 1.4062,
+        "lpg": 0.9374,
+        "mpo": 1.422,
+        "petrol_100": 2.1874,
+        "petrol_92": 1.8749,
+        "petrol_95": 1.953,
+        "petrol_98": 2.0702
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "FI": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.514,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "FI",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.514,
+        "diesel_plus": 2.69,
+        "e85": 1.8641,
+        "lpg": 1.2427,
+        "mpo": 1.8855,
+        "petrol_100": 2.8997,
+        "petrol_92": 2.4854,
+        "petrol_95": 2.589,
+        "petrol_98": 2.7443
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "FR": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.356,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "FR",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.356,
+        "diesel_plus": 2.5209,
+        "e85": 1.7474,
+        "lpg": 1.165,
+        "mpo": 1.767,
+        "petrol_100": 2.7182,
+        "petrol_92": 2.3299,
+        "petrol_95": 2.427,
+        "petrol_98": 2.5726
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "GB": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.352,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GB",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.9757,
+        "diesel_plus": 2.114,
+        "e85": 1.4654,
+        "lpg": 0.9769,
+        "mpo": 1.4818,
+        "petrol_100": 2.2795,
+        "petrol_92": 1.9539,
+        "petrol_95": 2.0353,
+        "petrol_98": 2.1574
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "GR": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.166,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GR",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.166,
+        "diesel_plus": 2.3176,
+        "e85": 1.6063,
+        "lpg": 1.0709,
+        "mpo": 1.6245,
+        "petrol_100": 2.4987,
+        "petrol_92": 2.1418,
+        "petrol_95": 2.231,
+        "petrol_98": 2.3649
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "HR": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.036,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "HR",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.036,
+        "diesel_plus": 2.1785,
+        "e85": 1.5098,
+        "lpg": 1.0066,
+        "mpo": 1.527,
+        "petrol_100": 2.3486,
+        "petrol_92": 2.0131,
+        "petrol_95": 2.097,
+        "petrol_98": 2.2228
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "HU": {
+      "currency": "HUF",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.94,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "HU",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 776.0,
+        "diesel_plus": 830.32,
+        "e85": 575.424,
+        "lpg": 383.616,
+        "mpo": 582.0,
+        "petrol_100": 895.104,
+        "petrol_92": 767.232,
+        "petrol_95": 799.2,
+        "petrol_98": 847.152
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "IE": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.74,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IE",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.74,
+        "diesel_plus": 1.8618,
+        "e85": 1.2888,
+        "lpg": 0.8592,
+        "mpo": 1.305,
+        "petrol_100": 2.0048,
+        "petrol_92": 1.7184,
+        "petrol_95": 1.79,
+        "petrol_98": 1.8974
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "IS": {
+      "currency": "ISK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.307,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IS",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 341.436,
+        "diesel_plus": 365.3365,
+        "e85": 253.1866,
+        "lpg": 168.791,
+        "mpo": 256.077,
+        "petrol_100": 393.8458,
+        "petrol_92": 337.5821,
+        "petrol_95": 351.648,
+        "petrol_98": 372.7469
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "IT": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.228,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IT",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.228,
+        "diesel_plus": 2.384,
+        "e85": 1.6524,
+        "lpg": 1.1016,
+        "mpo": 1.671,
+        "petrol_100": 2.5704,
+        "petrol_92": 2.2032,
+        "petrol_95": 2.295,
+        "petrol_98": 2.4327
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "LT": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.139,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LT",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.139,
+        "diesel_plus": 2.2887,
+        "e85": 1.5862,
+        "lpg": 1.0574,
+        "mpo": 1.6043,
+        "petrol_100": 2.4674,
+        "petrol_92": 2.1149,
+        "petrol_95": 2.203,
+        "petrol_98": 2.3352
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "LU": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.99,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LU",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.99,
+        "diesel_plus": 2.1293,
+        "e85": 1.476,
+        "lpg": 0.984,
+        "mpo": 1.4925,
+        "petrol_100": 2.296,
+        "petrol_92": 1.968,
+        "petrol_95": 2.05,
+        "petrol_98": 2.173
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "LV": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.09,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LV",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.09,
+        "diesel_plus": 2.2363,
+        "e85": 1.5502,
+        "lpg": 1.0334,
+        "mpo": 1.5675,
+        "petrol_100": 2.4114,
+        "petrol_92": 2.0669,
+        "petrol_95": 2.153,
+        "petrol_98": 2.2822
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "ME": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.96,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "ME",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.96,
+        "diesel_plus": 2.0972,
+        "e85": 1.4537,
+        "lpg": 0.9691,
+        "mpo": 1.47,
+        "petrol_100": 2.2613,
+        "petrol_92": 1.9382,
+        "petrol_95": 2.019,
+        "petrol_98": 2.1401
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "MK": {
+      "currency": "MKD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.576,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MK",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 96.924,
+        "diesel_plus": 103.7087,
+        "e85": 71.8664,
+        "lpg": 47.911,
+        "mpo": 72.693,
+        "petrol_100": 111.7922,
+        "petrol_92": 95.8219,
+        "petrol_95": 99.8145,
+        "petrol_98": 105.8034
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "MT": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.21,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MT",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.21,
+        "diesel_plus": 1.2947,
+        "e85": 0.9648,
+        "lpg": 0.6432,
+        "mpo": 0.9075,
+        "petrol_100": 1.5008,
+        "petrol_92": 1.2864,
+        "petrol_95": 1.34,
+        "petrol_98": 1.4204
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "NL": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.514,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "NL",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.514,
+        "diesel_plus": 2.69,
+        "e85": 1.8641,
+        "lpg": 1.2427,
+        "mpo": 1.8855,
+        "petrol_100": 2.8997,
+        "petrol_92": 2.4854,
+        "petrol_95": 2.589,
+        "petrol_98": 2.7443
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "NO": {
+      "currency": "NOK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.616,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "NO",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 30.6072,
+        "diesel_plus": 32.7497,
+        "e85": 22.6943,
+        "lpg": 15.1295,
+        "mpo": 22.9554,
+        "petrol_100": 35.3022,
+        "petrol_92": 30.259,
+        "petrol_95": 31.5198,
+        "petrol_98": 33.411
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "PL": {
+      "currency": "PLN",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.061,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "PL",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 8.8623,
+        "diesel_plus": 9.4827,
+        "e85": 6.5728,
+        "lpg": 4.3819,
+        "mpo": 6.6467,
+        "petrol_100": 10.2244,
+        "petrol_92": 8.7637,
+        "petrol_95": 9.1289,
+        "petrol_98": 9.6766
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "PT": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.155,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "PT",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 2.155,
+        "diesel_plus": 2.3059,
+        "e85": 1.5984,
+        "lpg": 1.0656,
+        "mpo": 1.6163,
+        "petrol_100": 2.4864,
+        "petrol_92": 2.1312,
+        "petrol_95": 2.22,
+        "petrol_98": 2.3532
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "RO": {
+      "currency": "RON",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.046,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "RO",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 10.1686,
+        "diesel_plus": 10.8804,
+        "e85": 7.5397,
+        "lpg": 5.0265,
+        "mpo": 7.6265,
+        "petrol_100": 11.7284,
+        "petrol_92": 10.0529,
+        "petrol_95": 10.4718,
+        "petrol_98": 11.1001
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "RS": {
+      "currency": "RSD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 2.009,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "RS",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 235.2539,
+        "diesel_plus": 251.7217,
+        "e85": 174.4415,
+        "lpg": 116.2944,
+        "mpo": 176.4404,
+        "petrol_100": 271.3535,
+        "petrol_92": 232.5887,
+        "petrol_95": 242.2799,
+        "petrol_98": 256.8167
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "RU": {
+      "currency": "RUB",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.851,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "RU",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 80.845,
+        "diesel_plus": 86.5042,
+        "e85": 59.9868,
+        "lpg": 39.9912,
+        "mpo": 60.6338,
+        "petrol_100": 93.3128,
+        "petrol_92": 79.9824,
+        "petrol_95": 83.315,
+        "petrol_98": 88.3139
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "SE": {
+      "currency": "SEK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.993,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SE",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 22.7202,
+        "diesel_plus": 24.3106,
+        "e85": 16.851,
+        "lpg": 11.234,
+        "mpo": 17.0402,
+        "petrol_100": 26.2127,
+        "petrol_92": 22.468,
+        "petrol_95": 23.4042,
+        "petrol_98": 24.8085
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "SI": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.883,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SI",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.883,
+        "diesel_plus": 2.0148,
+        "e85": 1.3961,
+        "lpg": 0.9307,
+        "mpo": 1.4123,
+        "petrol_100": 2.1717,
+        "petrol_92": 1.8614,
+        "petrol_95": 1.939,
+        "petrol_98": 2.0553
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "SK": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.978,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SK",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.978,
+        "diesel_plus": 2.1165,
+        "e85": 1.4666,
+        "lpg": 0.9778,
+        "mpo": 1.4835,
+        "petrol_100": 2.2814,
+        "petrol_92": 1.9555,
+        "petrol_95": 2.037,
+        "petrol_98": 2.1592
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "TR": {
+      "currency": "TRY",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.628,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "TR",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 59.422,
+        "diesel_plus": 63.5815,
+        "e85": 44.0716,
+        "lpg": 29.381,
+        "mpo": 44.5665,
+        "petrol_100": 68.5558,
+        "petrol_92": 58.7621,
+        "petrol_95": 61.2105,
+        "petrol_98": 64.8831
+      },
+      "source": "baseline_1.62_seeded"
+    },
+    "XK": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.856,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "XK",
+      "license": "ETS2 1.62 baseline seed",
+      "local_prices": {
+        "diesel": 1.856,
+        "diesel_plus": 1.9859,
+        "e85": 1.3766,
+        "lpg": 0.9178,
+        "mpo": 1.392,
+        "petrol_100": 2.1414,
+        "petrol_92": 1.8355,
+        "petrol_95": 1.912,
+        "petrol_98": 2.0267
+      },
+      "source": "baseline_1.62_seeded"
+    }
+  },
+  "fx_rates": {
+    "ALL": {
+      "currency": "ALL",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 98.5,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "BAM": {
+      "currency": "BAM",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "cbbh_peg",
+      "rate_per_eur": 1.95583,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "CHF": {
+      "currency": "CHF",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 0.94,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "CZK": {
+      "currency": "CZK",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 25.2,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "DKK": {
+      "currency": "DKK",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 7.46,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "EUR": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": false,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "pinned_eur",
+      "rate_per_eur": 1.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "GBP": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 0.84,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "HUF": {
+      "currency": "HUF",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 400.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "ISK": {
+      "currency": "ISK",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 148.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "MKD": {
+      "currency": "MKD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 61.5,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "NOK": {
+      "currency": "NOK",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 11.7,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "PLN": {
+      "currency": "PLN",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 4.3,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "RON": {
+      "currency": "RON",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 4.97,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "RSD": {
+      "currency": "RSD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 117.1,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "RUB": {
+      "currency": "RUB",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 95.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "SEK": {
+      "currency": "SEK",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 11.4,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "TRY": {
+      "currency": "TRY",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "baseline_reference_fx",
+      "rate_per_eur": 36.5,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    }
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-20T06:00:00Z"
+}

@@ -40,6 +40,7 @@ _ISO2_ALIASES: Final[dict[str, str]] = {
 }
 _FOUR_DP: Final[Decimal] = Decimal("0.0001")
 _DEFAULT_PETROL_TO_DIESEL_RATIO: Final[Decimal] = Decimal("1.03")
+_BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
 
 
 class FuelNormalizationResult(BaseModel):
@@ -237,9 +238,11 @@ def normalize_country_fuel_prices(
             fallback_error=f"Out-of-bounds diesel EUR/L {diesel_eur} for {canonical_iso2}",
         )
 
-    # Step 2: +/-25% week-over-week circuit breaker against previous lockfile entry (D-06).
+    # Step 2: +/-25% week-over-week circuit breaker against previous live lockfile entry (D-06).
+    # Initial baseline_1.62_seeded entries are bootstrap placeholders (still hard-bounds protected
+    # above) and transition cleanly to the first live feed without false WoW rejections.
     normalized_allow = {normalize_iso2_alias(code) for code in allow_jump_iso2}
-    if previous_entry is not None:
+    if previous_entry is not None and previous_entry.source != _BASELINE_SEEDED_SOURCE:
         jump_violations: list[str] = []
         prev_eur = previous_entry.eur_per_liter
         eur_delta_ratio = abs(diesel_eur - prev_eur) / prev_eur

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -80,10 +81,12 @@ def load_prices_lockfile(path: Path) -> PricesLockfile:
 
 
 def write_prices_lockfile(lockfile: PricesLockfile, path: Path) -> bytes:
-    """Write ``PricesLockfile`` deterministically to ``path`` and return serialized bytes."""
+    """Atomically write ``PricesLockfile`` deterministically to ``path`` and return bytes."""
     raw = serialize_lockfile_bytes(lockfile)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(raw)
+    tmp_path = path.with_name(f"{path.name}.tmp")
+    tmp_path.write_bytes(raw)
+    os.replace(tmp_path, path)
     return raw
 
 

@@ -69,6 +69,7 @@ from ets2v2.fetch.national import (
     fetch_no_ssb_09654,
     fetch_uk_desnz,
 )
+from ets2v2.fetch.pipeline import run_price_fetch
 
 __all__ = [
     "CBR_DAILY_XML_URL",
@@ -127,5 +128,6 @@ __all__ = [
     "parse_xml_safe",
     "redact_url_secrets",
     "run_fx_only_fetch",
+    "run_price_fetch",
     "validate_https_url",
 ]

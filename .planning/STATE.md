@@ -5,24 +5,24 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 3 planned & verified — ready to execute Phase 3 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
+**Current focus:** Phase 3 in progress (`2/4` plans complete — paused cleanly after Wave 2 `03-02`, ready to resume at Wave 3 `03-03`)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
 Phase: 3 of 5 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine)
-Plan: 0 of 4 in current phase
-Status: Phase 3 plans verified (`03-01`..`03-04`, `03-RESEARCH.md`, `03-PATTERNS.md`, `03-VALIDATION.md` — `PASS`)
-Last activity: 2026-11-21 — Completed `/gsd-plan-phase 3` (research, pattern mapping, 4 wave-ordered TDD plans + Nyquist validation verified with 0 blockers)
+Plan: 2 of 4 in current phase
+Status: Paused cleanly after Wave 2 (`03-01` & `03-02` complete and verified; `312` offline tests passing) on branch `gsd/phase-03-open-european-fuel-fx-pipeline-zero-dds-totem-engine`
+Last activity: 2026-11-21 — Completed Wave 1 (`03-01`, multi-provider FX & AST DAG walls) and Wave 2 (`03-02`, Tier 1 European fuel collectors, seeded `state/prices.lock.json`, `RealismSnapshot` v1 price injection); paused before Wave 3 (`03-03`) per user request
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: ~15 min
-- Total execution time: ~2.3 hours
+- Total plans completed: 11
+- Average duration: ~16 min
+- Total execution time: ~2.9 hours
 
 **By Phase:**
 
@@ -30,7 +30,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 1. VFS, 1.62 Baseline & SII Engine | 4/4 | ~69 min | ~17 min |
 | 2. Realism Registry, Core & Validator | 5/5 | ~68 min | ~14 min |
-| 3. European Fuel/FX & Totems | 0/4 | - | - |
+| 3. European Fuel/FX & Totems | 2/4 | ~35 min | ~18 min |
 | 4. ProMods Companion & Combo Composer | 0/4 | - | - |
 | 5. Global Tier 1/2/3 & OSM Audit | 0/4 | - | - |
 
@@ -69,6 +69,6 @@ None blocking Phase 3 planning.
 ## Session Continuity
 
 Last session: 2026-11-21
-Stopped at: Phase 3 planned and verified
-Resume file: .planning/phases/03-open-european-fuel-fx-pipeline-zero-dds-totem-engine/03-01-PLAN.md
-Next action: Run `/gsd-execute-phase 3` to execute Wave 1–4 plans (`03-01` through `03-04`)
+Stopped at: Phase 3 Wave 2 (`03-02`) complete — paused cleanly on branch `gsd/phase-03-open-european-fuel-fx-pipeline-zero-dds-totem-engine` at `dcb1410`
+Resume file: .planning/phases/03-open-european-fuel-fx-pipeline-zero-dds-totem-engine/03-03-PLAN.md
+Next action: Run `/gsd-execute-phase 3` (or `/gsd-execute-phase 3 --wave 3`) to resume with Wave 3 (`03-03`) and Wave 4 (`03-04`), followed by Phase 3 verification and closeout

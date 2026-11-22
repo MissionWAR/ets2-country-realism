@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from datetime import date
 from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -38,6 +39,11 @@ _ISO4217_PATTERN: Final[str] = r"^[A-Z]{3}$"
 _ISO_DATE_PATTERN: Final[str] = r"^\d{4}-\d{2}-\d{2}$"
 
 
+def _validate_calendar_date(value: str) -> str:
+    date.fromisoformat(value)
+    return value
+
+
 class FxRateLockEntry(BaseModel):
     """Validated FX exchange rate entry (1 EUR = rate_per_eur <currency>) in prices.lock.json."""
 
@@ -52,6 +58,11 @@ class FxRateLockEntry(BaseModel):
     data_date: str = Field(pattern=_ISO_DATE_PATTERN)
     fetched_at: str = Field(min_length=1)
     fallback_used: bool = False
+
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str) -> str:
+        return _validate_calendar_date(value)
 
 
 class CountryFuelLockEntry(BaseModel):
@@ -69,6 +80,11 @@ class CountryFuelLockEntry(BaseModel):
     data_date: str = Field(pattern=_ISO_DATE_PATTERN)
     fetched_at: str = Field(min_length=1)
     fallback_used: bool = False
+
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str) -> str:
+        return _validate_calendar_date(value)
 
     @field_validator("local_prices")
     @classmethod

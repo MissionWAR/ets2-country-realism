@@ -514,3 +514,121 @@ def test_evaluate_lockfile_staleness_14d_and_30d_thresholds() -> None:
     assert by_scope["FR"].severity == "warning"
     assert by_scope["RS"].code == "stale_fallback"
     assert by_scope["RS"].severity == "warning"
+
+
+def test_fx_exact_boundary_divergence_and_underflow_guards() -> None:
+    # Exact Decimal boundary percentages (no IEEE-754 float noise)
+    assert compute_divergence_pct(1.00, 1.02) == 2.0
+    assert compute_divergence_pct(1.00, 1.10) == 10.0
+
+    quotes = _make_clean_provider_quotes()
+    # Exact 2.0% on CHF (major ECB tier: warn > 2.0%) -> no warning
+    # Exact 10.0% on TRY (reject > 10.0%) -> warning (>5%) but NOT rejected!
+    quotes["frankfurter_v2"] = FxProviderQuote(
+        provider="frankfurter_v2",
+        data_date="2026-11-20",
+        rates={**quotes["frankfurter_v2"].rates, "CHF": 1.02, "TRY": 55.0},
+    )
+    quotes["ecb_xml"] = FxProviderQuote(
+        provider="ecb_xml",
+        data_date="2026-11-20",
+        rates={**quotes["ecb_xml"].rates, "CHF": 1.00, "TRY": 50.0},
+    )
+    res = cross_validate_fx_rates(
+        quotes,
+        previous_fx=_make_full_previous_fx(),
+        fetched_at="2026-11-20T06:00:00Z",
+    )
+    assert res.ok is True
+    assert not [a for a in res.alerts if a.scope == "CHF"]
+    assert res.rates["CHF"].rate_per_eur == pytest.approx(1.02)
+    assert res.rates["TRY"].rate_per_eur == pytest.approx(55.0)
+    assert res.rates["TRY"].fallback_used is False
+    assert any(a.scope == "TRY" and a.code == "fx_divergence_warning" for a in res.alerts)
+    assert not any(a.scope == "TRY" and a.code == "fx_divergence_rejected" for a in res.alerts)
+
+    # round_eur_per_liter rejects sub-mill underflow to 0.000 (LO-05)
+    with pytest.raises(ValueError, match="underflows"):
+        round_eur_per_liter(0.0004)
+
+
+def test_fx_primary_sanity_rejection_promotes_healthy_live_validator() -> None:
+    quotes = _make_clean_provider_quotes()
+    quotes["frankfurter_v2"] = FxProviderQuote(
+        provider="frankfurter_v2",
+        data_date="2026-11-20",
+        rates={**quotes["frankfurter_v2"].rates, "GBP": 999.0},
+    )
+    # Even with previous_fx=None, healthy ecb_xml + fawazahmed0 supply live GBP!
+    res = cross_validate_fx_rates(
+        quotes,
+        previous_fx=None,
+        fetched_at="2026-11-20T06:00:00Z",
+    )
+    assert res.ok is True
+    assert res.rates["GBP"].provider == "ecb_xml"
+    assert res.rates["GBP"].validator_provider == "fawazahmed0"
+    assert res.rates["GBP"].rate_per_eur == pytest.approx(_BASELINE_RATES["GBP"])
+    assert res.rates["GBP"].fallback_used is True
+    assert any(a.scope == "GBP" and a.code == "fx_sanity_rejected" for a in res.alerts)
+    assert any(a.scope == "GBP" and a.code == "fx_primary_fallback" for a in res.alerts)
+
+
+def test_calendar_date_validation_and_atomic_lockfile_cleanup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ets2v2.fetch.models import RawCountryFuelQuote, RawFxProviderQuote
+
+    for bad_date in ("2026-99-01", "2026-02-30", "2026-13-01"):
+        with pytest.raises(ValidationError):
+            FxRateLockEntry(
+                currency="GBP",
+                rate_per_eur=0.84,
+                provider="frankfurter_v2",
+                data_date=bad_date,
+                fetched_at="2026-11-20T06:00:00Z",
+            )
+        with pytest.raises(ValidationError):
+            CountryFuelLockEntry(
+                iso2="DE",
+                currency="EUR",
+                eur_per_liter=1.65,
+                local_prices={"diesel": 1.65},
+                source="ec_wob",
+                license="CC BY 4.0",
+                data_date=bad_date,
+                fetched_at="2026-11-20T06:00:00Z",
+            )
+        with pytest.raises(ValidationError):
+            FxProviderQuote(provider="frankfurter_v2", data_date=bad_date, rates={"GBP": 0.84})
+        with pytest.raises(ValidationError):
+            RawFxProviderQuote(provider="frankfurter_v2", data_date=bad_date, rates={"GBP": 0.84})
+        with pytest.raises(ValidationError):
+            RawCountryFuelQuote(
+                iso2="DE",
+                currency="EUR",
+                prices_by_grade={"diesel": 1.65},
+                unit_basis="eur_per_liter",
+                source="ec_wob",
+                license="CC BY 4.0",
+                data_date=bad_date,
+            )
+
+    # Atomic lockfile write cleans up unique temp file if os.replace raises
+    lockfile = PricesLockfile(
+        schema_version=1,
+        updated_at="2026-11-20T06:00:00Z",
+        fx_rates=_make_full_previous_fx(),
+        countries={},
+        alerts=[],
+    )
+    lock_path = tmp_path / "prices.lock.json"
+
+    def _boom_replace(_src: object, _dst: object) -> None:
+        raise OSError("Simulated replace failure")
+
+    monkeypatch.setattr("ets2v2.normalize.lockfile.os.replace", _boom_replace)
+    with pytest.raises(OSError, match="Simulated replace failure"):
+        write_prices_lockfile(lockfile, lock_path)
+    assert list(tmp_path.iterdir()) == []

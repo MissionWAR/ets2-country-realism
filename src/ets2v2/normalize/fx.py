@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Final
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ets2v2.normalize.currencies import (
     BAM_FIXED_PEG_PER_EUR,
@@ -40,6 +41,12 @@ class FxProviderQuote(BaseModel):
     data_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     rates: dict[str, float]
 
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
 
 class FxValidationResult(BaseModel):
     """Outcome of D-07 multi-provider FX cross-validation across all 17 European currencies."""
@@ -57,6 +64,8 @@ def round_eur_per_liter(value: float) -> float:
     if not math.isfinite(value) or value <= 0.0:
         raise ValueError(f"eur_per_liter must be finite and > 0.0, got {value!r}")
     quantized = Decimal(str(value)).quantize(_THREE_DP, rounding=ROUND_HALF_UP)
+    if quantized <= 0:
+        raise ValueError(f"eur_per_liter {value!r} underflows to 0.000 after 3-decimal rounding")
     return float(quantized)
 
 
@@ -79,13 +88,19 @@ def convert_local_to_eur_and_local(
     )
 
 
-def compute_divergence_pct(rate_a: float, rate_b: float) -> float:
-    """Compute symmetric relative divergence percentage ``|a - b| / min(a, b) * 100`` (D-07)."""
+def _compute_divergence_pct_decimal(rate_a: float, rate_b: float) -> Decimal:
     if not math.isfinite(rate_a) or rate_a <= 0.0:
         raise ValueError(f"rate_a must be finite and > 0.0, got {rate_a!r}")
     if not math.isfinite(rate_b) or rate_b <= 0.0:
         raise ValueError(f"rate_b must be finite and > 0.0, got {rate_b!r}")
-    return abs(rate_a - rate_b) / min(rate_a, rate_b) * 100.0
+    da = Decimal(str(rate_a))
+    db = Decimal(str(rate_b))
+    return (abs(da - db) / min(da, db)) * Decimal("100")
+
+
+def compute_divergence_pct(rate_a: float, rate_b: float) -> float:
+    """Compute symmetric relative divergence percentage ``|a - b| / min(a, b) * 100`` (D-07)."""
+    return float(_compute_divergence_pct_decimal(rate_a, rate_b))
 
 
 def _check_sanity_rate(currency: str, rate: float) -> str | None:
@@ -231,17 +246,7 @@ def cross_validate_fx_rates(
                     detail=f"Rejected primary FX quote for {currency}: {primary_err}.",
                 )
             )
-            _resolve_fallback_or_missing(
-                currency,
-                previous_fx=prev_map,
-                fetched_date=fetched_date,
-                fetched_at=fetched_at,
-                resolved=resolved,
-                alerts=alerts,
-                missing=missing,
-                emit_retained_alert=False,
-            )
-            continue
+            primary_data = None
 
         validator_candidates: list[tuple[str, float, str]] = []
         for candidate_provider in _validator_chain_for(currency):
@@ -270,13 +275,18 @@ def cross_validate_fx_rates(
             active_provider, active_rate, active_date = validator_candidates[0]
             fallback_used = True
             remaining_validators = validator_candidates[1:]
+            reason = (
+                f"failed sanity bounds for {currency}"
+                if primary_err is not None
+                else f"omitted {currency}"
+            )
             alerts.append(
                 LockAlert(
                     severity="warning",
                     code="fx_primary_fallback",
                     scope=currency,
                     detail=(
-                        f"Primary FX provider {PRIMARY_FX_PROVIDER!r} omitted {currency}; "
+                        f"Primary FX provider {PRIMARY_FX_PROVIDER!r} {reason}; "
                         f"promoted {active_provider!r} ({active_rate})."
                     ),
                 )
@@ -290,14 +300,15 @@ def cross_validate_fx_rates(
                 resolved=resolved,
                 alerts=alerts,
                 missing=missing,
-                emit_retained_alert=True,
+                emit_retained_alert=primary_err is None,
             )
             continue
 
         if remaining_validators:
             val_provider, val_rate, _val_date = remaining_validators[0]
-            div_pct = compute_divergence_pct(active_rate, val_rate)
-            if div_pct > DIVERGENCE_REJECT_PCT:
+            div_dec = _compute_divergence_pct_decimal(active_rate, val_rate)
+            div_pct = float(div_dec)
+            if div_dec > Decimal(str(DIVERGENCE_REJECT_PCT)):
                 alerts.append(
                     LockAlert(
                         severity="error",
@@ -327,7 +338,7 @@ def cross_validate_fx_rates(
                 if currency in MAJOR_ECB_CURRENCIES
                 else VOLATILE_DIVERGENCE_WARN_PCT
             )
-            if div_pct > warn_threshold:
+            if div_dec > Decimal(str(warn_threshold)):
                 alerts.append(
                     LockAlert(
                         severity="warning",

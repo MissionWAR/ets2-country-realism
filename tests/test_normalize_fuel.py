@@ -252,3 +252,55 @@ def test_seed_initial_lockfile_produces_deterministic_39_territory_v1_lockfile(
     restored = load_prices_lockfile(out_path)
     assert isinstance(restored, PricesLockfile)
     assert restored == lock_a
+
+
+@pytest.mark.parametrize(
+    ("prev_price", "new_price"),
+    [
+        (1.20, 1.50),  # exact +25.0% (binary float: 0.25000000000000006)
+        (1.40, 1.75),  # exact +25.0%
+        (2.20, 1.65),  # exact -25.0%
+    ],
+)
+def test_exact_25pct_wow_boundary_accepted_without_float_noise(
+    prev_price: float,
+    new_price: float,
+) -> None:
+    prev = _prev_entry("DE", "EUR", prev_price, {"diesel": prev_price, "petrol_95": prev_price})
+    res = normalize_country_fuel_prices(
+        "DE",
+        live_local_prices={"diesel": new_price, "petrol_95": new_price},
+        source="ec_weekly_oil_bulletin",
+        license_name="CC BY 4.0",
+        data_date="2026-11-20",
+        fx_entry=_fx("EUR", 1.0),
+        previous_entry=prev,
+        allow_jump_iso2=frozenset(),
+        fetched_at="2026-11-20T06:00:00Z",
+    )
+    assert res.accepted is True
+    assert res.entry.eur_per_liter == pytest.approx(new_price)
+    assert not any(a.code == "price_jump_rejected" for a in res.alerts)
+
+
+def test_anchorless_grade_map_emits_price_anchor_missing_and_holds_previous() -> None:
+    prev = _prev_entry("DE", "EUR", 1.640, {"diesel": 1.640, "petrol_95": 1.740, "lpg": 0.990})
+    res = normalize_country_fuel_prices(
+        "DE",
+        live_local_prices={"lpg": 0.99},
+        source="partial_feed",
+        license_name="CC BY 4.0",
+        data_date="2026-11-20",
+        fx_entry=_fx("EUR", 1.0),
+        previous_entry=prev,
+        allow_jump_iso2=frozenset(),
+        fetched_at="2026-11-20T06:00:00Z",
+    )
+    assert res.accepted is False
+    assert res.entry.eur_per_liter == pytest.approx(1.640)
+    assert res.entry.source == "ec_weekly_oil_bulletin"
+    assert res.entry.fallback_used is True
+    assert any(
+        a.code == "price_anchor_missing" and a.severity == "warning" and a.scope == "DE"
+        for a in res.alerts
+    )

@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ets2v2.normalize.models import FuelGrade, LockAlert
 
 _ISO2_PATTERN: Final[str] = r"^[A-Z]{2}$"
 _ISO4217_PATTERN: Final[str] = r"^[A-Z]{3}$"
 _ISO_DATE_PATTERN: Final[str] = r"^\d{4}-\d{2}-\d{2}$"
+
+
+def _validate_calendar_date(value: str) -> str:
+    date.fromisoformat(value)
+    return value
 
 
 class RawFxProviderQuote(BaseModel):
@@ -23,6 +29,11 @@ class RawFxProviderQuote(BaseModel):
     data_date: str = Field(pattern=_ISO_DATE_PATTERN)
     rates: dict[str, float]
 
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str) -> str:
+        return _validate_calendar_date(value)
+
 
 class ProviderFetchStatus(BaseModel):
     """Structured outcome for a single upstream FX or fuel feed attempt."""
@@ -33,6 +44,13 @@ class ProviderFetchStatus(BaseModel):
     ok: bool
     detail: str | None = None
     data_date: str | None = None
+
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            _validate_calendar_date(value)
+        return value
 
 
 class FxFetchBundle(BaseModel):
@@ -57,6 +75,11 @@ class RawCountryFuelQuote(BaseModel):
     license: str = Field(min_length=1)
     data_date: str = Field(pattern=_ISO_DATE_PATTERN)
 
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str) -> str:
+        return _validate_calendar_date(value)
+
 
 class RawFuelFeedResult(BaseModel):
     """Isolated fetch outcome for one upstream fuel feed collector."""
@@ -70,6 +93,13 @@ class RawFuelFeedResult(BaseModel):
     quotes: list[RawCountryFuelQuote] = Field(default_factory=list)
     error: str | None = None
     data_date: str | None = None
+
+    @field_validator("data_date")
+    @classmethod
+    def _validate_data_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            _validate_calendar_date(value)
+        return value
 
 
 class FetchRunReport(BaseModel):

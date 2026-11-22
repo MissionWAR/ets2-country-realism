@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import tempfile
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -84,9 +86,23 @@ def write_prices_lockfile(lockfile: PricesLockfile, path: Path) -> bytes:
     """Atomically write ``PricesLockfile`` deterministically to ``path`` and return bytes."""
     raw = serialize_lockfile_bytes(lockfile)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_name(f"{path.name}.tmp")
-    tmp_path.write_bytes(raw)
-    os.replace(tmp_path, path)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            tmp_file.write(raw)
+        os.replace(tmp_path, path)
+    except BaseException:
+        if tmp_path is not None:
+            with contextlib.suppress(OSError):
+                tmp_path.unlink()
+        raise
     return raw
 
 

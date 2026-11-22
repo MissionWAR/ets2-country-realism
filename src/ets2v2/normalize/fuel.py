@@ -120,6 +120,13 @@ def compute_secondary_grade_prices(
     return ordered_prices, sorted_derived
 
 
+def _exceeds_wow_jump(prev_val: float, new_val: float) -> tuple[bool, float]:
+    prev_d = Decimal(str(prev_val))
+    new_d = Decimal(str(new_val))
+    ratio = abs(new_d - prev_d) / prev_d
+    return ratio > Decimal(str(MAX_WOW_JUMP_RATIO)), float(ratio)
+
+
 def _hold_previous(
     previous_entry: CountryFuelLockEntry | None,
     alerts: list[LockAlert],
@@ -217,6 +224,24 @@ def normalize_country_fuel_prices(
                 ),
             )
 
+    if "diesel" not in live_local_prices and "petrol_95" not in live_local_prices:
+        alerts.append(
+            LockAlert(
+                severity="warning",
+                code="price_anchor_missing",
+                scope=canonical_iso2,
+                detail=(
+                    f"Live quote for {canonical_iso2} from {source} lacks both diesel and "
+                    "petrol_95 anchors; retaining previous lockfile entry."
+                ),
+            )
+        )
+        return _hold_previous(
+            previous_entry,
+            alerts,
+            fallback_error=f"Missing diesel/petrol_95 anchor for {canonical_iso2}",
+        )
+
     full_local_prices, derived_grades = compute_secondary_grade_prices(live_local_prices)
     diesel_local_for_eur = live_local_prices.get("diesel", full_local_prices["diesel"])
     diesel_eur = round_eur_per_liter(diesel_local_for_eur / rate)
@@ -245,8 +270,8 @@ def normalize_country_fuel_prices(
     if previous_entry is not None and previous_entry.source != _BASELINE_SEEDED_SOURCE:
         jump_violations: list[str] = []
         prev_eur = previous_entry.eur_per_liter
-        eur_delta_ratio = abs(diesel_eur - prev_eur) / prev_eur
-        if eur_delta_ratio > MAX_WOW_JUMP_RATIO:
+        eur_exceeds, eur_delta_ratio = _exceeds_wow_jump(prev_eur, diesel_eur)
+        if eur_exceeds:
             jump_violations.append(
                 f"diesel EUR/L {prev_eur:.3f} -> {diesel_eur:.3f} ({eur_delta_ratio * 100.0:.1f}%)"
             )
@@ -255,8 +280,8 @@ def normalize_country_fuel_prices(
             if prev_local is None or prev_local <= 0.0:
                 continue
             new_local = full_local_prices[grade]
-            local_ratio = abs(new_local - prev_local) / prev_local
-            if local_ratio > MAX_WOW_JUMP_RATIO:
+            local_exceeds, local_ratio = _exceeds_wow_jump(prev_local, new_local)
+            if local_exceeds:
                 jump_violations.append(
                     f"{grade} local {prev_local} -> {new_local} {fx_entry.currency} "
                     f"({local_ratio * 100.0:.1f}%)"

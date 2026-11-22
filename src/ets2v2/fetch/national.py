@@ -5,18 +5,21 @@ from __future__ import annotations
 import csv
 import io
 import json
-import math
 import os
 import re
 import statistics
 from collections.abc import Callable
 from datetime import UTC, date, datetime
-from html.parser import HTMLParser
 from typing import Final, cast
 from urllib.parse import urljoin
 
 import httpx
 
+from ets2v2.fetch._parsing import (
+    AnchorExtractor,
+    extract_iso_date,
+    parse_positive_float,
+)
 from ets2v2.fetch.http import (
     HttpFetchError,
     fetch_bytes_with_retry,
@@ -75,8 +78,6 @@ NL_CBS_80416NED_URL: Final[str] = (
 )
 NL_CBS_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({"opendata.cbs.nl"})
 
-_ISO_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
-_DMY_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 _SSB_MONTH_RE: Final[re.Pattern[str]] = re.compile(r"^(\d{4})M(\d{2})$")
 _CBS_DAILY_RE: Final[re.Pattern[str]] = re.compile(r"^(\d{4})(\d{2})(\d{2})$")
 
@@ -114,77 +115,12 @@ _IT_MIMIT_PETROL_98: Final[frozenset[str]] = frozenset(
 )
 
 
-class _AnchorParser(HTMLParser):
-    """Minimal stdlib HTMLParser extracting ``(href, link_text)`` pairs."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.anchors: list[tuple[str, str]] = []
-        self._href: str | None = None
-        self._parts: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() != "a":
-            return
-        for key, value in attrs:
-            if key.lower() == "href" and value:
-                self._href = value.strip()
-                self._parts = []
-                break
-
-    def handle_data(self, data: str) -> None:
-        if self._href is not None:
-            self._parts.append(data)
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag.lower() == "a" and self._href is not None:
-            self.anchors.append((self._href, " ".join("".join(self._parts).split())))
-            self._href = None
-            self._parts = []
-
-
-def _parse_positive_float(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        num = float(value)
-        return num if math.isfinite(num) and num > 0.0 else None
-    if isinstance(value, str):
-        cleaned = value.strip().replace("\u00a0", "").replace(" ", "")
-        if not cleaned or cleaned in {"-", "N/A", "n/a", "NA", ".."}:
-            return None
-        if "," in cleaned and "." not in cleaned:
-            cleaned = cleaned.replace(",", ".")
-        else:
-            cleaned = cleaned.replace(",", "")
-        try:
-            num = float(cleaned)
-        except ValueError:
-            return None
-        return num if math.isfinite(num) and num > 0.0 else None
-    return None
-
-
-def _extract_iso_date(raw: str) -> str | None:
-    iso_m = _ISO_DATE_RE.search(raw)
-    if iso_m is not None:
-        return iso_m.group(1)
-    dmy_m = _DMY_DATE_RE.search(raw)
-    if dmy_m is not None:
-        day_s, month_s, year_s = dmy_m.groups()
-        try:
-            return date(int(year_s), int(month_s), int(day_s)).isoformat()
-        except ValueError:
-            return None
-    return None
-
-
 def discover_uk_desnz_csv_url(
     html_text: str,
     base_url: str = UK_DESNZ_LANDING_URL,
 ) -> str:
     """Discover the UK DESNZ Weekly Road Fuel Prices CSV URL under strict GOV.UK allowlist."""
-    parser = _AnchorParser()
+    parser = AnchorExtractor()
     parser.feed(html_text)
     parser.close()
 
@@ -261,11 +197,11 @@ def fetch_uk_desnz(
         best_date = ""
         best_prices: dict[FuelGrade, float] | None = None
         for row in reader:
-            iso_date = _extract_iso_date(str(row.get(date_col, "")))
+            iso_date = extract_iso_date(str(row.get(date_col, "")))
             if iso_date is None:
                 continue
-            ulsp_pence = _parse_positive_float(row.get(ulsp_col))
-            ulsd_pence = _parse_positive_float(row.get(ulsd_col))
+            ulsp_pence = parse_positive_float(row.get(ulsp_col))
+            ulsd_pence = parse_positive_float(row.get(ulsd_col))
             if ulsp_pence is None or ulsd_pence is None:
                 continue
             if iso_date >= best_date:
@@ -287,7 +223,7 @@ def fetch_uk_desnz(
             license="OGL v3.0",
             data_date=best_date,
         )
-    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError) as exc:
+    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError, csv.Error) as exc:
         return RawFuelFeedResult(
             feed_name="uk_desnz",
             tier="tier1",
@@ -374,11 +310,11 @@ def fetch_no_ssb_09654(
             if isinstance(raw_values, list):
                 vals = cast(list[object], raw_values)
                 if 0 <= flat_idx < len(vals):
-                    return _parse_positive_float(vals[flat_idx])
+                    return parse_positive_float(vals[flat_idx])
                 return None
             if isinstance(raw_values, dict):
                 val_map = cast(dict[object, object], raw_values)
-                return _parse_positive_float(val_map.get(str(flat_idx)))
+                return parse_positive_float(val_map.get(str(flat_idx)))
             return None
 
         time_dim_pos: int | None = None
@@ -403,7 +339,11 @@ def fetch_no_ssb_09654(
                 m = _SSB_MONTH_RE.match(key.strip())
                 if m is not None:
                     year_s, month_s = m.groups()
-                    matched_times.append((f"{year_s}-{month_s}-01", pos))
+                    try:
+                        iso_month = date(int(year_s), int(month_s), 1).isoformat()
+                    except ValueError:
+                        continue
+                    matched_times.append((iso_month, pos))
             if matched_times:
                 time_dim_pos = dim_pos
                 time_entries = sorted(matched_times, key=lambda item: item[0], reverse=True)
@@ -430,12 +370,51 @@ def fetch_no_ssb_09654(
         if time_dim_pos is None or product_dim_pos is None or not product_grade_positions:
             raise ValueError("SSB 09654 JSON-stat2 missing recognizable time or fuel dimensions")
 
+        # Validate all non-time, non-product dimensions have size == 1 or resolve ContentsCode price
+        extra_dim_offset = 0
+        for dim_pos, dim_name in enumerate(dim_ids):
+            if dim_pos in {time_dim_pos, product_dim_pos}:
+                continue
+            dim_size = sizes[dim_pos]
+            if dim_size == 1:
+                continue
+            if dim_name.lower() != "contentscode":
+                raise ValueError(
+                    f"SSB 09654 JSON-stat2 unexpected multi-valued dimension "
+                    f"{dim_name!r} (size={dim_size})"
+                )
+            dim_obj = dims.get(dim_name)
+            if not isinstance(dim_obj, dict):
+                raise ValueError("SSB 09654 ContentsCode dimension missing metadata")
+            cat_obj = cast(dict[object, object], dim_obj).get("category")
+            if not isinstance(cat_obj, dict):
+                raise ValueError("SSB 09654 ContentsCode dimension missing category")
+            cat = cast(dict[object, object], cat_obj)
+            index_map = _json_stat2_index_map(cat)
+            label_map = _json_stat2_label_map(cat)
+            price_positions: list[int] = []
+            for key, pos in index_map.items():
+                combined = f"{key} {label_map.get(key, '')}".lower()
+                if ("pris" in combined or "price" in combined) and not any(
+                    tok in combined for tok in ("percent", "prosent", "change", "endring")
+                ):
+                    price_positions.append(pos)
+            if len(price_positions) != 1:
+                raise ValueError(
+                    f"SSB 09654 ContentsCode has size {dim_size} and ambiguous price series"
+                )
+            extra_dim_offset += price_positions[0] * strides[dim_pos]
+
         chosen_date = ""
         chosen_prices: dict[FuelGrade, float] = {}
         for iso_month, t_pos in time_entries:
             month_prices: dict[FuelGrade, float] = {}
             for grade, p_pos in product_grade_positions.items():
-                flat_idx = p_pos * strides[product_dim_pos] + t_pos * strides[time_dim_pos]
+                flat_idx = (
+                    extra_dim_offset
+                    + p_pos * strides[product_dim_pos]
+                    + t_pos * strides[time_dim_pos]
+                )
                 val = _get_flat_value(flat_idx)
                 if val is not None:
                     month_prices[grade] = val
@@ -502,7 +481,7 @@ def fetch_fr_economie(
         row = cast(dict[object, object], results[0])
 
         def _norm_eur(key: str) -> float | None:
-            val = _parse_positive_float(row.get(key))
+            val = parse_positive_float(row.get(key))
             if val is None:
                 return None
             return val / 1000.0 if val > 100.0 else val
@@ -618,10 +597,10 @@ def fetch_de_tankerkoenig(
                 st = cast(dict[object, object], item)
                 if st.get("isOpen") is not True:
                     continue
-                d_val = _parse_positive_float(st.get("diesel"))
+                d_val = parse_positive_float(st.get("diesel"))
                 if d_val is not None:
                     diesel_samples.append(d_val)
-                e5_val = _parse_positive_float(st.get("e5"))
+                e5_val = parse_positive_float(st.get("e5"))
                 if e5_val is not None:
                     e5_samples.append(e5_val)
 
@@ -688,7 +667,7 @@ def fetch_es_miteco(
         obj = cast(dict[object, object], payload)
 
         fecha_raw = str(obj.get("Fecha", ""))
-        data_date = _extract_iso_date(fecha_raw) or datetime.now(UTC).date().isoformat()
+        data_date = extract_iso_date(fecha_raw) or datetime.now(UTC).date().isoformat()
         stations = obj.get("ListaEESSPrecio")
         if not isinstance(stations, list) or not stations:
             raise ValueError("ES MITECO payload missing non-empty ListaEESSPrecio")
@@ -699,7 +678,7 @@ def fetch_es_miteco(
                 continue
             st = cast(dict[object, object], item)
             for field_name, grade in _ES_MITECO_GRADE_FIELDS:
-                val = _parse_positive_float(st.get(field_name))
+                val = parse_positive_float(st.get(field_name))
                 if val is not None:
                     samples.setdefault(grade, []).append(val)
 
@@ -777,7 +756,7 @@ def fetch_it_mimit(
 
         first_line = lines[0].strip()
         if first_line.lower().startswith("estrazione"):
-            data_date = _extract_iso_date(first_line) or datetime.now(UTC).date().isoformat()
+            data_date = extract_iso_date(first_line) or datetime.now(UTC).date().isoformat()
             csv_lines = lines[1:]
         else:
             data_date = datetime.now(UTC).date().isoformat()
@@ -797,7 +776,7 @@ def fetch_it_mimit(
             grade = _map_it_mimit_grade(str(row.get("descCarburante", "")))
             if grade is None:
                 continue
-            price = _parse_positive_float(row.get("prezzo"))
+            price = parse_positive_float(row.get("prezzo"))
             if price is not None:
                 samples.setdefault(grade, []).append(price)
 
@@ -816,7 +795,7 @@ def fetch_it_mimit(
             license="IODL 2.0",
             data_date=data_date,
         )
-    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError) as exc:
+    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError, csv.Error) as exc:
         return RawFuelFeedResult(
             feed_name="it_mimit",
             tier="tier1",
@@ -865,18 +844,22 @@ def fetch_nl_cbs_80416ned(
             m = _CBS_DAILY_RE.match(period)
             if m is None:
                 continue
-            p95 = _parse_positive_float(row.get("BenzineEuro95_1"))
-            diesel = _parse_positive_float(row.get("Diesel_2"))
+            try:
+                candidate_date = date(int(m.group(1)), int(m.group(2)), int(m.group(3))).isoformat()
+            except ValueError:
+                continue
+            p95 = parse_positive_float(row.get("BenzineEuro95_1"))
+            diesel = parse_positive_float(row.get("Diesel_2"))
             if p95 is None or diesel is None:
                 continue
             if period > best_period:
                 best_period = period
-                best_date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+                best_date = candidate_date
                 prices: dict[FuelGrade, float] = {
                     "petrol_95": p95,
                     "diesel": diesel,
                 }
-                lpg = _parse_positive_float(row.get("Lpg_3"))
+                lpg = parse_positive_float(row.get("Lpg_3"))
                 if lpg is not None:
                     prices["lpg"] = lpg
                 best_prices = prices

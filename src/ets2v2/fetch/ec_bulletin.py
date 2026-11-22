@@ -7,9 +7,10 @@ import io
 import json
 import math
 import re
+import xml.etree.ElementTree as ET
+import zipfile
 from collections.abc import Callable
-from datetime import UTC, date, datetime
-from html.parser import HTMLParser
+from datetime import UTC, datetime
 from typing import Final, cast
 from urllib.parse import urljoin
 
@@ -17,6 +18,11 @@ import httpx
 import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 
+from ets2v2.fetch._parsing import (
+    AnchorExtractor,
+    extract_iso_date,
+    parse_positive_float,
+)
 from ets2v2.fetch.http import (
     HttpFetchError,
     fetch_bytes_with_retry,
@@ -33,7 +39,23 @@ EC_WOB_LANDING_URL: Final[str] = (
 )
 EC_WOB_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({"energy.ec.europa.eu", "ec.europa.eu"})
 EC_WOB_MAX_XLSX_BYTES: Final[int] = 20_971_520  # 20 MiB (T-03-08)
+EC_WOB_MAX_UNCOMPRESSED_BYTES: Final[int] = 67_108_864  # 64 MiB uncompressed ZIP-bomb cap
+EC_WOB_MAX_ZIP_ENTRIES: Final[int] = 256
 EC_WOB_MAX_ROWS: Final[int] = 5000  # T-03-08
+
+_XML_FORBIDDEN_DECL_BYTES_RE: Final[re.Pattern[bytes]] = re.compile(
+    rb"<!(?:DOCTYPE|ENTITY)\b",
+    flags=re.IGNORECASE,
+)
+_EX_TAX_LINK_MARKERS: Final[tuple[str, ...]] = (
+    "without tax",
+    "without_tax",
+    "excl",
+    "net price",
+)
+_MAX_UNIX_TIMESTAMP_SECONDS: Final[float] = 4_102_444_800.0  # 2100-01-01T00:00:00Z
+_MIN_UNIX_TIMESTAMP_MILLIS: Final[float] = 1_000_000_000_000.0
+_MAX_UNIX_TIMESTAMP_MILLIS: Final[float] = _MAX_UNIX_TIMESTAMP_SECONDS * 1000.0
 
 FIONNHUGHES_CSV_URL: Final[str] = (
     "https://huggingface.co/datasets/FionnHughes/eu-weekly-oil-bulletin/raw/main/eu_oil_bulletin.csv"
@@ -108,46 +130,13 @@ _EU_COUNTRY_NAMES_TO_ISO2: Final[dict[str, str]] = {
     "sweden": "SE",
 }
 
-_ISO_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
-_DMY_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
-
-
-class _AnchorExtractor(HTMLParser):
-    """Minimal stdlib HTMLParser extracting ``(href, link_text)`` pairs from ``<a>`` tags."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.anchors: list[tuple[str, str]] = []
-        self._current_href: str | None = None
-        self._text_parts: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() != "a":
-            return
-        for attr_name, attr_val in attrs:
-            if attr_name.lower() == "href" and attr_val:
-                self._current_href = attr_val.strip()
-                self._text_parts = []
-                break
-
-    def handle_data(self, data: str) -> None:
-        if self._current_href is not None:
-            self._text_parts.append(data)
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag.lower() == "a" and self._current_href is not None:
-            text = " ".join("".join(self._text_parts).split())
-            self.anchors.append((self._current_href, text))
-            self._current_href = None
-            self._text_parts = []
-
 
 def discover_ec_wob_xlsx_url(
     html_text: str,
     base_url: str = EC_WOB_LANDING_URL,
 ) -> str:
     """Discover the EC Weekly Oil Bulletin 'Prices with taxes' .xlsx URL under HTTPS allowlist."""
-    parser = _AnchorExtractor()
+    parser = AnchorExtractor()
     parser.feed(html_text)
     parser.close()
 
@@ -156,6 +145,9 @@ def discover_ec_wob_xlsx_url(
         combined_lower = f"{href} {text}".lower()
         href_lower = href.lower()
         text_lower = text.lower()
+
+        if any(marker in combined_lower for marker in _EX_TAX_LINK_MARKERS):
+            continue
 
         is_download_candidate = (
             ".xlsx" in href_lower
@@ -169,8 +161,6 @@ def discover_ec_wob_xlsx_url(
         score = 0
         if "prices with taxes" in text_lower or "prices_with_taxes" in href_lower:
             score += 10
-        if "without taxes" in combined_lower or "net price" in combined_lower:
-            score -= 8
         if ".xlsx" in href_lower:
             score += 5
         if "/document/download/" in href_lower:
@@ -189,46 +179,43 @@ def discover_ec_wob_xlsx_url(
     return validate_https_url(resolved, EC_WOB_ALLOWED_HOSTS)
 
 
-def _extract_iso_date(value: object) -> str | None:
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    if not isinstance(value, str):
-        return None
-    iso_match = _ISO_DATE_RE.search(value)
-    if iso_match is not None:
-        return iso_match.group(1)
-    dmy_match = _DMY_DATE_RE.search(value)
-    if dmy_match is not None:
-        day_s, month_s, year_s = dmy_match.groups()
-        try:
-            return date(int(year_s), int(month_s), int(day_s)).isoformat()
-        except ValueError:
-            return None
-    return None
-
-
-def _parse_positive_float(value: object) -> float | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        num = float(value)
-        return num if math.isfinite(num) and num > 0.0 else None
-    if isinstance(value, str):
-        cleaned = value.strip().replace("\u00a0", "").replace(" ", "")
-        if not cleaned or cleaned in {"-", "N/A", "n/a", "NA", ".."}:
-            return None
-        if "," in cleaned and "." not in cleaned:
-            cleaned = cleaned.replace(",", ".")
-        else:
-            cleaned = cleaned.replace(",", "")
-        try:
-            num = float(cleaned)
-        except ValueError:
-            return None
-        return num if math.isfinite(num) and num > 0.0 else None
-    return None
+def _validate_ooxml_zip_safety(raw_xlsx: bytes) -> None:
+    """Pre-validate OOXML ZIP container against ZIP bombs, encryption, and DOCTYPE/ENTITY."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw_xlsx), "r") as zf:
+            infos = zf.infolist()
+            if len(infos) > EC_WOB_MAX_ZIP_ENTRIES:
+                raise ValueError(
+                    f"OOXML archive entry count {len(infos)} exceeds cap {EC_WOB_MAX_ZIP_ENTRIES}"
+                )
+            total_uncompressed = 0
+            for info in infos:
+                if info.flag_bits & 0x41:
+                    raise ValueError(f"Encrypted OOXML entry {info.filename!r} is disallowed")
+                if info.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
+                    raise ValueError(f"Unsupported OOXML compression method {info.compress_type}")
+                if info.file_size > EC_WOB_MAX_UNCOMPRESSED_BYTES:
+                    raise ValueError(
+                        f"OOXML entry {info.filename!r} declared size exceeds uncompressed cap"
+                    )
+                remaining_budget = EC_WOB_MAX_UNCOMPRESSED_BYTES - total_uncompressed
+                with zf.open(info, "r") as member:
+                    # Stream-read with hard cap (do not trust ZipInfo.file_size header alone)
+                    data = member.read(remaining_budget + 1)
+                total_uncompressed += len(data)
+                if total_uncompressed > EC_WOB_MAX_UNCOMPRESSED_BYTES:
+                    raise ValueError(
+                        "OOXML total uncompressed payload exceeds safety cap "
+                        f"({EC_WOB_MAX_UNCOMPRESSED_BYTES} bytes)"
+                    )
+                if info.filename.lower().endswith(
+                    (".xml", ".rels")
+                ) and _XML_FORBIDDEN_DECL_BYTES_RE.search(data):
+                    raise ValueError(
+                        f"Forbidden DOCTYPE/ENTITY declaration in OOXML member {info.filename!r}"
+                    )
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"Invalid OOXML ZIP archive: {exc}") from exc
 
 
 def _resolve_eu_iso2(cell_value: object) -> str | None:
@@ -274,16 +261,19 @@ def parse_ec_wob_xlsx(
         raise ValueError(
             f"EC WOB .xlsx payload size {len(raw_xlsx)} exceeds max {EC_WOB_MAX_XLSX_BYTES} bytes"
         )
+    _validate_ooxml_zip_safety(raw_xlsx)
 
     wb = openpyxl.load_workbook(io.BytesIO(raw_xlsx), read_only=True, data_only=True)
     try:
-        sheet_names = list(wb.sheetnames)
+        sheet_names = [
+            name
+            for name in wb.sheetnames
+            if "without" not in name.lower() and "net" not in name.lower()
+        ]
         # Prefer sheets mentioning "price" / "tax"
         ordered_sheets = sorted(
             sheet_names,
-            key=lambda name: (
-                0 if ("price" in name.lower() and "without" not in name.lower()) else 1
-            ),
+            key=lambda name: 0 if "price" in name.lower() else 1,
         )
 
         scanned_rows = 0
@@ -303,7 +293,7 @@ def parse_ec_wob_xlsx(
                     # Scan preamble rows for date and header columns
                     for cell in row:
                         if detected_date is None:
-                            maybe_date = _extract_iso_date(cell)
+                            maybe_date = extract_iso_date(cell)
                             if maybe_date is not None:
                                 detected_date = maybe_date
 
@@ -340,7 +330,7 @@ def parse_ec_wob_xlsx(
                 for grade, col_idx in grade_cols.items():
                     if col_idx >= len(row):
                         continue
-                    num = _parse_positive_float(row[col_idx])
+                    num = parse_positive_float(row[col_idx])
                     if num is not None:
                         prices[grade] = num / 1000.0
                 if prices:
@@ -399,6 +389,8 @@ def fetch_ec_weekly_oil_bulletin(
         KeyError,
         OSError,
         InvalidFileException,
+        zipfile.BadZipFile,
+        ET.ParseError,
     ) as exc:
         return RawFuelFeedResult(
             feed_name="ec_weekly_oil_bulletin",
@@ -461,7 +453,7 @@ def fetch_fionnhughes_fallback(
         # Track latest date per (iso2, grade)
         latest: dict[str, tuple[str, dict[FuelGrade, float]]] = {}
         for row in reader:
-            row_date = _extract_iso_date(row.get(date_col, ""))
+            row_date = extract_iso_date(row.get(date_col, ""))
             if row_date is None:
                 continue
             iso2 = _resolve_eu_iso2(row.get(geo_col, ""))
@@ -470,7 +462,7 @@ def fetch_fionnhughes_fallback(
             grade = _match_ec_grade_header(str(row.get(product_col, "")))
             if grade is None:
                 continue
-            raw_price = _parse_positive_float(row.get(price_col, ""))
+            raw_price = parse_positive_float(row.get(price_col, ""))
             if raw_price is None:
                 continue
             eur_per_liter = raw_price / 1000.0 if raw_price > 20.0 else raw_price
@@ -497,7 +489,7 @@ def fetch_fionnhughes_fallback(
             )
             for iso2 in sorted(latest)
         ]
-    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError) as exc:
+    except (HttpFetchError, httpx.HTTPError, ValueError, KeyError, OSError, csv.Error) as exc:
         return RawFuelFeedResult(
             feed_name="fionnhughes_ec_wob",
             tier="fallback",
@@ -536,10 +528,19 @@ def fetch_fuel_prices_eu(
             raise ValueError(f"fuel-prices.eu returned ok={obj.get('ok')!r}")
 
         ts_val = obj.get("ts")
-        if isinstance(ts_val, (int, float)) and not isinstance(ts_val, bool) and ts_val > 0:
-            data_date = datetime.fromtimestamp(float(ts_val), tz=UTC).date().isoformat()
-        else:
+        if isinstance(ts_val, (int, float)) and not isinstance(ts_val, bool):
+            ts_float = float(ts_val)
+            if not math.isfinite(ts_float) or ts_float <= 0.0:
+                raise ValueError(f"fuel-prices.eu returned invalid timestamp {ts_val!r}")
+            if _MIN_UNIX_TIMESTAMP_MILLIS <= ts_float < _MAX_UNIX_TIMESTAMP_MILLIS:
+                ts_float /= 1000.0
+            if not (0.0 < ts_float < _MAX_UNIX_TIMESTAMP_SECONDS):
+                raise ValueError(f"fuel-prices.eu timestamp out of valid range: {ts_val!r}")
+            data_date = datetime.fromtimestamp(ts_float, tz=UTC).date().isoformat()
+        elif ts_val is None:
             data_date = datetime.now(UTC).date().isoformat()
+        else:
+            raise ValueError(f"fuel-prices.eu returned non-numeric timestamp {ts_val!r}")
 
         by_iso2: dict[str, dict[FuelGrade, float]] = {}
         grade_sections: tuple[tuple[str, FuelGrade], ...] = (
@@ -557,7 +558,7 @@ def fetch_fuel_prices_eu(
                 iso2 = normalize_iso2_alias(raw_code)
                 if iso2 not in EUROPEAN_TERRITORY_ISO2S:
                     continue
-                price = _parse_positive_float(raw_val)
+                price = parse_positive_float(raw_val)
                 if price is None:
                     continue
                 by_iso2.setdefault(iso2, {})[grade] = price
@@ -582,6 +583,8 @@ def fetch_fuel_prices_eu(
         httpx.HTTPError,
         ValueError,
         KeyError,
+        OverflowError,
+        OSError,
         json.JSONDecodeError,
     ) as exc:
         return RawFuelFeedResult(

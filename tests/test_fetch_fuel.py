@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import io
+import zipfile
 from datetime import date
 
 import httpx
 import openpyxl
 import pytest
 
+from ets2v2.fetch._parsing import extract_iso_date, parse_positive_float
 from ets2v2.fetch.ec_bulletin import (
     EC_WOB_LANDING_URL,
+    EC_WOB_MAX_UNCOMPRESSED_BYTES,
+    EC_WOB_MAX_ZIP_ENTRIES,
     FIONNHUGHES_CSV_URL,
     FUEL_PRICES_EU_URL,
     discover_ec_wob_xlsx_url,
@@ -577,3 +581,257 @@ def test_fetch_nl_cbs_80416ned_filters_daily_perioden_and_rejects_annual_rows() 
     assert quote.prices_by_grade["petrol_95"] == pytest.approx(1.985)
     assert quote.prices_by_grade["diesel"] == pytest.approx(1.742)
     assert quote.prices_by_grade["lpg"] == pytest.approx(0.895)
+
+
+def test_shared_parsing_mixed_european_english_separators_and_calendar_dates() -> None:
+    assert parse_positive_float("1.750,50") == pytest.approx(1750.5)
+    assert parse_positive_float("1,750.50") == pytest.approx(1750.5)
+    assert parse_positive_float("1,489") == pytest.approx(1.489)
+    assert parse_positive_float("1.234.567") == pytest.approx(1234567.0)
+    assert parse_positive_float("1,234,567") == pytest.approx(1234567.0)
+    assert parse_positive_float("1 750,50") == pytest.approx(1750.5)
+    assert parse_positive_float("-") is None
+    assert parse_positive_float(True) is None
+
+    assert extract_iso_date("2026-11-20") == "2026-11-20"
+    assert extract_iso_date("20/11/2026 08:00:00") == "2026-11-20"
+    assert extract_iso_date("2026-99-01") is None
+    assert extract_iso_date("31/02/2026") is None
+
+
+def test_parse_ec_wob_xlsx_blocks_zip_bomb_entry_cap_and_doctype_xxe() -> None:
+    # 1. High-ratio ZIP bomb (> 64 MiB uncompressed in a tiny compressed .xlsx)
+    bomb_buf = io.BytesIO()
+    with zipfile.ZipFile(bomb_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "xl/sharedStrings.xml",
+            b"<sst>" + (b" " * (EC_WOB_MAX_UNCOMPRESSED_BYTES + 1024)) + b"</sst>",
+        )
+    bomb_bytes = bomb_buf.getvalue()
+    assert len(bomb_bytes) < 1_000_000  # tiny compressed archive well under 20 MiB cap
+    with pytest.raises(ValueError, match="uncompressed"):
+        parse_ec_wob_xlsx(bomb_bytes)
+
+    # 2. OOXML member containing <!DOCTYPE / <!ENTITY declaration
+    xxe_buf = io.BytesIO()
+    with zipfile.ZipFile(xxe_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "xl/workbook.xml",
+            b'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+            b"<workbook/>",
+        )
+    with pytest.raises(ValueError, match="DOCTYPE/ENTITY"):
+        parse_ec_wob_xlsx(xxe_buf.getvalue())
+
+    # 3. Excess ZIP entry count (> EC_WOB_MAX_ZIP_ENTRIES)
+    many_buf = io.BytesIO()
+    with zipfile.ZipFile(many_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for i in range(EC_WOB_MAX_ZIP_ENTRIES + 5):
+            zf.writestr(f"xl/sheet_{i}.xml", b"<x/>")
+    with pytest.raises(ValueError, match="entry count"):
+        parse_ec_wob_xlsx(many_buf.getvalue())
+
+
+def test_ec_wob_rejects_ex_tax_only_landing_page_and_worksheet() -> None:
+    ex_tax_html = (
+        "<html><body>"
+        '<a href="/document/download/abc123_en'
+        '?filename=Weekly_Oil_Bulletin_Prices_without_taxes.xlsx">'
+        "Weekly Oil Bulletin - Prices without taxes (XLSX)</a>"
+        '<a href="/document/download/def456_en'
+        '?filename=Weekly_Oil_Bulletin_Net_Price.xlsx">'
+        "Weekly Oil Bulletin - Net price excl. duties</a>"
+        "</body></html>"
+    )
+    with pytest.raises(ValueError, match="Could not discover"):
+        discover_ec_wob_xlsx_url(ex_tax_html, EC_WOB_LANDING_URL)
+
+    # Workbook with only a "Prices without taxes" sheet must be rejected
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "Prices without taxes"
+    ws.append(["Country", "Euro-super 95", "Automotive gas oil"])
+    ws.append(["DE", 820.0, 810.0])
+    buf = io.BytesIO()
+    wb.save(buf)
+    with pytest.raises(ValueError, match="no parseable"):
+        parse_ec_wob_xlsx(buf.getvalue())
+
+
+def test_collectors_fault_isolate_html_for_xlsx_millisecond_ts_and_nul_csv() -> None:
+    from ets2v2.fetch.national import (
+        IT_MIMIT_URL,
+        UK_DESNZ_LANDING_URL,
+        fetch_it_mimit,
+        fetch_uk_desnz,
+    )
+
+    # 1. HTTP 200 HTML maintenance page on EC WOB .xlsx download -> ok=False (not BadZipFile crash)
+    xlsx_url = (
+        "https://energy.ec.europa.eu/document/download/maint_en"
+        "?filename=Weekly_Oil_Bulletin_Prices_with_taxes.xlsx"
+    )
+    landing_html = f'<a href="{xlsx_url}">Prices with taxes</a>'
+
+    def _ec_html_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == EC_WOB_LANDING_URL:
+            return httpx.Response(200, text=landing_html)
+        return httpx.Response(200, text="<html><body>503 Maintenance</body></html>")
+
+    with create_http_client(transport=httpx.MockTransport(_ec_html_handler)) as client:
+        ec_res = fetch_ec_weekly_oil_bulletin(client, sleep_fn=lambda _: None)
+    assert ec_res.ok is False
+    assert ec_res.error is not None
+
+    # 2. fuel-prices.eu millisecond timestamp normalizes cleanly; absurd/overflow ts -> ok=False
+    ms_transport = httpx.MockTransport(
+        lambda _req: httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "ts": 1763618400000,  # 2025-11-20 in milliseconds
+                "petrol": {"IS": 1.812},
+                "diesel": {"IS": 1.845},
+            },
+        )
+    )
+    with create_http_client(transport=ms_transport) as client:
+        ms_res = fetch_fuel_prices_eu(client, sleep_fn=lambda _: None)
+    assert ms_res.ok is True
+    assert ms_res.data_date == "2025-11-20"
+
+    overflow_transport = httpx.MockTransport(
+        lambda _req: httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "ts": 9e18,
+                "petrol": {"IS": 1.812},
+                "diesel": {"IS": 1.845},
+            },
+        )
+    )
+    with create_http_client(transport=overflow_transport) as client:
+        ov_res = fetch_fuel_prices_eu(client, sleep_fn=lambda _: None)
+    assert ov_res.ok is False
+    assert ov_res.error is not None
+
+    # 3. NUL-byte CSV -> ok=False (not uncaught csv.Error) across UK DESNZ, IT MIMIT, FionnHughes
+    uk_csv_url = "https://assets.publishing.service.gov.uk/media/bad/weekly_road_fuel_prices.csv"
+
+    def _uk_nul_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == UK_DESNZ_LANDING_URL:
+            return httpx.Response(200, text=f'<a href="{uk_csv_url}">Weekly road fuel CSV</a>')
+        return httpx.Response(200, content=b"Date,ULSP,ULSD\n16/11/2026,\x00138.4,142.9\n")
+
+    with create_http_client(transport=httpx.MockTransport(_uk_nul_handler)) as client:
+        uk_res = fetch_uk_desnz(client, sleep_fn=lambda _: None)
+    assert uk_res.ok is False
+
+    it_nul_transport = httpx.MockTransport(
+        lambda _req: httpx.Response(
+            200,
+            content=(
+                b"Estrazione del 2026-11-20\nid;descCarburante;prezzo;isSelf\n1;Gasolio;\x00;1\n"
+            ),
+        )
+    )
+    with create_http_client(transport=it_nul_transport) as client:
+        it_res = fetch_it_mimit(client, sleep_fn=lambda _: None)
+    assert it_res.ok is False
+    assert IT_MIMIT_URL.startswith("https://")
+
+    fh_nul_transport = httpx.MockTransport(
+        lambda _req: httpx.Response(
+            200,
+            content=b"date,geo,product,price\n2026-11-16,DE,Diesel,\x001640\n",
+        )
+    )
+    with create_http_client(transport=fh_nul_transport) as client:
+        fh_res = fetch_fionnhughes_fallback(client, sleep_fn=lambda _: None)
+    assert fh_res.ok is False
+
+
+def test_fetch_no_ssb_09654_resolves_multi_metric_contentscode_and_rejects_extra_dim() -> None:
+    from ets2v2.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
+
+    # ContentsCode has 2 series: idx 0 = Percent change, idx 1 = Average retail price
+    multi_contents = {
+        "id": ["Drivstoff", "ContentsCode", "Tid"],
+        "size": [2, 2, 1],
+        "dimension": {
+            "Drivstoff": {
+                "category": {
+                    "index": {"01": 0, "02": 1},
+                    "label": {
+                        "01": "Unleaded gasoline 95 octane",
+                        "02": "Auto diesel (dutiable)",
+                    },
+                }
+            },
+            "ContentsCode": {
+                "category": {
+                    "index": {"Endring": 0, "Pris": 1},
+                    "label": {
+                        "Endring": "Monthly percent change",
+                        "Pris": "Average retail price (NOK/l)",
+                    },
+                }
+            },
+            "Tid": {
+                "category": {
+                    "index": {"2026M10": 0},
+                    "label": {"2026M10": "2026M10"},
+                }
+            },
+        },
+        # [p95/Endring, p95/Pris, diesel/Endring, diesel/Pris]
+        "value": [1.5, 22.10, 0.8, 21.30],
+    }
+
+    with create_http_client(
+        transport=httpx.MockTransport(
+            lambda req: (
+                httpx.Response(200, json=multi_contents)
+                if str(req.url) == NO_SSB_09654_URL
+                else httpx.Response(404)
+            )
+        )
+    ) as client:
+        res = fetch_no_ssb_09654(client, sleep_fn=lambda _: None)
+
+    assert res.ok is True
+    assert res.quotes[0].prices_by_grade["petrol_95"] == pytest.approx(22.10)
+    assert res.quotes[0].prices_by_grade["diesel"] == pytest.approx(21.30)
+
+    # Unexpected multi-valued non-ContentsCode dimension -> ok=False
+    bad_dim: dict[str, object] = {
+        "id": ["Drivstoff", "Region", "Tid"],
+        "size": [2, 2, 1],
+        "dimension": {
+            "Drivstoff": {
+                "category": {
+                    "index": {"01": 0, "02": 1},
+                    "label": {
+                        "01": "Unleaded gasoline 95 octane",
+                        "02": "Auto diesel (dutiable)",
+                    },
+                }
+            },
+            "Region": {"category": {"index": {"01": 0, "02": 1}, "label": {"01": "A", "02": "B"}}},
+            "Tid": {
+                "category": {
+                    "index": {"2026M10": 0},
+                    "label": {"2026M10": "2026M10"},
+                }
+            },
+        },
+        "value": [1.5, 22.10, 0.8, 21.30],
+    }
+    with create_http_client(
+        transport=httpx.MockTransport(lambda _req: httpx.Response(200, json=bad_dim))
+    ) as client:
+        bad_res = fetch_no_ssb_09654(client, sleep_fn=lambda _: None)
+    assert bad_res.ok is False
+    assert bad_res.error is not None and "multi-valued" in bad_res.error

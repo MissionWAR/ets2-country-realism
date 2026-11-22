@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Callable, Sequence
 from datetime import date
@@ -21,7 +22,7 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
-from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, run_price_fetch
+from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, redact_url_secrets, run_price_fetch
 from ets2v2.normalize import PricesLockfile, load_prices_lockfile
 from ets2v2.package import (
     DEFAULT_AUTHOR,
@@ -498,6 +499,13 @@ def _handle_fetch(args: argparse.Namespace) -> int:
     dry_run = cast(bool, args.dry_run)
     as_json = cast(bool, args.json)
 
+    if not math.isfinite(timeout) or timeout <= 0.0:
+        print(
+            f"error: --timeout must be finite and > 0.0, got {timeout!r}",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         report = run_price_fetch(
             lock_path=lock_path,
@@ -509,7 +517,7 @@ def _handle_fetch(args: argparse.Namespace) -> int:
             write_lock=not dry_run,
         )
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
-        print(f"error: price fetch failed: {exc}", file=sys.stderr)
+        print(f"error: price fetch failed: {redact_url_secrets(str(exc))}", file=sys.stderr)
         return 1
 
     if as_json:

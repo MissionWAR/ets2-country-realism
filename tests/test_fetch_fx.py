@@ -466,3 +466,80 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert fail_code == 1
     fail_payload = json.loads(fail_captured.out)
     assert fail_payload["ok"] is False
+
+
+def test_http_port_guard_decoding_error_redaction_bom_xml_and_timeout_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    allowed = frozenset({"api.frankfurter.dev"})
+    assert (
+        validate_https_url("https://api.frankfurter.dev:443/v2/rates", allowed)
+        == "https://api.frankfurter.dev:443/v2/rates"
+    )
+    with pytest.raises(ValueError, match="port"):
+        validate_https_url("https://api.frankfurter.dev:8443/v2/rates", allowed)
+
+    # Non-retryable httpx.DecodingError / StreamError wrapped in HttpFetchError with redacted secret
+    def _bad_gzip_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.DecodingError(
+            f"corrupt gzip stream for {request.url}",
+            request=request,
+        )
+
+    with (
+        create_http_client(transport=httpx.MockTransport(_bad_gzip_handler)) as client,
+        pytest.raises(HttpFetchError) as dec_exc,
+    ):
+        fetch_bytes_with_retry(
+            client,
+            "https://api.frankfurter.dev/v2/rates",
+            allowed_hosts=allowed,
+            params={"apikey": "very_secret_gzip_key"},
+            max_retries=2,
+            sleep_fn=lambda _: None,
+        )
+    assert "very_secret_gzip_key" not in str(dec_exc.value)
+    assert "apikey=***" in str(dec_exc.value)
+
+    def _stream_err_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.StreamClosed()
+
+    with (
+        create_http_client(transport=httpx.MockTransport(_stream_err_handler)) as client,
+        pytest.raises(HttpFetchError),
+    ):
+        fetch_bytes_with_retry(
+            client,
+            "https://api.frankfurter.dev/v2/rates",
+            allowed_hosts=allowed,
+            max_retries=0,
+            sleep_fn=lambda _: None,
+        )
+
+    # UTF-8 BOM-prefixed XML parses cleanly (LO-03)
+    bom_xml = b'\xef\xbb\xbf<?xml version="1.0" encoding="UTF-8"?><root><item>ok</item></root>'
+    root = parse_xml_safe(bom_xml)
+    assert root.tag == "root"
+
+    # Invalid timeout rejected in create_http_client() and CLI _handle_fetch() (LO-05)
+    for bad_timeout in (0.0, -2.5, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="timeout"):
+            create_http_client(timeout=bad_timeout)
+
+    for bad_arg in ("0", "-1", "nan", "inf"):
+        code = main(["fetch", "--fx-only", "--dry-run", "--timeout", bad_arg])
+        err_cap = capsys.readouterr()
+        assert code == 1
+        assert "--timeout" in err_cap.err
+
+    # CLI _handle_fetch() redacts secrets in caught exception messages on stderr
+    def _boom_fetch(*_args: object, **_kwargs: object) -> object:
+        raise ValueError("failure for https://example.test/?apikey=cli_secret_999")
+
+    monkeypatch.setattr("ets2v2.cli.run_price_fetch", _boom_fetch)
+    err_code = main(["fetch", "--fx-only", "--dry-run"])
+    err_cap = capsys.readouterr()
+    assert err_code == 1
+    assert "cli_secret_999" not in err_cap.err
+    assert "apikey=***" in err_cap.err

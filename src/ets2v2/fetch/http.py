@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 import time
 import xml.etree.ElementTree as ET
@@ -47,12 +48,14 @@ def redact_url_secrets(text: str) -> str:
 
 
 def validate_https_url(url: str, allowed_hosts: frozenset[str]) -> str:
-    """Enforce HTTPS scheme, no embedded credentials, and exact host allowlist (T-03-01)."""
+    """Enforce HTTPS scheme, standard port 443, no credentials, and exact host allowlist."""
     parsed = urlsplit(url)
     if parsed.scheme.lower() != "https":
         raise ValueError(f"Only HTTPS URLs are permitted, got scheme {parsed.scheme!r}")
     if parsed.username is not None or parsed.password is not None:
         raise ValueError("URL must not contain embedded credentials")
+    if parsed.port not in (None, 443):
+        raise ValueError(f"Non-standard HTTPS port {parsed.port} is not permitted")
     hostname = parsed.hostname
     if not hostname:
         raise ValueError(f"URL is missing a valid hostname: {redact_url_secrets(url)!r}")
@@ -68,6 +71,8 @@ def create_http_client(
     transport: httpx.BaseTransport | None = None,
 ) -> httpx.Client:
     """Create a hardened synchronous ``httpx.Client`` with TLS verification unconditionally on."""
+    if not math.isfinite(timeout) or timeout <= 0.0:
+        raise ValueError(f"HTTP timeout must be finite and > 0.0, got {timeout!r}")
     return httpx.Client(
         verify=True,
         timeout=httpx.Timeout(timeout),
@@ -163,6 +168,8 @@ def fetch_bytes_with_retry(
                 sleeper(backoff_seconds * (2**attempt))
                 continue
             raise last_error from None
+        except (httpx.DecodingError, httpx.StreamError) as exc:
+            raise HttpFetchError(redact_url_secrets(str(exc))) from None
         except HttpFetchError:
             raise
 
@@ -179,7 +186,7 @@ def parse_xml_safe(
     """Safely parse untrusted XML enforcing a byte cap and rejecting DOCTYPE/ENTITY (T-03-02)."""
     if len(raw) > max_bytes:
         raise ValueError(f"XML payload size {len(raw)} exceeds max_bytes ({max_bytes})")
-    text = raw.decode(encoding)
+    text = raw.decode(encoding).removeprefix("\ufeff")
     if _XML_FORBIDDEN_DECL_RE.search(text):
         raise ValueError("XML payload contains forbidden DOCTYPE or ENTITY declaration")
     cleaned = _XML_PROLOG_RE.sub("", text, count=1)

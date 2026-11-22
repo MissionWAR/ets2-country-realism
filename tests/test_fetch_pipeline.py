@@ -104,6 +104,7 @@ _EU27_ROWS: list[tuple[str, float, float, float | None]] = [
 def _make_ec_xlsx(
     *,
     de_diesel_per_1000l: float = 1640.0,
+    de_lpg_per_1000l: float | None = 995.0,
     obs_date: date = date(2026, 11, 16),
 ) -> bytes:
     wb = openpyxl.Workbook()
@@ -115,7 +116,8 @@ def _make_ec_xlsx(
     ws.append(["Country", "Euro-super 95", "Automotive gas oil", "LPG - motor fuel"])
     for code, p95, diesel, lpg in _EU27_ROWS:
         d_val = de_diesel_per_1000l if code == "DE" else diesel
-        ws.append([code, p95, d_val, lpg])
+        l_val = de_lpg_per_1000l if code == "DE" else lpg
+        ws.append([code, p95, d_val, l_val])
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -150,6 +152,8 @@ def _pipeline_transport(
     fail_it: bool = False,
     fail_ec_wob: bool = False,
     de_diesel_per_1000l: float = 1640.0,
+    de_lpg_per_1000l: float | None = 995.0,
+    de_tankerkoenig_diesel: float = 1.659,
     ec_obs_date: date = date(2026, 11, 16),
 ) -> httpx.MockTransport:
     ec_xlsx_url = (
@@ -157,7 +161,11 @@ def _pipeline_transport(
         "?filename=Weekly_Oil_Bulletin_Prices_with_taxes.xlsx"
     )
     uk_csv_url = "https://assets.publishing.service.gov.uk/media/test/weekly_road_fuel_prices.csv"
-    xlsx_bytes = _make_ec_xlsx(de_diesel_per_1000l=de_diesel_per_1000l, obs_date=ec_obs_date)
+    xlsx_bytes = _make_ec_xlsx(
+        de_diesel_per_1000l=de_diesel_per_1000l,
+        de_lpg_per_1000l=de_lpg_per_1000l,
+        obs_date=ec_obs_date,
+    )
 
     def _handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
@@ -285,7 +293,7 @@ def _pipeline_transport(
                 200,
                 json={
                     "ok": True,
-                    "stations": [{"diesel": 1.659, "e5": 1.759, "isOpen": True}],
+                    "stations": [{"diesel": de_tankerkoenig_diesel, "e5": 1.759, "isOpen": True}],
                 },
             )
         if url == ES_MITECO_URL:
@@ -546,3 +554,129 @@ def test_committed_state_prices_lockfile_contract() -> None:
     for iso2, entry in lock.countries.items():
         assert entry.currency == TERRITORY_CURRENCIES[iso2]
         assert set(entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
+
+
+def test_run_price_fetch_isolates_corrupt_supplemental_grade_and_falls_back_to_live_ec_wob(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+
+    # Initial healthy lockfile (DE diesel = 1.640 from EC WOB)
+    init = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=_pipeline_transport(de_diesel_per_1000l=1640.0),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert init.ok is True
+
+    # Scenario 1 (HI-03): Corrupt EC WOB lpg (99.0 EUR/L) must NOT poison valid de_tankerkoenig
+    res_supp = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=_pipeline_transport(
+            de_diesel_per_1000l=1645.0,
+            de_lpg_per_1000l=99_000.0,  # 99.0 EUR/L -> corrupt!
+            de_tankerkoenig_diesel=1.659,
+        ),
+        tankerkoenig_api_key="tk-test-key",
+        now_utc=datetime(2026, 11, 21, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_supp.ok is True
+    loaded_supp = load_prices_lockfile(lock_path)
+    assert loaded_supp.countries["DE"].source == "de_tankerkoenig"
+    assert loaded_supp.countries["DE"].eur_per_liter == pytest.approx(1.659)
+    assert "lpg" in loaded_supp.countries["DE"].derived_grades
+    assert loaded_supp.countries["DE"].local_prices["lpg"] == pytest.approx(1.759 * 0.48, abs=1e-3)
+    assert any(a.code == "supplemental_grade_rejected" and a.scope == "DE" for a in res_supp.alerts)
+
+    # Scenario 2 (HI-03): Rejected Tier 1 national feed (de_tankerkoenig >25% jump) falls back
+    # to healthy live EC WOB (diesel = 1.670) instead of stale previous entry (1.659)!
+    res_fb = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=_pipeline_transport(
+            de_diesel_per_1000l=1670.0,
+            de_lpg_per_1000l=985.0,
+            de_tankerkoenig_diesel=3.500,  # >25% jump -> rejected
+        ),
+        tankerkoenig_api_key="tk-test-key",
+        now_utc=datetime(2026, 11, 22, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_fb.ok is True
+    loaded_fb = load_prices_lockfile(lock_path)
+    assert loaded_fb.countries["DE"].source == "ec_weekly_oil_bulletin"
+    assert loaded_fb.countries["DE"].eur_per_liter == pytest.approx(1.670)
+    assert loaded_fb.countries["DE"].fallback_used is False
+    assert any(a.code == "price_jump_rejected" and a.scope == "DE" for a in res_fb.alerts)
+
+
+def test_run_price_fetch_anchorless_quote_retains_previous_live_entry(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from ets2v2.fetch.models import RawCountryFuelQuote, RawFuelFeedResult
+
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+
+    # Initial healthy live fetch (IS = 1.840 from fuel_prices_eu)
+    run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=_pipeline_transport(),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert load_prices_lockfile(lock_path).countries["IS"].source == "fuel_prices_eu"
+
+    # Next run: fuel_prices_eu returns an anchorless quote for IS (only lpg, no diesel/petrol_95)
+    def _anchorless_feed(
+        _client: httpx.Client,
+        *,
+        sleep_fn: object = None,
+    ) -> RawFuelFeedResult:
+        _ = sleep_fn
+        return RawFuelFeedResult(
+            feed_name="fuel_prices_eu",
+            tier="fallback",
+            ok=True,
+            quotes=[
+                RawCountryFuelQuote(
+                    iso2="IS",
+                    currency="EUR",
+                    prices_by_grade={"lpg": 0.99},
+                    unit_basis="eur_per_liter",
+                    source="fuel_prices_eu",
+                    license="CC BY 4.0",
+                    data_date="2026-11-21",
+                )
+            ],
+            data_date="2026-11-21",
+        )
+
+    monkeypatch.setattr("ets2v2.fetch.pipeline.fetch_fuel_prices_eu", _anchorless_feed)
+    res = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=_pipeline_transport(),
+        now_utc=datetime(2026, 11, 21, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res.ok is True
+    loaded = load_prices_lockfile(lock_path)
+    # Retain previous live fuel_prices_eu entry (1.840), NOT overwrite with baseline_1.62_seeded
+    assert loaded.countries["IS"].source == "fuel_prices_eu"
+    assert loaded.countries["IS"].eur_per_liter == pytest.approx(1.840)
+    assert loaded.countries["IS"].fallback_used is True
+    assert any(a.code == "price_anchor_missing" and a.scope == "IS" for a in res.alerts)

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Final
 
@@ -26,8 +29,12 @@ from ets2v2.fetch.models import (
 from ets2v2.fetch.national import fetch_all_national_feeds
 from ets2v2.normalize.currencies import EUROPEAN_TERRITORY_ISO2S, TERRITORY_CURRENCIES
 from ets2v2.normalize.fuel import (
+    MAX_EUR_PER_LITER,
+    MAX_WOW_JUMP_RATIO,
+    MIN_EUR_PER_LITER,
     compute_secondary_grade_prices,
     normalize_country_fuel_prices,
+    normalize_iso2_alias,
     round_local_price,
 )
 from ets2v2.normalize.fx import FxProviderQuote, cross_validate_fx_rates, round_eur_per_liter
@@ -63,6 +70,71 @@ _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "nl_cbs_80416ned": 40,
 }
 _SEED_PETROL_TO_DIESEL_RATIO: Final[float] = 1.03
+
+
+@dataclass(frozen=True)
+class _FuelCandidate:
+    source: str
+    license_name: str
+    data_date: str
+    feed_tier: str
+    local_prices: dict[FuelGrade, float]
+
+
+def _validate_supplemental_grade(
+    iso2: str,
+    grade: FuelGrade,
+    local_val: float,
+    *,
+    source: str,
+    fx_entry: FxRateLockEntry,
+    previous_entry: CountryFuelLockEntry | None,
+    normalized_allow: frozenset[str],
+) -> tuple[float | None, LockAlert | None]:
+    if not math.isfinite(local_val) or local_val <= 0.0:
+        return None, LockAlert(
+            severity="warning",
+            code="supplemental_grade_rejected",
+            scope=iso2,
+            detail=(
+                f"Dropped non-finite/non-positive supplemental {grade} price {local_val!r} "
+                f"for {iso2} from {source}."
+            ),
+        )
+    eur_equiv = local_val / fx_entry.rate_per_eur
+    if not (MIN_EUR_PER_LITER <= eur_equiv <= MAX_EUR_PER_LITER):
+        return None, LockAlert(
+            severity="warning",
+            code="supplemental_grade_rejected",
+            scope=iso2,
+            detail=(
+                f"Dropped out-of-bounds supplemental {grade} price for {iso2} from {source}: "
+                f"{local_val} {fx_entry.currency}/L ({eur_equiv:.4f} EUR/L)."
+            ),
+        )
+    rounded_val = round_local_price(local_val)
+    if (
+        previous_entry is not None
+        and previous_entry.source != BASELINE_SEEDED_SOURCE
+        and iso2 not in normalized_allow
+    ):
+        prev_local = previous_entry.local_prices.get(grade)
+        if prev_local is not None and prev_local > 0.0:
+            prev_d = Decimal(str(prev_local))
+            new_d = Decimal(str(rounded_val))
+            ratio = abs(new_d - prev_d) / prev_d
+            if ratio > Decimal(str(MAX_WOW_JUMP_RATIO)):
+                return None, LockAlert(
+                    severity="warning",
+                    code="supplemental_grade_rejected",
+                    scope=iso2,
+                    detail=(
+                        f"Dropped >25% WoW supplemental {grade} jump for {iso2} from {source}: "
+                        f"{prev_local} -> {rounded_val} {fx_entry.currency} "
+                        f"({float(ratio) * 100.0:.1f}%)."
+                    ),
+                )
+    return rounded_val, None
 
 
 def _sort_alerts(alerts: list[LockAlert]) -> list[LockAlert]:
@@ -309,14 +381,14 @@ def run_price_fetch(
             provider_statuses=provider_statuses,
         )
 
-    # Merge quotes per ISO-2 strictly in ascending precedence so higher priority overwrites grades.
+    # Group candidate quotes per ISO-2 in descending precedence so each feed is validated
+    # independently before falling back to lower-precedence live feeds or lockfile retention.
     ordered_ok_feeds = sorted(
         (r for r in all_fuel_results if r.ok and not r.skipped),
-        key=lambda r: (_FEED_PRECEDENCE.get(r.feed_name, 0), r.feed_name),
+        key=lambda r: (-_FEED_PRECEDENCE.get(r.feed_name, 0), r.feed_name),
     )
 
-    merged_grades: dict[str, dict[FuelGrade, float]] = {}
-    winning_meta: dict[str, tuple[str, str, str, str]] = {}  # (source, license, data_date, tier)
+    candidates_by_iso2: dict[str, list[_FuelCandidate]] = {}
     for feed_res in ordered_ok_feeds:
         for quote in feed_res.quotes:
             if quote.iso2 not in EUROPEAN_TERRITORY_ISO2S:
@@ -335,14 +407,17 @@ def run_price_fetch(
                     )
                 )
                 continue
-            merged_grades.setdefault(quote.iso2, {}).update(local_map)
-            winning_meta[quote.iso2] = (
-                quote.source,
-                quote.license,
-                quote.data_date,
-                feed_res.tier,
+            candidates_by_iso2.setdefault(quote.iso2, []).append(
+                _FuelCandidate(
+                    source=quote.source,
+                    license_name=quote.license,
+                    data_date=quote.data_date,
+                    feed_tier=feed_res.tier,
+                    local_prices=local_map,
+                )
             )
 
+    normalized_allow = frozenset(normalize_iso2_alias(code) for code in allow_jump_iso2)
     countries: dict[str, CountryFuelLockEntry] = {}
     countries_updated = 0
     countries_fallback = 0
@@ -351,50 +426,83 @@ def run_price_fetch(
         currency = TERRITORY_CURRENCIES[iso2]
         fx_entry = fx_validation.rates[currency]
         previous_entry = existing_lock.countries.get(iso2) if existing_lock is not None else None
+        candidates = candidates_by_iso2.get(iso2, [])
 
-        if iso2 in merged_grades and iso2 in winning_meta:
-            source, license_name, data_date, feed_tier = winning_meta[iso2]
-            is_fallback_entry = feed_tier == "fallback" and iso2 not in _NON_EU_VANILLA_ISO2S
+        winning_idx: int | None = None
+        winning_entry: CountryFuelLockEntry | None = None
+        for idx, cand in enumerate(candidates):
+            is_fallback_entry = cand.feed_tier == "fallback" and iso2 not in _NON_EU_VANILLA_ISO2S
             try:
                 norm = normalize_country_fuel_prices(
                     iso2,
-                    live_local_prices=merged_grades[iso2],
-                    source=source,
-                    license_name=license_name,
-                    data_date=data_date,
+                    live_local_prices=cand.local_prices,
+                    source=cand.source,
+                    license_name=cand.license_name,
+                    data_date=cand.data_date,
                     fx_entry=fx_entry,
                     previous_entry=previous_entry,
                     allow_jump_iso2=allow_jump_iso2,
                     fetched_at=now_iso,
                     is_fallback=is_fallback_entry,
                 )
-                countries[iso2] = norm.entry
-                alerts.extend(norm.alerts)
-                if norm.accepted and not norm.entry.fallback_used:
-                    countries_updated += 1
-                else:
-                    countries_fallback += 1
             except ValueError as exc:
+                detail_msg = redact_url_secrets(str(exc))
+                is_anchor_err = "anchor" in detail_msg.lower()
                 alerts.append(
                     LockAlert(
-                        severity="error",
-                        code="price_bounds_rejected",
+                        severity="warning" if is_anchor_err else "error",
+                        code="price_anchor_missing" if is_anchor_err else "price_bounds_rejected",
                         scope=iso2,
-                        detail=redact_url_secrets(str(exc)),
+                        detail=detail_msg,
                     )
                 )
-                seed_eur = baseline_seed.countries[iso2].eur_per_liter
-                countries[iso2] = _build_baseline_entry(
-                    iso2,
-                    diesel_eur=seed_eur,
-                    fx_entry=fx_entry,
-                    data_date=now_date_str,
-                    fetched_at=now_iso,
+                continue
+
+            alerts.extend(norm.alerts)
+            if norm.accepted:
+                winning_idx = idx
+                winning_entry = norm.entry
+                break
+
+        if winning_entry is not None and winning_idx is not None:
+            winning_cand = candidates[winning_idx]
+            accepted_live: dict[FuelGrade, float] = {
+                grade: winning_entry.local_prices[grade] for grade in winning_cand.local_prices
+            }
+            supplemented = False
+            for supp_cand in candidates[winning_idx + 1 :]:
+                for grade, raw_local in sorted(supp_cand.local_prices.items()):
+                    if grade in accepted_live:
+                        continue
+                    valid_val, supp_alert = _validate_supplemental_grade(
+                        iso2,
+                        grade,
+                        raw_local,
+                        source=supp_cand.source,
+                        fx_entry=fx_entry,
+                        previous_entry=previous_entry,
+                        normalized_allow=normalized_allow,
+                    )
+                    if supp_alert is not None:
+                        alerts.append(supp_alert)
+                    if valid_val is not None:
+                        accepted_live[grade] = valid_val
+                        supplemented = True
+
+            if supplemented:
+                full_local, derived_grades = compute_secondary_grade_prices(accepted_live)
+                winning_entry = winning_entry.model_copy(
+                    update={"local_prices": full_local, "derived_grades": derived_grades}
                 )
+
+            countries[iso2] = winning_entry
+            if not winning_entry.fallback_used:
+                countries_updated += 1
+            else:
                 countries_fallback += 1
             continue
 
-        # No live feed covered this territory -> retain lockfile or seed from ETS2 1.62 baseline.
+        # No valid live feed covered this territory -> retain lockfile or seed from 1.62 baseline.
         if previous_entry is not None:
             if previous_entry.source == BASELINE_SEEDED_SOURCE:
                 countries[iso2] = _build_baseline_entry(
@@ -406,18 +514,19 @@ def run_price_fetch(
                 )
             else:
                 countries[iso2] = previous_entry.model_copy(update={"fallback_used": True})
-                alerts.append(
-                    LockAlert(
-                        severity="warning",
-                        code="price_lockfile_retained",
-                        scope=iso2,
-                        detail=(
-                            f"No live feed returned data for {iso2}; retained previous lockfile "
-                            f"entry ({previous_entry.source}, "
-                            f"data_date={previous_entry.data_date})."
-                        ),
+                if not candidates:
+                    alerts.append(
+                        LockAlert(
+                            severity="warning",
+                            code="price_lockfile_retained",
+                            scope=iso2,
+                            detail=(
+                                f"No live feed returned data for {iso2}; retained previous "
+                                f"lockfile entry ({previous_entry.source}, "
+                                f"data_date={previous_entry.data_date})."
+                            ),
+                        )
                     )
-                )
         else:
             seed_eur = baseline_seed.countries[iso2].eur_per_liter
             countries[iso2] = _build_baseline_entry(

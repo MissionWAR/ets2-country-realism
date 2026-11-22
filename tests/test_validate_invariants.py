@@ -547,3 +547,17 @@ def test_d12_totem_boards_fault_injections(
     r_zip = validate_local_zip(bad_zip, baseline_dir=BASELINE_DIR)
     assert r_zip.ok is False
     assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_zip)
+
+    # 7. Non-<sup> 7-segment board (gas_de_enz_diesel) referencing a token whose value contains
+    # <sup> markup -> ETS2V2-INV-TOTEM-BOARDS (MD-04)
+    ws_sup = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_7seg_sup")
+    de_enz = ws_sup / "universal" / "def" / "sign" / "board" / "gas_de_enz_diesel.sii"
+    de_enz.write_bytes(
+        de_enz.read_bytes().replace(b"@@fp_de_diesel_3_ets2v2@@", b"@@fp_de_diesel_ets2v2@@")
+    )
+    r_sup = validate_workshop_package(ws_sup, baseline_dir=BASELINE_DIR)
+    assert r_sup.ok is False
+    assert any(
+        issue.code == "ETS2V2-INV-TOTEM-BOARDS" and "<sup>" in issue.detail
+        for issue in r_sup.issues
+    )

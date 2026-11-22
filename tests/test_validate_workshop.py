@@ -1000,3 +1000,34 @@ def test_d12_zero_dds_hard_gate_workshop_and_local_zip(
     rz_with_bl = validate_local_zip(bad_zip, baseline_dir=BASELINE_DIR)
     assert rz_with_bl.ok is False
     assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(rz_with_bl)
+
+
+@pytest.mark.parametrize(
+    "rogue_path",
+    [
+        "locale/fuel_price_strings.sui",
+        "locale/en_gb/localization.sui",
+        "locale/en_gb/local_module.rogue.sii",
+    ],
+)
+def test_scs_00003_rejects_rogue_locale_sii_and_sui_files(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+    rogue_path: str,
+) -> None:
+    ws = _clone_workshop(
+        built_editions["summer"].workshop_dir,
+        tmp_path / f"ws_rogue_{rogue_path.replace('/', '_')}",
+    )
+    target = ws / "universal" / rogue_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if rogue_path.endswith(".sii"):
+        target.write_bytes(
+            b'SiiNunit\n{\nlocalization_db : .rogue\n{\n\tkey[]: "k"\n\tval[]: "1"\n}\n}\n'
+        )
+    else:
+        target.write_bytes(b'key[]: "fuel_price_diesel"\nval[]: "1.65"\n')
+
+    report = validate_workshop_package(ws)
+    assert report.ok is False
+    assert "00003" in _issue_codes(report)

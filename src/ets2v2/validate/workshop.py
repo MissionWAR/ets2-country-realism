@@ -1098,6 +1098,15 @@ def _validate_package_contents(
                     fuel_locales[locale_code] = loc_entries
                 continue
 
+            if vfs_path.startswith("locale/"):
+                collector.error(
+                    "00003",
+                    display_path,
+                    f"Unexpected locale file {vfs_path!r}; only "
+                    "locale/<lang>/local_module.ets2v2_fuel.sii is permitted (Option 4b)",
+                )
+                continue
+
     # Check all expected 36 country .sui and speed_limits.sii files exist (SCS 00002)
     for slug in sorted(expected_slugs):
         sui_path = f"def/country/{slug}.sui"

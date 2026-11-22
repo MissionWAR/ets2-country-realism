@@ -26,6 +26,9 @@ _TZ_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"@@([^@]+)@@")
 _NUMERIC_TZ_RE: Final[re.Pattern[str]] = re.compile(r"^[+-]\d{2}(?::?\d{2})?$")
 _TOTEM_TOKEN_KEY_RE: Final[re.Pattern[str]] = re.compile(r"^fp_[a-z]{2}_[a-z0-9_]+_ets2v2$")
 _TOTEM_VALUE_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9]+(?:\.[0-9]+)?(?:<sup>[0-9]</sup>)?$")
+_NON_SUP_GAS_FONTS: Final[frozenset[str]] = frozenset(
+    {"gas_segment_7_standard.font", "gas_sign_digit.font"}
+)
 _ICELAND_AXLES: Final[list[int]] = [18000, 29000, 38000, 46000, 60000]
 _ICELAND_HEAVY_TRUCK_LIMIT: Final[int] = 80
 _REQUIRED_ROAD_CLASSES: Final[tuple[str, ...]] = ("car", "truck", "bus")
@@ -443,6 +446,7 @@ def _check_single_totem_board(
     candidate: SignBoardTemplate,
     baseline: FuelBoardEntry,
     canonical_tokens: frozenset[str],
+    canonical_token_values: Mapping[str, str],
     board_path: str,
     collector: ValidationCollector,
 ) -> str | None:
@@ -559,6 +563,16 @@ def _check_single_totem_board(
             f"Dangling totem token {token!r} on {board_name!r} missing from "
             "local_module.ets2v2_fuel.sii",
         )
+    elif slot.font_face is not None and token in canonical_token_values:
+        font_name = slot.font_face.rsplit("/", 1)[-1]
+        token_val = canonical_token_values[token]
+        if font_name in _NON_SUP_GAS_FONTS and "<sup>" in token_val:
+            collector.error(
+                "ETS2V2-INV-TOTEM-BOARDS",
+                board_path,
+                f"Board {board_name!r} uses non-<sup> font {font_name!r} but references "
+                f"token {token!r} whose value {token_val!r} contains <sup> markup",
+            )
 
     # Explicit D-09 regression checks
     expected_base = _D09_EXACT_BOARD_TOKEN_BASES.get(board_name)
@@ -702,6 +716,12 @@ def validate_totem_invariants(
         expected_locales=expected_locales,
         path_prefix=path_prefix,
     )
+    canonical_token_values: dict[str, str] = {}
+    for lang in sorted(fuel_locales):
+        entries = fuel_locales[lang]
+        if entries:
+            canonical_token_values = {entry.key: entry.val for entry in entries}
+            break
 
     excluded_highways = frozenset(baseline_fuel_boards.excluded_fuel_keyword_boards)
     base_by_name = {board.board_name: board for board in baseline_fuel_boards.boards}
@@ -753,6 +773,7 @@ def validate_totem_invariants(
             sign_boards[board_name],
             baseline,
             canonical_tokens,
+            canonical_token_values,
             board_path,
             collector,
         )

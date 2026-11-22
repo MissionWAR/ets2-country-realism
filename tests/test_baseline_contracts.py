@@ -207,10 +207,39 @@ def test_committed_fuel_boards_invariants() -> None:
     for board in boards_bl.boards:
         assert board.model_name == ""
         assert board.items_count == 1
+        assert board.template_board_name is not None
+        assert board.width is not None and board.width > 0.0
+        assert board.height is not None and board.height > 0.0
+        assert board.dynamic_attributes is not None
+        assert board.slot.font_face is not None
+        assert board.slot.font_size is not None
+        assert board.slot.text_halign in {"left", "center", "right"}
+        assert board.slot.text_valign in {"top", "center", "bottom"}
+        assert board.slot.font_opacity is not None
+        assert board.slot.line_spacing is not None
+        assert board.slot.letter_spacing is not None
+        assert board.slot.text_id is not None
+        assert board.slot.area_name is not None
+        assert board.slot.z_order is not None
+        assert board.slot.tag is not None
         if board.classification == "active_fp":
             assert board.fp_key is not None and board.fp_key.startswith("fp_")
         else:
             assert board.fp_key is None
+
+    zero_size_or_opacity = [
+        b.board_name
+        for b in boards_bl.boards
+        if b.slot.font_size == 0.0 or b.slot.font_opacity == 0.0
+    ]
+    assert zero_size_or_opacity == ["gas_empty"]
+    for board in boards_bl.boards:
+        if board.board_name == "gas_empty":
+            assert board.slot.font_size == 0.0
+            assert board.slot.font_opacity == 0.0
+        else:
+            assert board.slot.font_size is not None and board.slot.font_size > 0.0
+            assert board.slot.font_opacity == 1.0
 
     by_name = {b.board_name: b for b in boards_bl.boards}
     assert by_name["gas_ba_apus_lpg"].classification == "active_fp"

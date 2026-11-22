@@ -21,10 +21,22 @@ class SignTemplateTextSlot(BaseModel):
     slot_index: int
     unit_name: str
     font_face: str | None = None
+    font_size: float | None = None
+    text_halign: str | None = None
+    text_valign: str | None = None
+    font_color: int | None = None
+    font_opacity: float | None = None
+    line_spacing: float | None = None
+    letter_spacing: float | None = None
+    text_id: int | None = None
+    area_name: str | None = None
+    area_idx: int | None = None
     coords_l: float | None = None
     coords_r: float | None = None
     coords_t: float | None = None
     coords_b: float | None = None
+    z_order: int | None = None
+    tag: str | None = None
     h_align: str | None = None
     v_align: str | None = None
     text: str | None = None
@@ -48,9 +60,13 @@ class SignBoardTemplate(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     unit_name: str
+    board_name: str | None = None
+    width: float | None = None
+    height: float | None = None
     model_name: str | None = None
     board_size: tuple[float, float] | None = None
     items_count: int = 0
+    dynamic_attributes: int | None = None
     item_refs: list[str | None] = Field(default_factory=list)
     child_types: list[str] = Field(default_factory=list)
     text_slots: list[SignTemplateTextSlot] = Field(default_factory=list)
@@ -76,32 +92,57 @@ def _scalar_non_nil(unit: SiiUnitBlock, key: str) -> str | None:
     return raw
 
 
+def _scalar_string_or_none(unit: SiiUnitBlock, key: str) -> str | None:
+    """Return unquoted SII string (preserving ``""`` as empty string) or ``None`` for ``nil``."""
+    raw = _scalar_non_nil(unit, key)
+    if raw is None:
+        return None
+    return unquote_sii_string(raw)[0]
+
+
+def _scalar_float_or_none(unit: SiiUnitBlock, key: str) -> float | None:
+    raw = _scalar_non_nil(unit, key)
+    if raw is None:
+        return None
+    return parse_sii_float(raw)
+
+
+def _scalar_int_or_none(unit: SiiUnitBlock, key: str) -> int | None:
+    raw = _scalar_non_nil(unit, key)
+    if raw is None:
+        return None
+    return int(raw)
+
+
 def _parse_float_2(raw: str) -> tuple[float, float]:
     parts = split_sii_tuple(raw, expected_len=2)
     return (parse_sii_float(parts[0]), parse_sii_float(parts[1]))
 
 
 def _parse_text_slot(slot_index: int, unit: SiiUnitBlock) -> SignTemplateTextSlot:
-    font_raw = _scalar_non_nil(unit, "font_face")
-    coords_l_raw = _scalar_non_nil(unit, "coords_l")
-    coords_r_raw = _scalar_non_nil(unit, "coords_r")
-    coords_t_raw = _scalar_non_nil(unit, "coords_t")
-    coords_b_raw = _scalar_non_nil(unit, "coords_b")
-    h_raw = _scalar_non_nil(unit, "h_align")
-    v_raw = _scalar_non_nil(unit, "v_align")
-    text_raw = _scalar_non_nil(unit, "text")
-
     return SignTemplateTextSlot(
         slot_index=slot_index,
         unit_name=unit.unit_name,
-        font_face=unquote_sii_string(font_raw)[0] if font_raw is not None else None,
-        coords_l=parse_sii_float(coords_l_raw) if coords_l_raw is not None else None,
-        coords_r=parse_sii_float(coords_r_raw) if coords_r_raw is not None else None,
-        coords_t=parse_sii_float(coords_t_raw) if coords_t_raw is not None else None,
-        coords_b=parse_sii_float(coords_b_raw) if coords_b_raw is not None else None,
-        h_align=unquote_sii_string(h_raw)[0] if h_raw is not None else None,
-        v_align=unquote_sii_string(v_raw)[0] if v_raw is not None else None,
-        text=unquote_sii_string(text_raw)[0] if text_raw is not None else None,
+        font_face=_scalar_string_or_none(unit, "font_face"),
+        font_size=_scalar_float_or_none(unit, "font_size"),
+        text_halign=_scalar_string_or_none(unit, "text_halign"),
+        text_valign=_scalar_string_or_none(unit, "text_valign"),
+        font_color=_scalar_int_or_none(unit, "font_color"),
+        font_opacity=_scalar_float_or_none(unit, "font_opacity"),
+        line_spacing=_scalar_float_or_none(unit, "line_spacing"),
+        letter_spacing=_scalar_float_or_none(unit, "letter_spacing"),
+        text_id=_scalar_int_or_none(unit, "id"),
+        area_name=_scalar_string_or_none(unit, "area_name"),
+        area_idx=_scalar_int_or_none(unit, "area_idx"),
+        coords_l=_scalar_float_or_none(unit, "coords_l"),
+        coords_r=_scalar_float_or_none(unit, "coords_r"),
+        coords_t=_scalar_float_or_none(unit, "coords_t"),
+        coords_b=_scalar_float_or_none(unit, "coords_b"),
+        z_order=_scalar_int_or_none(unit, "z_order"),
+        tag=_scalar_string_or_none(unit, "tag"),
+        h_align=_scalar_string_or_none(unit, "h_align"),
+        v_align=_scalar_string_or_none(unit, "v_align"),
+        text=_scalar_string_or_none(unit, "text"),
     )
 
 
@@ -112,8 +153,11 @@ def parse_sign_board(source: str | bytes) -> SignBoardTemplate:
     if board_unit is None:
         raise ValueError("No sign_board_template unit found in SII source")
 
-    model_raw = _scalar_non_nil(board_unit, "model_name")
-    model_name = unquote_sii_string(model_raw)[0] if model_raw is not None else None
+    board_name = _scalar_string_or_none(board_unit, "board_name")
+    width = _scalar_float_or_none(board_unit, "width")
+    height = _scalar_float_or_none(board_unit, "height")
+    model_name = _scalar_string_or_none(board_unit, "model_name")
+    dynamic_attributes = _scalar_int_or_none(board_unit, "dynamic_attributes")
 
     board_size_raw = _scalar_non_nil(board_unit, "board_size")
     board_size = _parse_float_2(board_size_raw) if board_size_raw is not None else None
@@ -147,9 +191,13 @@ def parse_sign_board(source: str | bytes) -> SignBoardTemplate:
 
     return SignBoardTemplate(
         unit_name=board_unit.unit_name,
+        board_name=board_name,
+        width=width,
+        height=height,
         model_name=model_name,
         board_size=board_size,
         items_count=items_count,
+        dynamic_attributes=dynamic_attributes,
         item_refs=item_refs,
         child_types=child_types,
         text_slots=text_slots,

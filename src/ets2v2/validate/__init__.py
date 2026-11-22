@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from ets2v2.validate.invariants import validate_core_realism_invariants
+from ets2v2.validate.invariants import (
+    validate_core_realism_invariants,
+    validate_totem_invariants,
+)
 from ets2v2.validate.models import (
     ValidationCollector,
     ValidationIssue,
@@ -14,6 +17,7 @@ from ets2v2.validate.workshop import (
     ALLOWED_MANIFEST_ATTRS,
     ALLOWED_SCS_ASSET_EXTENSIONS,
     FORBIDDEN_EXTENSIONS,
+    FORBIDDEN_TOTEM_EXTENSIONS,
     MAX_DESCRIPTION_BYTES,
     MAX_ICON_BYTES,
     MAX_ICON_PIXELS,
@@ -27,6 +31,7 @@ __all__ = [
     "ALLOWED_MANIFEST_ATTRS",
     "ALLOWED_SCS_ASSET_EXTENSIONS",
     "FORBIDDEN_EXTENSIONS",
+    "FORBIDDEN_TOTEM_EXTENSIONS",
     "MAX_DESCRIPTION_BYTES",
     "MAX_ICON_BYTES",
     "MAX_ICON_PIXELS",
@@ -39,5 +44,6 @@ __all__ = [
     "ValidationSeverity",
     "validate_core_realism_invariants",
     "validate_local_zip",
+    "validate_totem_invariants",
     "validate_workshop_package",
 ]

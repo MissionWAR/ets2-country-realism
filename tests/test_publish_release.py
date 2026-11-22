@@ -12,6 +12,8 @@ import pytest
 
 from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
 from ets2v2.cli import main
+from ets2v2.normalize.lockfile import load_prices_lockfile, write_prices_lockfile
+from ets2v2.normalize.models import LockAlert
 from ets2v2.publish.changelog import render_edition_changelog
 from ets2v2.publish.ledger import (
     PublishedLedger,
@@ -472,3 +474,196 @@ def test_cli_publish_release_previous_snapshots_dir_and_registry_validate_error_
     payload = cast(dict[str, object], json.loads(err_out.out))
     assert payload["ok"] is False
     assert payload["issue_count"] == 1
+
+
+def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+
+    # 1. Clean live lock (no alerts, no fallback) omits alerts but renders 36-country fuel table
+    clean_lock = base_lock.model_copy(
+        update={
+            "alerts": [],
+            "countries": {
+                iso2: entry.model_copy(update={"fallback_used": False})
+                for iso2, entry in base_lock.countries.items()
+            },
+            "fx_rates": {
+                ccy: fx.model_copy(update={"fallback_used": False})
+                for ccy, fx in base_lock.fx_rates.items()
+            },
+        }
+    )
+    snap_clean = build_realism_snapshot(
+        registry, bl_countries, bl_locales, "summer", prices_lock=clean_lock
+    )
+    clean_md = render_edition_changelog(
+        "summer",
+        "1.62-2026.47",
+        "a" * 64,
+        "b" * 64,
+        snap_clean,
+        prices_lock=clean_lock,
+    ).decode("utf-8")
+
+    assert "## 36-Country Fuel Price Summary" in clean_md
+    assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
+        clean_md
+    )
+    assert "| `GB` | GBP (p/L) |" in clean_md
+    assert "| `HU` | HUF |" in clean_md
+    assert "| `DE` | EUR |" in clean_md
+    assert "## Circuit-Breaker & Staleness Alerts" not in clean_md
+    for iso2 in ("DE", "GB", "BG", "IS"):
+        assert f"| `{iso2}` |" in clean_md
+    # Verify GB pence formatting & IS integer formatting in table (no raw <sup> tags in Markdown)
+    assert "<sup>" not in clean_md
+    for attribution in (
+        "EC Weekly Oil Bulletin CC BY 4.0",
+        "fuel-prices.eu CC BY 4.0",
+        "UK DESNZ OGL v3",
+        "Norway SSB CC BY 4.0",
+        "France Licence Ouverte",
+        "Italy MIMIT IODL 2.0",
+        "Spain MITECO",
+        "Netherlands CBS",
+        "Germany Tankerkönig CC BY 4.0",
+        "Frankfurter v2 MIT",
+        "ECB",
+        "fawazahmed0 CC0",
+    ):
+        assert attribution in clean_md, f"Missing D-16 attribution in changelog: {attribution!r}"
+
+    # 2. Lock with circuit-breaker & staleness alerts highlights Alerts section and sanitizes MD
+    evil_detail = "Bad feed\n## Injected Heading\n`backtick` <script>x</script> " + ("A" * 300)
+    alerted_lock = clean_lock.model_copy(
+        update={
+            "alerts": [
+                LockAlert(
+                    severity="warning",
+                    code="price_jump_rejected",
+                    scope="DE",
+                    detail="Diesel jumped +32.0% WoW; retained previous lockfile value.",
+                ),
+                LockAlert(
+                    severity="warning",
+                    code="stale_tier1",
+                    scope="NO",
+                    detail=evil_detail,
+                ),
+            ]
+        }
+    )
+    alerted_md = render_edition_changelog(
+        "summer",
+        "1.62-2026.47",
+        "a" * 64,
+        "b" * 64,
+        snap_clean,
+        prices_lock=alerted_lock,
+    ).decode("utf-8")
+    assert "## Circuit-Breaker & Staleness Alerts" in alerted_md
+    assert "price_jump_rejected" in alerted_md
+    assert "stale_tier1" in alerted_md
+    assert "\n## Injected Heading" not in alerted_md
+    assert "<script>" not in alerted_md
+    assert "&lt;script&gt;x&lt;/script&gt;" in alerted_md
+    stale_line = next(line for line in alerted_md.splitlines() if "stale_tier1" in line)
+    detail_part = stale_line.split(":** ", 1)[1]
+    assert "`" not in detail_part
+    assert len(detail_part) <= 240
+
+
+def test_phase_a_release_prices_lock_mutation_bumps_both_editions_and_cli_flag(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    lock_path = tmp_path / "state" / "prices.lock.json"
+    write_prices_lockfile(base_lock, lock_path)
+
+    state_path = tmp_path / "state" / "published.json"
+    out_dir = tmp_path / "dist"
+    changelogs_dir = tmp_path / "changelogs"
+    write_published_ledger(PublishedLedger(), state_path)
+
+    # Initial CLI run with --prices-lock
+    exit_1 = main(
+        [
+            "publish",
+            "release",
+            "--state",
+            str(state_path),
+            "--prices-lock",
+            str(lock_path),
+            "--out-dir",
+            str(out_dir),
+            "--changelogs-dir",
+            str(changelogs_dir),
+            "--laws-dir",
+            str(LAWS_DIR),
+            "--mappings",
+            str(MAPPINGS_PATH),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--icons-dir",
+            str(ICONS_DIR),
+            "--build-date",
+            "2026-11-20",
+            "--write-state",
+            "--json",
+        ]
+    )
+    cap_1 = capsys.readouterr()
+    assert exit_1 == 0, cap_1.err
+    res_1 = PhaseAReleaseSummary.model_validate_json(cap_1.out)
+    assert res_1.any_changed is True
+    assert res_1.changed_editions == ["summer", "winter"]
+    assert res_1.editions["summer"].validation_ok is True
+    assert res_1.editions["winter"].validation_ok is True
+
+    # Confirm 579 Workshop files (incl. 460 boards + 43 locales) and D-16 changelog content
+    summer_ws_files = [p for p in (out_dir / "workshop" / "summer").rglob("*") if p.is_file()]
+    assert len(summer_ws_files) == 579
+    assert not any(p.suffix.lower() in {".dds", ".tobj"} for p in summer_ws_files)
+    summer_md = (changelogs_dir / "CHANGELOG_SUMMER.md").read_text("utf-8")
+    assert "## 36-Country Fuel Price Summary" in summer_md
+    assert "EC Weekly Oil Bulletin CC BY 4.0" in summer_md
+
+    # Mutate DE diesel price in prices.lock.json -> bumps BOTH editions cleanly next week
+    de_old = base_lock.countries["DE"]
+    de_new = de_old.model_copy(
+        update={
+            "eur_per_liter": round(de_old.eur_per_liter + 0.05, 3),
+            "local_prices": {
+                **de_old.local_prices,
+                "diesel": round(de_old.local_prices["diesel"] + 0.05, 4),
+            },
+        }
+    )
+    updated_lock = base_lock.model_copy(update={"countries": {**base_lock.countries, "DE": de_new}})
+    write_prices_lockfile(updated_lock, lock_path)
+
+    res_2 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 11, 27),
+        write_state=True,
+    )
+    assert res_2.any_changed is True
+    assert res_2.summer_changed is True
+    assert res_2.winter_changed is True
+    assert res_2.editions["summer"].package_version == "1.62-2026.48"
+    assert res_2.editions["winter"].package_version == "1.62-2026.48"

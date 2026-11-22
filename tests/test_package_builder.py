@@ -27,6 +27,12 @@ BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
 LAWS_DIR = REPO_ROOT / "data" / "laws"
 MAPPINGS_PATH = REPO_ROOT / "data" / "mappings" / "ets2_countries.json"
 ICONS_DIR = REPO_ROOT / "assets" / "icons"
+PRICES_LOCK_PATH = REPO_ROOT / "state" / "prices.lock.json"
+
+EXPECTED_TOTEM_BOARD_COUNT = 460
+EXPECTED_LOCALE_MODULE_COUNT = 43
+EXPECTED_WORKSHOP_FILE_COUNT = 76 + EXPECTED_TOTEM_BOARD_COUNT + EXPECTED_LOCALE_MODULE_COUNT
+EXPECTED_LOCAL_ZIP_ENTRY_COUNT = 75 + EXPECTED_TOTEM_BOARD_COUNT + EXPECTED_LOCALE_MODULE_COUNT
 
 
 def _hash_tree(root: pathlib.Path) -> dict[str, str]:
@@ -61,7 +67,7 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
         assert info.package_version == "1.62-2026.47"
         assert info.workshop_dir == tmp_path / "workshop" / edition
         assert info.local_zip_path == tmp_path / "local" / expected_zip_names[edition]
-        assert info.workshop_file_count == 76
+        assert info.workshop_file_count == EXPECTED_WORKSHOP_FILE_COUNT == 579
 
         # D-06: strictly unpacked universal/, NEVER universal.zip beside it
         assert (info.workshop_dir / "versions.sii").is_file()
@@ -75,7 +81,7 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             for p in info.workshop_dir.rglob("*")
             if p.is_file()
         )
-        assert len(workshop_files) == 76
+        assert len(workshop_files) == EXPECTED_WORKSHOP_FILE_COUNT
 
         # D-05: ZERO def/country.sii or def/country.*.sii emitted
         assert not any(
@@ -83,6 +89,14 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             or (path.startswith("universal/def/country.") and path.endswith(".sii"))
             for path in workshop_files
         )
+
+        # TOT-01 / Zero-DDS checks in Workshop root
+        assert "universal/def/sign/board/gas_de_big_diesel.sii" in workshop_files
+        assert "universal/def/sign/board/gas_ie_pegi_95.sii" in workshop_files
+        assert "universal/locale/fr_ca/local_module.ets2v2_fuel.sii" in workshop_files
+        assert "universal/locale/fr_qc/local_module.ets2v2_fuel.sii" not in workshop_files
+        assert "universal/def/sign/board/gas_empty.sii" not in workshop_files
+        assert not any(path.lower().endswith((".dds", ".tobj")) for path in workshop_files)
 
         # Verbatim icon copy check (D-07)
         committed_icon = (ICONS_DIR / f"{edition}.jpg").read_bytes()
@@ -101,9 +115,15 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
 
         with zipfile.ZipFile(info.local_zip_path, "r") as zf:
             infos = zf.infolist()
-            assert len(infos) == 75
+            assert len(infos) == EXPECTED_LOCAL_ZIP_ENTRY_COUNT == 578
             names = [entry.filename for entry in infos]
             assert names == sorted(names)
+            assert "def/sign/board/gas_de_big_diesel.sii" in names
+            assert "def/sign/board/gas_ie_pegi_95.sii" in names
+            assert "locale/fr_ca/local_module.ets2v2_fuel.sii" in names
+            assert "locale/fr_qc/local_module.ets2v2_fuel.sii" not in names
+            assert "def/sign/board/gas_empty.sii" not in names
+            assert not any(name.lower().endswith((".dds", ".tobj")) for name in names)
             for entry in infos:
                 assert "\\" not in entry.filename
                 assert ".." not in entry.filename
@@ -128,8 +148,10 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
         with ZipArchive(info.local_zip_path) as archive:
             assert archive.diagnostics == []
             listed = archive.list_paths()
-            assert len(listed) == 75
+            assert len(listed) == EXPECTED_LOCAL_ZIP_ENTRY_COUNT
             assert "def/country.sii" not in listed
+            assert "def/sign/board/gas_de_big_diesel.sii" in listed
+            assert "locale/fr_ca/local_module.ets2v2_fuel.sii" in listed
             ee_sui = archive.read_bytes("def/country/estonia.sui")
             assert parse_country_data(ee_sui).name == "Eesti"
             is_speeds = archive.read_bytes("def/country/iceland/speed_limits.sii")
@@ -141,6 +163,8 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             assert stack.diagnostics() == []
             assert stack.exists("manifest.sii")
             assert stack.exists("def/country/bosnia.sui")
+            assert stack.exists("def/sign/board/gas_ie_pegi_95.sii")
+            assert stack.exists("locale/fr_ca/local_module.ets2v2_fuel.sii")
             assert len(parse_country_data(stack.read_bytes("def/country/bosnia.sui")).regions) == 6
 
 
@@ -193,7 +217,7 @@ def test_build_core_edition_cleans_stale_workshop_files(tmp_path: pathlib.Path) 
         icons_dir=ICONS_DIR,
     )
     assert not stale_file.exists()
-    assert built.workshop_file_count == 76
+    assert built.workshop_file_count == EXPECTED_WORKSHOP_FILE_COUNT == 579
 
 
 def test_build_core_edition_fails_on_missing_icon(tmp_path: pathlib.Path) -> None:
@@ -239,6 +263,8 @@ def test_cli_package_icons_and_build(
             str(BASELINE_DIR),
             "--icons-dir",
             str(ICONS_DIR),
+            "--prices-lock",
+            str(PRICES_LOCK_PATH),
             "--package-version",
             "1.62-2026.47",
             "--author",

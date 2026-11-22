@@ -100,6 +100,91 @@ def test_parse_sign_board_fuel_totems_hex_floats_placeholders_blank_and_nil() ->
     assert bl.text_slots[0].localization_key is None
 
 
+def test_parse_sign_board_162_full_rendering_attributes() -> None:
+    """Verify all 6 sign_board_template and 18 sign_template_text ETS2 1.62 attributes."""
+    authentic_162 = (
+        "SiiNunit\n"
+        "{\n"
+        "sign_board_template : _nameless.2.2a34.f3e0 {\n"
+        ' board_name: "gas de big diesel"\n'
+        " width: &3fc00000\n"
+        " height: &3f2b851f\n"
+        ' model_name: ""\n'
+        " items: 1\n"
+        " items[0]: _nameless.2.1160.beb0\n"
+        " dynamic_attributes: 0\n"
+        "}\n"
+        "\n"
+        "sign_template_text : _nameless.2.1160.beb0 {\n"
+        ' text: "@@fp_de_diesel@@"\n'
+        ' font_face: "/font/sign/gas_roadgeek_2005_mittelschrift.font"\n'
+        " font_size: &3eb33333\n"
+        " text_halign: center\n"
+        " text_valign: bottom\n"
+        " font_color: 200\n"
+        " font_opacity: 1\n"
+        " line_spacing: &3e4ccccd\n"
+        " letter_spacing: 0\n"
+        " id: 2435448831\n"
+        ' area_name: ""\n'
+        " area_idx: nil\n"
+        " coords_l: &3dd04570\n"
+        " coords_r: &3fa1a08b\n"
+        " coords_t: &3f0b9214\n"
+        " coords_b: &3de4c050\n"
+        " z_order: 1\n"
+        ' tag: ""\n'
+        "}\n"
+        "\n"
+        "}\n"
+    )
+    board = parse_sign_board(authentic_162)
+    assert board.unit_name == "_nameless.2.2a34.f3e0"
+    assert board.board_name == "gas de big diesel"
+    assert board.width == pytest.approx(1.5)
+    assert board.height == pytest.approx(0.67, abs=1e-6)
+    assert board.model_name == ""
+    assert board.items_count == 1
+    assert board.dynamic_attributes == 0
+    assert board.is_single_text_fuel_candidate is True
+
+    slot = board.text_slots[0]
+    assert slot.unit_name == "_nameless.2.1160.beb0"
+    assert slot.text == "@@fp_de_diesel@@"
+    assert slot.localization_key == "fp_de_diesel"
+    assert slot.font_face == "/font/sign/gas_roadgeek_2005_mittelschrift.font"
+    assert slot.font_size == pytest.approx(0.35, abs=1e-6)
+    assert slot.text_halign == "center"
+    assert slot.text_valign == "bottom"
+    assert slot.font_color == 200
+    assert slot.font_opacity == pytest.approx(1.0)
+    assert slot.line_spacing == pytest.approx(0.2, abs=1e-6)
+    assert slot.letter_spacing == pytest.approx(0.0)
+    assert slot.text_id == 2435448831
+    assert slot.area_name == ""
+    assert slot.area_idx is None
+    assert slot.coords_l == pytest.approx(0.10169494, abs=1e-6)
+    assert slot.coords_r == pytest.approx(1.2627119, abs=1e-6)
+    assert slot.coords_t == pytest.approx(0.5451977, abs=1e-6)
+    assert slot.coords_b == pytest.approx(0.11169493, abs=1e-6)
+    assert slot.z_order == 1
+    assert slot.tag == ""
+
+    # Verify font_color: nil and area_idx: 0 round-trip distinctly
+    nil_color_board = (
+        authentic_162.replace("font_color: 200", "font_color: nil")
+        .replace("area_idx: nil", "area_idx: 0")
+        .replace('area_name: ""', "area_name: nil")
+        .replace('tag: ""', 'tag: "price"')
+    )
+    parsed_alt = parse_sign_board(nil_color_board)
+    alt_slot = parsed_alt.text_slots[0]
+    assert alt_slot.font_color is None
+    assert alt_slot.area_idx == 0
+    assert alt_slot.area_name is None
+    assert alt_slot.tag == "price"
+
+
 def test_parse_sign_board_handles_multi_item_highway_sign_for_exclusion() -> None:
     fi_oulu_95 = (
         "SiiNunit\n"

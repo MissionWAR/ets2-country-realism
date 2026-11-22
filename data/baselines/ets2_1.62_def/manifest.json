@@ -122,7 +122,7 @@
   "extractor_schema_version": 1,
   "file_sha256s": {
     "countries.json": "b238d259d83005f0cf9052c2f4ed9f5367ffeec742ebcd9b933115efcd068901",
-    "fuel_boards.json": "ad27cc852e1d9496231c1c840ddad8c76af466fa1b0d793e2aa368a03a0b8db8",
+    "fuel_boards.json": "7f1a02832c52ffc818c4b001bcd5fc62b1cd5ceb4f2d35cbda1dded07c6cf03b",
     "locales.json": "964e8480f37a8cf1b64bee78663bd1e0937ff75311b46ce830e8ef25467a42aa",
     "speed_limits.json": "3330297366affcbd318b14143f05baa4613b9fb63cd2022a72f0f9632de3be52"
   },

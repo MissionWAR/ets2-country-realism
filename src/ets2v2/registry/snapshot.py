@@ -9,6 +9,8 @@ from typing import Final, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2v2.normalize.fx import round_eur_per_liter
+from ets2v2.normalize.models import PricesLockfile
 from ets2v2.registry.loader import serialize_registry_json_bytes
 from ets2v2.registry.models import (
     LaneSpeedOverride,
@@ -78,6 +80,7 @@ def build_realism_snapshot(
     anchor_year: int = DEFAULT_ANCHOR_YEAR,
     override_date: date | None = None,
     baseline_game_version: str = "1.62.3.3",
+    prices_lock: PricesLockfile | None = None,
 ) -> RealismSnapshot:
     """Resolve all registry countries for ``edition`` into a deterministic v1 snapshot."""
     ref_date = resolve_season_anchor_date(
@@ -94,8 +97,32 @@ def build_realism_snapshot(
         if bl_country is None:
             raise ValueError(f"Missing baseline country entry for {iso2} ({law.ets2_slug!r})")
 
-        if bl_country.fuel_price is None:
-            raise ValueError(f"Missing baseline fuel_price for {iso2} ({law.ets2_slug!r})")
+        if prices_lock is not None:
+            lock_entry = prices_lock.countries.get(iso2)
+            if lock_entry is None:
+                raise ValueError(f"Prices lockfile is missing entry for {iso2!r}")
+            if lock_entry.currency != law.currency:
+                raise ValueError(
+                    f"Currency mismatch for {iso2}: prices lockfile has "
+                    f"{lock_entry.currency!r}, law registry expects {law.currency!r}"
+                )
+            fuel = RealismSnapshotFuel(
+                currency=lock_entry.currency,
+                eur_per_liter=round_eur_per_liter(lock_entry.eur_per_liter),
+                local_prices={
+                    grade: float(price) for grade, price in sorted(lock_entry.local_prices.items())
+                },
+                source=lock_entry.source,
+            )
+        else:
+            if bl_country.fuel_price is None:
+                raise ValueError(f"Missing baseline fuel_price for {iso2} ({law.ets2_slug!r})")
+            fuel = RealismSnapshotFuel(
+                currency=law.currency,
+                eur_per_liter=bl_country.fuel_price,
+                local_prices={},
+                source=_BASELINE_FUEL_SOURCE,
+            )
 
         resolved_tz = resolve_ets2_timezone(
             law.iana_timezone,
@@ -121,12 +148,7 @@ def build_realism_snapshot(
             imperial_units=bl_country.imperial_units is True,
             mass_limit_per_axle_count=list(law.mass_limit_per_axle_count),
             speed_limits=speed_limits,
-            fuel=RealismSnapshotFuel(
-                currency=law.currency,
-                eur_per_liter=bl_country.fuel_price,
-                local_prices={},
-                source=_BASELINE_FUEL_SOURCE,
-            ),
+            fuel=fuel,
         )
 
     return RealismSnapshot(

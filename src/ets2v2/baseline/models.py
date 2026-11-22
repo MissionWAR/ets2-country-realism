@@ -105,10 +105,22 @@ class FuelBoardSlot(BaseModel):
     slot_index: int
     unit_name: str
     font_face: str | None = None
+    font_size: float | None = None
+    text_halign: str | None = None
+    text_valign: str | None = None
+    font_color: int | None = None
+    font_opacity: float | None = None
+    line_spacing: float | None = None
+    letter_spacing: float | None = None
+    text_id: int | None = None
+    area_name: str | None = None
+    area_idx: int | None = None
     coords_l: float | None = None
     coords_r: float | None = None
     coords_t: float | None = None
     coords_b: float | None = None
+    z_order: int | None = None
+    tag: str | None = None
     h_align: str | None = None
     v_align: str | None = None
     text: str | None = None
@@ -122,9 +134,13 @@ class FuelBoardEntry(BaseModel):
     board_name: str
     vfs_path: str
     unit_name: str
+    template_board_name: str | None = None
+    width: float | None = None
+    height: float | None = None
     model_name: str
     board_size: tuple[float, float] | None = None
     items_count: int
+    dynamic_attributes: int | None = None
     classification: BoardClassification
     fp_key: str | None = None
     slot: FuelBoardSlot

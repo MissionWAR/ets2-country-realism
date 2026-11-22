@@ -16,6 +16,7 @@ from PIL import Image
 from ets2v2.cli import main
 from ets2v2.package import BuiltEditionPaths, build_core_editions
 from ets2v2.validate import (
+    FORBIDDEN_TOTEM_EXTENSIONS,
     MAX_DESCRIPTION_BYTES,
     MAX_ICON_BYTES,
     VALID_SCS_CATEGORIES,
@@ -85,39 +86,53 @@ def _issue_codes(report: ValidationReport) -> set[str]:
 
 
 def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
-    """Enforce strictly acyclic Layer 7 DAG: ets2v2.validate NEVER imports ets2v2.package."""
+    """Enforce Layer 8 isolation: validate NEVER imports package/normalize/fetch/httpx/openpyxl."""
     py_files = sorted(VALIDATE_PKG_DIR.rglob("*.py"))
     assert py_files, "Expected Python modules under src/ets2v2/validate/"
 
+    forbidden_subpkgs = ("package", "normalize", "fetch")
+    forbidden_roots = ("httpx", "openpyxl")
     violations: list[str] = []
     for py_file in py_files:
         tree = ast.parse(py_file.read_text("utf-8"), filename=str(py_file))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name == "ets2v2.package" or alias.name.startswith("ets2v2.package."):
-                        violations.append(f"{py_file.name}: import {alias.name}")
+                    for sub in forbidden_subpkgs:
+                        if alias.name == f"ets2v2.{sub}" or alias.name.startswith(f"ets2v2.{sub}."):
+                            violations.append(f"{py_file.name}: import {alias.name}")
+                    for root in forbidden_roots:
+                        if alias.name == root or alias.name.startswith(f"{root}."):
+                            violations.append(f"{py_file.name}: import {alias.name}")
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
                 if node.level > 0:
-                    if module == "package" or module.startswith("package."):
-                        violations.append(
-                            f"{py_file.name}: from {'.' * node.level}{module} import ..."
-                        )
-                    elif module == "":
+                    for sub in forbidden_subpkgs:
+                        if module == sub or module.startswith(f"{sub}."):
+                            violations.append(
+                                f"{py_file.name}: from {'.' * node.level}{module} import ..."
+                            )
+                        elif module == "":
+                            for alias in node.names:
+                                if alias.name == sub:
+                                    violations.append(
+                                        f"{py_file.name}: from {'.' * node.level} import {sub}"
+                                    )
+                else:
+                    for sub in forbidden_subpkgs:
+                        if module == f"ets2v2.{sub}" or module.startswith(f"ets2v2.{sub}."):
+                            violations.append(f"{py_file.name}: from {module} import ...")
+                    for root in forbidden_roots:
+                        if module == root or module.startswith(f"{root}."):
+                            violations.append(f"{py_file.name}: from {module} import ...")
+                    if module == "ets2v2":
                         for alias in node.names:
-                            if alias.name == "package":
+                            if alias.name in forbidden_subpkgs:
                                 violations.append(
-                                    f"{py_file.name}: from {'.' * node.level} import package"
+                                    f"{py_file.name}: from ets2v2 import {alias.name}"
                                 )
-                elif module == "ets2v2.package" or module.startswith("ets2v2.package."):
-                    violations.append(f"{py_file.name}: from {module} import ...")
-                elif module == "ets2v2":
-                    for alias in node.names:
-                        if alias.name == "package":
-                            violations.append(f"{py_file.name}: from ets2v2 import package")
 
-    assert violations == [], f"Forbidden imports from ets2v2.package: {violations}"
+    assert violations == [], f"Forbidden imports in ets2v2.validate: {violations}"
 
 
 def test_valid_scs_categories_has_all_18_official_entries() -> None:
@@ -935,3 +950,84 @@ def test_hi04_unquoted_strings_category_rules_stray_units_and_icon_checks(
     assert orig_max_pixels == Image.MAX_IMAGE_PIXELS
     assert r_bomb.ok is False
     assert "00009" in _issue_codes(r_bomb)
+
+
+# ---------------------------------------------------------------------------
+# D-12: Zero-DDS Hard Gate (ETS2V2-INV-ZERO-DDS)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("ext", [".dds", ".tobj"])
+def test_d12_zero_dds_hard_gate_workshop_and_local_zip(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+    ext: str,
+) -> None:
+    assert ext in FORBIDDEN_TOTEM_EXTENSIONS
+
+    # 1. Workshop root without baseline_dir AND with baseline_dir
+    ws = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / f"ws_{ext[1:]}")
+    tex_dir = ws / "universal" / "material" / "sign"
+    tex_dir.mkdir(parents=True, exist_ok=True)
+    (tex_dir / f"totem_price{ext}").write_bytes(b"DDS_OR_TOBJ_BINARY")
+
+    r_no_bl = validate_workshop_package(ws)
+    assert r_no_bl.ok is False
+    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(r_no_bl)
+
+    r_with_bl = validate_workshop_package(ws, baseline_dir=BASELINE_DIR)
+    assert r_with_bl.ok is False
+    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(r_with_bl)
+
+    # 2. Local ZIP without baseline_dir AND with baseline_dir
+    bad_zip = _rebuild_zip_with_mutations(
+        built_editions["summer"].local_zip_path,
+        tmp_path / f"local_{ext[1:]}.zip",
+        extra_entries=[
+            (
+                zipfile.ZipInfo(
+                    filename=f"material/sign/totem_price{ext}",
+                    date_time=(1980, 1, 1, 0, 0, 0),
+                ),
+                b"DDS_OR_TOBJ_BINARY",
+            )
+        ],
+    )
+    rz_no_bl = validate_local_zip(bad_zip)
+    assert rz_no_bl.ok is False
+    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(rz_no_bl)
+
+    rz_with_bl = validate_local_zip(bad_zip, baseline_dir=BASELINE_DIR)
+    assert rz_with_bl.ok is False
+    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(rz_with_bl)
+
+
+@pytest.mark.parametrize(
+    "rogue_path",
+    [
+        "locale/fuel_price_strings.sui",
+        "locale/en_gb/localization.sui",
+        "locale/en_gb/local_module.rogue.sii",
+    ],
+)
+def test_scs_00003_rejects_rogue_locale_sii_and_sui_files(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+    rogue_path: str,
+) -> None:
+    ws = _clone_workshop(
+        built_editions["summer"].workshop_dir,
+        tmp_path / f"ws_rogue_{rogue_path.replace('/', '_')}",
+    )
+    target = ws / "universal" / rogue_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if rogue_path.endswith(".sii"):
+        target.write_bytes(
+            b'SiiNunit\n{\nlocalization_db : .rogue\n{\n\tkey[]: "k"\n\tval[]: "1"\n}\n}\n'
+        )
+    else:
+        target.write_bytes(b'key[]: "fuel_price_diesel"\nval[]: "1.65"\n')
+
+    report = validate_workshop_package(ws)
+    assert report.ok is False
+    assert "00003" in _issue_codes(report)

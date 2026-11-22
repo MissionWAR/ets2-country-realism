@@ -179,6 +179,40 @@ def test_phase_a_workflow_embedded_python_snippets_compile_cleanly() -> None:
     text = WORKFLOW_PATH.read_text("utf-8")
     run_blocks = _extract_run_blocks(text)
     snippets = _extract_embedded_python_snippets(run_blocks)
-    assert len(snippets) >= 1, "Expected at least one embedded Python snippet in workflow"
+    assert len(snippets) >= 2, "Expected embedded Python snippets for outputs and PR alerts"
     for idx, snippet in enumerate(snippets):
         compile(snippet, f"phase-a-release.yml:snippet-{idx}", "exec")
+
+
+def test_phase_a_workflow_d03_d05_d08_fetch_step_and_prices_lock_pr_staging() -> None:
+    text = WORKFLOW_PATH.read_text("utf-8")
+
+    # Online fetch step runs BEFORE offline publish release (D-05)
+    fetch_cmd = "ets2v2 fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json"
+    release_cmd = "ets2v2 publish release"
+    assert fetch_cmd in text
+    assert release_cmd in text
+    assert text.index(fetch_cmd) < text.index(release_cmd)
+
+    # Optional Tankerkönig secret passed strictly via step-level env: (D-03 / T-03-16)
+    assert "TANKERKOENIG_API_KEY: ${{ secrets.TANKERKOENIG_API_KEY }}" in text
+    assert "--prices-lock state/prices.lock.json" in text
+    assert "dist/fetch_summary.json" in text
+
+    # Persistent Release PR stages state/prices.lock.json alongside published ledger & changelogs
+    assert (
+        "for f in state/published.json state/prices.lock.json "
+        "CHANGELOG_SUMMER.md CHANGELOG_WINTER.md; do" in text
+    )
+    assert "Circuit-Breaker & Staleness Alerts" in text
+    # IN-03 + MD-05: Unconditional GITHUB_STEP_SUMMARY alert reporting & Markdown sanitization
+    assert "GITHUB_STEP_SUMMARY" in text
+    assert "def _sanitize(" in text
+    assert text.count("def _sanitize(") >= 2
+    assert 'replace("<", "&lt;")' in text
+
+    # ci.yml remains read-only and never runs ets2v2 fetch or reads live API secrets
+    ci_text = CI_WORKFLOW_PATH.read_text("utf-8")
+    assert "ets2v2 fetch" not in ci_text
+    assert "TANKERKOENIG_API_KEY" not in ci_text
+    assert "uv run pytest" in ci_text

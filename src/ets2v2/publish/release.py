@@ -17,6 +17,8 @@ from ets2v2.baseline.models import (
     CountriesBaseline,
     LocalesBaseline,
 )
+from ets2v2.normalize.lockfile import load_prices_lockfile
+from ets2v2.normalize.models import PricesLockfile
 from ets2v2.package.builder import BuiltEditionPaths, build_core_edition
 from ets2v2.package.metadata import DEFAULT_AUTHOR
 from ets2v2.publish.changelog import render_edition_changelog
@@ -117,6 +119,8 @@ def _serialize_summary_bytes(summary: PhaseAReleaseSummary) -> bytes:
 def run_phase_a_release(
     *,
     state_path: Path = Path("state/published.json"),
+    prices_lock_path: Path = Path("state/prices.lock.json"),
+    prices_lock: PricesLockfile | None = None,
     out_dir: Path = Path("dist"),
     changelogs_dir: Path = Path("."),
     laws_dir: Path = Path("data/laws"),
@@ -132,6 +136,9 @@ def run_phase_a_release(
 ) -> PhaseAReleaseSummary:
     """Run the full Phase A build -> validate -> diff-gate -> snapshot -> changelog pipeline."""
     effective_build_date = build_date if build_date is not None else datetime.now(UTC).date()
+    resolved_lock = (
+        prices_lock if prices_lock is not None else load_prices_lockfile(prices_lock_path)
+    )
 
     registry = load_law_registry(laws_dir, mappings_path)
     bl_countries = CountriesBaseline.model_validate_json(
@@ -166,6 +173,7 @@ def run_phase_a_release(
             edition,
             anchor_year=anchor_year,
             baseline_game_version=game_version,
+            prices_lock=resolved_lock,
         )
         snapshot_bytes = serialize_snapshot_bytes(snapshot)
         snapshot_sha256 = hashlib.sha256(snapshot_bytes).hexdigest()
@@ -182,6 +190,7 @@ def run_phase_a_release(
             mappings_path=mappings_path,
             baseline_dir=baseline_dir,
             icons_dir=icons_dir,
+            prices_lock=resolved_lock,
             package_version=initial_version,
             author=author,
             anchor_year=anchor_year,
@@ -202,6 +211,7 @@ def run_phase_a_release(
                 mappings_path=mappings_path,
                 baseline_dir=baseline_dir,
                 icons_dir=icons_dir,
+                prices_lock=resolved_lock,
                 package_version=final_version,
                 author=author,
                 anchor_year=anchor_year,
@@ -261,6 +271,7 @@ def run_phase_a_release(
                 file_count=staged.built.workshop_file_count,
                 previous_state=staged.previous_state,
                 previous_snapshot=prev_snap,
+                prices_lock=resolved_lock,
             )
             changelog_path = changelogs_dir / f"CHANGELOG_{edition.upper()}.md"
             changelog_path.parent.mkdir(parents=True, exist_ok=True)

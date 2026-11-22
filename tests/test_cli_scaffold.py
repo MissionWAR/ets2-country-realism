@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib.metadata
 import pathlib
 import tomllib
@@ -65,22 +66,24 @@ def test_active_phase_only_package_layout() -> None:
     assert pkg_root.is_dir()
 
     entries = {entry.name for entry in pkg_root.iterdir() if entry.name != "__pycache__"}
-    deferred_phase_dirs = {"fetch", "normalize", "merge"}
-    allowed_phase2_entries = {
+    deferred_phase_dirs = {"merge"}
+    allowed_phase3_entries = {
         "__init__.py",
         "py.typed",
         "cli.py",
         "vfs",
         "sii",
         "baseline",
+        "normalize",
         "registry",
+        "fetch",
         "package",
         "validate",
         "publish",
     }
 
     assert entries.isdisjoint(deferred_phase_dirs)
-    assert entries <= allowed_phase2_entries
+    assert entries <= allowed_phase3_entries
     assert {"__init__.py", "py.typed", "cli.py"} <= entries
 
 
@@ -97,6 +100,8 @@ def test_pyproject_metadata_and_quality_gates() -> None:
     assert project["requires-python"] == ">=3.12"
     assert project["license"] == "MIT"
     assert sorted(_as_str_list(project["dependencies"])) == [
+        "httpx>=0.28,<0.29",
+        "openpyxl>=3.1,<4",
         "pillow>=12,<14",
         "pydantic>=2.14,<3",
         "tzdata>=2025.2",
@@ -112,6 +117,7 @@ def test_pyproject_metadata_and_quality_gates() -> None:
         "pytest>=9.2,<9.3",
         "pytest-cov>=6,<8",
         "ruff>=0.16",
+        "types-openpyxl>=3.1",
     ):
         assert expected_dep in dev_deps
 
@@ -146,6 +152,8 @@ def test_uv_lock_contains_verified_packages() -> None:
             package_names.add(name)
 
     expected = {
+        "httpx",
+        "openpyxl",
         "pydantic",
         "tzdata",
         "pillow",
@@ -153,6 +161,7 @@ def test_uv_lock_contains_verified_packages() -> None:
         "pytest",
         "pytest-cov",
         "ruff",
+        "types-openpyxl",
     }
     assert expected <= package_names
 
@@ -199,3 +208,83 @@ def test_phase2_runtime_distribution_metadata() -> None:
     pillow_version = importlib.metadata.version("pillow")
     pil_major = int(pillow_version.split(".")[0])
     assert 12 <= pil_major < 14
+
+
+def test_phase3_runtime_distribution_metadata() -> None:
+    httpx_version = importlib.metadata.version("httpx")
+    httpx_parts = [int(p) for p in httpx_version.split(".")[:2]]
+    assert tuple(httpx_parts) == (0, 28)
+
+    openpyxl_version = importlib.metadata.version("openpyxl")
+    openpyxl_parts = [int(p) for p in openpyxl_version.split(".")[:2]]
+    assert (3, 1) <= tuple(openpyxl_parts) < (4, 0)
+
+
+def _scan_forbidden_imports(
+    pkg_dir: pathlib.Path,
+    *,
+    forbidden_roots: frozenset[str],
+    forbidden_ets2v2_subpackages: frozenset[str],
+) -> list[str]:
+    violations: list[str] = []
+    for py_file in sorted(pkg_dir.rglob("*.py")):
+        tree = ast.parse(py_file.read_text("utf-8"), filename=str(py_file))
+        rel = py_file.relative_to(REPO_ROOT).as_posix()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    name = alias.name
+                    root = name.split(".", 1)[0]
+                    if root in forbidden_roots:
+                        violations.append(f"{rel}: import {name}")
+                    for subpkg in forbidden_ets2v2_subpackages:
+                        if name == f"ets2v2.{subpkg}" or name.startswith(f"ets2v2.{subpkg}."):
+                            violations.append(f"{rel}: import {name}")
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if node.level > 0:
+                    top_rel = module.split(".", 1)[0] if module else ""
+                    if top_rel in forbidden_ets2v2_subpackages:
+                        violations.append(f"{rel}: from {'.' * node.level}{module} import ...")
+                    elif not module:
+                        for alias in node.names:
+                            if alias.name in forbidden_ets2v2_subpackages:
+                                violations.append(
+                                    f"{rel}: from {'.' * node.level} import {alias.name}"
+                                )
+                    continue
+
+                root = module.split(".", 1)[0] if module else ""
+                if root in forbidden_roots:
+                    violations.append(f"{rel}: from {module} import ...")
+                for subpkg in forbidden_ets2v2_subpackages:
+                    if module == f"ets2v2.{subpkg}" or module.startswith(f"ets2v2.{subpkg}."):
+                        violations.append(f"{rel}: from {module} import ...")
+                if module == "ets2v2":
+                    for alias in node.names:
+                        if alias.name in forbidden_ets2v2_subpackages:
+                            violations.append(f"{rel}: from ets2v2 import {alias.name}")
+    return violations
+
+
+def test_phase3_ast_dag_isolation_walls() -> None:
+    """Enforce all 4 AST-scanned offline DAG isolation walls (D-05 & 03-PATTERNS.md)."""
+    src_root = REPO_ROOT / "src" / "ets2v2"
+    online_third_party = frozenset({"httpx", "openpyxl"})
+
+    wall_specs: dict[str, frozenset[str]] = {
+        "validate": frozenset({"package", "normalize", "fetch"}),
+        "package": frozenset({"fetch"}),
+        "publish": frozenset({"fetch"}),
+        "normalize": frozenset({"fetch", "registry", "package", "validate", "publish"}),
+    }
+
+    for subpkg, forbidden_subpkgs in wall_specs.items():
+        pkg_dir = src_root / subpkg
+        assert pkg_dir.is_dir(), f"Expected subpackage directory {pkg_dir}"
+        violations = _scan_forbidden_imports(
+            pkg_dir,
+            forbidden_roots=online_third_party,
+            forbidden_ets2v2_subpackages=forbidden_subpkgs,
+        )
+        assert violations == [], f"AST DAG isolation violation in {subpkg}/: {violations}"

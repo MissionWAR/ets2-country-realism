@@ -25,11 +25,11 @@ Requirements for the V1 release (Phases 1–5), targeting Phase A Semi-Auto Stea
 
 ### Open European Fuel/FX Pipeline & Zero-DDS Totem Engine
 
-- [ ] **DAT-01**: Fetch and cross-validate FX exchange rates using `Frankfurter v2` (`MIT`, 219 currencies), `ECB` validator, `fawazahmed0` currency API (`CC0`), and `CBR` FX with deterministic country-currency mapping and currency-split sanity checks.
-- [ ] **DAT-02**: Collect Tier 1 open European & EEA government fuel data from `EC Weekly Oil Bulletin` (dynamic XLSX discovery + `FionnHughes`/`fuel-prices.eu` fallback), `UK DESNZ`, `NO SSB`, and multi-grade national APIs (`FR`, `DE`, `ES`, `IT`, `NL`).
-- [ ] **DAT-03**: Enforce circuit-breaker safety (`0.01–5.00 EUR/L` equivalent bounds and `±25%` change alerts) backed by `prices.lock.json` so stale or broken upstream endpoints safely fall back to last-known-good attributed values.
-- [ ] **TOT-01**: Implement Option 4b Zero-DDS gas-station totem updates using namespaced `@@fp_*_ets2v2@@` tokens in `def/sign/board/*.sii` and `locale/<lang>/local_module.ets2v2_fuel.sii` across all 43 active ETS2 `1.62` locales.
-- [ ] **TOT-02**: Render authentic multi-grade (`95`, `98`, `100`, `Diesel`, `Diesel+`, `E85`, `LPG`) prices in national currencies and sub-units (pence, eurocents, `<sup>9</sup>`, Bulgaria EUR transition) while fixing all 17 active and 69 placeholder/blank missing `1.62` sign boards (including `gas_bi_*`, `gas_ie_*`, `gas_ba_*_lpg`, `gas_dk_92`, `gas_is_ip1_98`).
+- [x] **DAT-01**: Fetch and cross-validate FX exchange rates using `Frankfurter v2` (`MIT`, 219 currencies), `ECB` validator, `fawazahmed0` currency API (`CC0`), and `CBR` FX with deterministic country-currency mapping and currency-split sanity checks.
+- [x] **DAT-02**: Collect Tier 1 open European & EEA government fuel data from `EC Weekly Oil Bulletin` (dynamic XLSX discovery + `FionnHughes`/`fuel-prices.eu` fallback), `UK DESNZ`, `NO SSB`, and multi-grade national APIs (`FR`, `DE`, `ES`, `IT`, `NL`).
+- [x] **DAT-03**: Enforce circuit-breaker safety (`0.01–5.00 EUR/L` equivalent bounds and `±25%` change alerts) backed by `prices.lock.json` so stale or broken upstream endpoints safely fall back to last-known-good attributed values.
+- [x] **TOT-01**: Implement Option 4b Zero-DDS gas-station totem updates using namespaced `@@fp_*_ets2v2@@` tokens in `def/sign/board/*.sii` and `locale/<lang>/local_module.ets2v2_fuel.sii` across all 43 active ETS2 `1.62` locales.
+- [x] **TOT-02**: Render authentic multi-grade (`95`, `98`, `100`, `Diesel`, `Diesel+`, `E85`, `LPG`) prices in national currencies and sub-units (pence, eurocents, `<sup>9</sup>`, Bulgaria EUR transition) while fixing all 17 active and 69 placeholder/blank missing `1.62` sign boards (including `gas_bi_*`, `gas_ie_*`, `gas_ba_*_lpg`, `gas_dk_92`, `gas_is_ip1_98`).
 
 ### ProMods Companion & Local Map Combo Composer
 
@@ -80,11 +80,11 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 | PUB-01 | Phase 2 | Complete |
 | PUB-02 | Phase 2 | Complete |
 | PUB-03 | Phase 2 | Complete |
-| DAT-01 | Phase 3 | Pending |
-| DAT-02 | Phase 3 | Pending |
-| DAT-03 | Phase 3 | Pending |
-| TOT-01 | Phase 3 | Pending |
-| TOT-02 | Phase 3 | Pending |
+| DAT-01 | Phase 3 | Complete |
+| DAT-02 | Phase 3 | Complete |
+| DAT-03 | Phase 3 | Complete |
+| TOT-01 | Phase 3 | Complete |
+| TOT-02 | Phase 3 | Complete |
 | MAP-01 | Phase 4 | Pending |
 | MAP-02 | Phase 4 | Pending |
 | MAP-03 | Phase 4 | Pending |
@@ -102,4 +102,4 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 
 ---
 *Requirements defined: 2026-11-16*
-*Last updated: 2026-11-16 after `/gsd-new-project` post-research checkpoint*
+*Last updated: 2026-11-22 after Phase 3 closeout (`DAT-01`..`TOT-02` verified)*

@@ -2,11 +2,106 @@
 
 from __future__ import annotations
 
+from ets2v2.normalize.models import PricesLockfile
+from ets2v2.normalize.totem_format import format_national_pump_price
 from ets2v2.publish.ledger import PublishedEditionState
 from ets2v2.registry.models import LaneSpeedOverride, RoadVehicleClass, Season
 from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 
 _VEHICLE_ORDER: tuple[RoadVehicleClass, ...] = ("car", "truck", "bus")
+_MAX_ALERT_DETAIL_LEN: int = 240
+
+
+def _sanitize_markdown_inline(text: str, *, max_len: int = _MAX_ALERT_DETAIL_LEN) -> str:
+    """Collapse whitespace/newlines, neutralize backticks & HTML angle brackets, and cap length."""
+    collapsed = " ".join(text.split())
+    escaped = collapsed.replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
+    if len(escaped) > max_len:
+        return escaped[:max_len]
+    return escaped
+
+
+def _format_markdown_local_price(iso2: str, price: float | None) -> str:
+    if price is None:
+        return "—"
+    raw = format_national_pump_price(iso2, price, variant="standard")
+    return raw.replace("<sup>", "").replace("</sup>", "")
+
+
+def _render_fuel_summary_table(
+    snapshot: RealismSnapshot,
+    prices_lock: PricesLockfile | None,
+) -> list[str]:
+    lines: list[str] = [
+        f"## {len(snapshot.countries)}-Country Fuel Price Summary",
+        "",
+        "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |",
+        "|------|----------|-------------:|-------------:|---------:|--------|-----------|",
+    ]
+    for iso2 in sorted(snapshot.countries):
+        country = snapshot.countries[iso2]
+        lock_entry = prices_lock.countries.get(iso2) if prices_lock is not None else None
+        local_diesel_val = country.fuel.local_prices.get("diesel")
+        local_95_val = country.fuel.local_prices.get("petrol_95")
+        if local_diesel_val is None and lock_entry is not None:
+            local_diesel_val = lock_entry.local_prices.get("diesel")
+        if local_95_val is None and lock_entry is not None:
+            local_95_val = lock_entry.local_prices.get("petrol_95")
+
+        currency_str = "GBP (p/L)" if iso2 == "GB" else country.fuel.currency
+        eur_str = f"{country.fuel.eur_per_liter:.3f}"
+        diesel_str = _format_markdown_local_price(iso2, local_diesel_val)
+        p95_str = _format_markdown_local_price(iso2, local_95_val)
+        source_str = f"`{country.fuel.source}`"
+        if lock_entry is not None:
+            freshness_str = (
+                f"`{lock_entry.data_date}` (fallback)"
+                if lock_entry.fallback_used
+                else f"`{lock_entry.data_date}`"
+            )
+        else:
+            freshness_str = "`baseline`"
+        lines.append(
+            f"| `{iso2}` | {currency_str} | {eur_str} | {diesel_str} | {p95_str} | "
+            f"{source_str} | {freshness_str} |"
+        )
+    lines.append("")
+    return lines
+
+
+def _render_alerts_section(
+    snapshot: RealismSnapshot,
+    prices_lock: PricesLockfile | None,
+) -> list[str]:
+    if prices_lock is None:
+        return []
+    fallback_countries = sorted(
+        iso2
+        for iso2, entry in prices_lock.countries.items()
+        if iso2 in snapshot.countries and entry.fallback_used
+    )
+    fallback_fx = sorted(ccy for ccy, fx in prices_lock.fx_rates.items() if fx.fallback_used)
+    if not prices_lock.alerts and not fallback_countries and not fallback_fx:
+        return []
+
+    lines: list[str] = ["## Circuit-Breaker & Staleness Alerts", ""]
+    for alert in prices_lock.alerts:
+        safe_code = _sanitize_markdown_inline(alert.code, max_len=64)
+        safe_scope = _sanitize_markdown_inline(alert.scope, max_len=64)
+        safe_detail = _sanitize_markdown_inline(alert.detail)
+        lines.append(
+            f"- **[{alert.severity.upper()}] `{safe_code}` (`{safe_scope}`):** {safe_detail}"
+        )
+    if fallback_countries:
+        joined_cc = ", ".join(f"`{iso2}`" for iso2 in fallback_countries)
+        lines.append(
+            f"- **Fallback/Seeded Countries Retained ({len(fallback_countries)}):** {joined_cc}"
+        )
+    if fallback_fx:
+        joined_fx = ", ".join(f"`{ccy}`" for ccy in fallback_fx)
+        lines.append(f"- **Fallback FX Rates Retained ({len(fallback_fx)}):** {joined_fx}")
+    lines.append("")
+    return lines
 
 
 def _format_lane_override(lane: LaneSpeedOverride) -> str:
@@ -177,6 +272,7 @@ def render_edition_changelog(
     file_count: int | None = None,
     previous_state: PublishedEditionState | None = None,
     previous_snapshot: RealismSnapshot | None = None,
+    prices_lock: PricesLockfile | None = None,
 ) -> bytes:
     """Render deterministic UTF-8 no-BOM LF Markdown changelog bytes for one seasonal edition."""
     edition_title = "Summer" if edition == "summer" else "Winter"
@@ -214,6 +310,9 @@ def render_edition_changelog(
     else:
         lines.extend(_render_initial_highlights(edition, snapshot))
 
+    lines.extend(_render_alerts_section(snapshot, prices_lock))
+    lines.extend(_render_fuel_summary_table(snapshot, prices_lock))
+
     lines.extend(
         [
             "## Attribution & Licensing",
@@ -221,6 +320,10 @@ def render_edition_changelog(
             "- Generator source code is licensed under **MIT**.",
             "- Open statutory realism datasets and generated changelogs are published under "
             "**CC BY 4.0**.",
+            "- Open European fuel data: EC Weekly Oil Bulletin CC BY 4.0, fuel-prices.eu "
+            "CC BY 4.0, UK DESNZ OGL v3, Norway SSB CC BY 4.0, France Licence Ouverte, "
+            "Italy MIMIT IODL 2.0, Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.",
+            "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.",
             "",
         ]
     )

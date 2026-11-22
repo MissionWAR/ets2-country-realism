@@ -278,3 +278,73 @@ def test_cli_registry_snapshot_winter_date_override_and_invalid_date(
     assert exit_bad == 1
     assert "error:" in bad_captured.err
     assert not bad_out.exists()
+
+
+def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra_eu(
+    tmp_path: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from ets2v2.normalize.lockfile import seed_initial_lockfile, write_prices_lockfile
+    from ets2v2.normalize.models import CANONICAL_FUEL_GRADES
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries, bl_locales = _load_inputs()
+    lock = seed_initial_lockfile(bl_countries)
+    assert {"IE", "CY", "MT"} <= set(lock.countries.keys())
+
+    # Override DE with an exact 3-decimal EUR/L and live national source to verify injection
+    de_live = lock.countries["DE"].model_copy(
+        update={
+            "eur_per_liter": 1.659,
+            "source": "de_tankerkoenig",
+            "fallback_used": False,
+        }
+    )
+    custom_lock = lock.model_copy(update={"countries": {**lock.countries, "DE": de_live}})
+
+    snap = build_realism_snapshot(
+        registry,
+        bl_countries,
+        bl_locales,
+        "summer",
+        prices_lock=custom_lock,
+    )
+    assert snap.schema_version == 1
+    # Core snapshot MUST remain strictly 36 Vanilla+DLC countries (IE/CY/MT excluded per D-04!)
+    assert len(snap.countries) == 36
+    assert "IE" not in snap.countries
+    assert "CY" not in snap.countries
+    assert "MT" not in snap.countries
+
+    assert snap.countries["DE"].fuel.eur_per_liter == 1.659
+    assert snap.countries["DE"].fuel.source == "de_tankerkoenig"
+    assert snap.countries["DE"].fuel.currency == "EUR"
+    assert set(snap.countries["DE"].fuel.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
+
+    # Verify locked schema_version=1 JSON keys (extra="forbid" D-13)
+    raw_obj = cast(dict[str, object], json.loads(serialize_snapshot_bytes(snap).decode("utf-8")))
+    assert set(raw_obj.keys()) == EXPECTED_TOP_LEVEL_KEYS
+    raw_countries = cast(dict[str, dict[str, object]], raw_obj["countries"])
+    assert set(raw_countries["DE"].keys()) == EXPECTED_COUNTRY_KEYS
+    assert set(cast(dict[str, object], raw_countries["DE"]["fuel"]).keys()) == EXPECTED_FUEL_KEYS
+
+    # CLI: ets2v2 registry snapshot --prices-lock ...
+    lock_file = tmp_path / "prices.lock.json"
+    write_prices_lockfile(custom_lock, lock_file)
+    snap_out = tmp_path / "snap-with-prices.json"
+    exit_code = main(
+        [
+            "registry",
+            "snapshot",
+            "--season",
+            "summer",
+            "--prices-lock",
+            str(lock_file),
+            "--out",
+            str(snap_out),
+        ]
+    )
+    _ = capsys.readouterr()
+    assert exit_code == 0
+    restored = RealismSnapshot.model_validate_json(snap_out.read_text("utf-8"))
+    assert restored == snap

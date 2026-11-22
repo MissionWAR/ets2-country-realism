@@ -9,6 +9,16 @@ from ets2v2.registry.models import LaneSpeedOverride, RoadVehicleClass, Season
 from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 
 _VEHICLE_ORDER: tuple[RoadVehicleClass, ...] = ("car", "truck", "bus")
+_MAX_ALERT_DETAIL_LEN: int = 240
+
+
+def _sanitize_markdown_inline(text: str, *, max_len: int = _MAX_ALERT_DETAIL_LEN) -> str:
+    """Collapse whitespace/newlines, neutralize backticks & HTML angle brackets, and cap length."""
+    collapsed = " ".join(text.split())
+    escaped = collapsed.replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
+    if len(escaped) > max_len:
+        return escaped[:max_len]
+    return escaped
 
 
 def _format_markdown_local_price(iso2: str, price: float | None) -> str:
@@ -25,8 +35,8 @@ def _render_fuel_summary_table(
     lines: list[str] = [
         f"## {len(snapshot.countries)}-Country Fuel Price Summary",
         "",
-        "| ISO2 | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |",
-        "|------|-------------:|-------------:|---------:|--------|-----------|",
+        "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |",
+        "|------|----------|-------------:|-------------:|---------:|--------|-----------|",
     ]
     for iso2 in sorted(snapshot.countries):
         country = snapshot.countries[iso2]
@@ -38,6 +48,7 @@ def _render_fuel_summary_table(
         if local_95_val is None and lock_entry is not None:
             local_95_val = lock_entry.local_prices.get("petrol_95")
 
+        currency_str = "GBP (p/L)" if iso2 == "GB" else country.fuel.currency
         eur_str = f"{country.fuel.eur_per_liter:.3f}"
         diesel_str = _format_markdown_local_price(iso2, local_diesel_val)
         p95_str = _format_markdown_local_price(iso2, local_95_val)
@@ -51,7 +62,8 @@ def _render_fuel_summary_table(
         else:
             freshness_str = "`baseline`"
         lines.append(
-            f"| `{iso2}` | {eur_str} | {diesel_str} | {p95_str} | {source_str} | {freshness_str} |"
+            f"| `{iso2}` | {currency_str} | {eur_str} | {diesel_str} | {p95_str} | "
+            f"{source_str} | {freshness_str} |"
         )
     lines.append("")
     return lines
@@ -74,8 +86,11 @@ def _render_alerts_section(
 
     lines: list[str] = ["## Circuit-Breaker & Staleness Alerts", ""]
     for alert in prices_lock.alerts:
+        safe_code = _sanitize_markdown_inline(alert.code, max_len=64)
+        safe_scope = _sanitize_markdown_inline(alert.scope, max_len=64)
+        safe_detail = _sanitize_markdown_inline(alert.detail)
         lines.append(
-            f"- **[{alert.severity.upper()}] `{alert.code}` (`{alert.scope}`):** {alert.detail}"
+            f"- **[{alert.severity.upper()}] `{safe_code}` (`{safe_scope}`):** {safe_detail}"
         )
     if fallback_countries:
         joined_cc = ", ".join(f"`{iso2}`" for iso2 in fallback_countries)

@@ -54,6 +54,43 @@ jobs:
           mkdir -p dist
           uv run --offline ets2v2 fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json
 
+      - name: Publish fetch alert summary to step summary
+        run: |
+          set -euo pipefail
+          uv run --offline python - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          def _sanitize(text: str, limit: int = 240) -> str:
+              cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
+              return cleaned[:limit]
+
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          summary_path = pathlib.Path("dist/fetch_summary.json")
+          if step_summary and summary_path.is_file():
+              fetch_data = json.loads(summary_path.read_text("utf-8"))
+              alerts = fetch_data.get("alerts", [])
+              lines = [
+                  "### Phase A Fetch Summary",
+                  "",
+                  f"- **Tier 1 Feeds Succeeded:** `{fetch_data.get('tier1_feeds_succeeded', 0)}`",
+                  f"- **Tier 1 Feeds Failed:** `{fetch_data.get('tier1_feeds_failed', 0)}`",
+                  f"- **Countries Updated / Fallback:** `{fetch_data.get('countries_updated', 0)}` / `{fetch_data.get('countries_fallback', 0)}`",
+                  f"- **Alerts:** `{len(alerts)}`",
+              ]
+              if alerts:
+                  lines.extend(["", "#### Circuit-Breaker & Staleness Alerts"])
+                  for alert in alerts:
+                      sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
+                      code = _sanitize(str(alert.get("code", "alert")), 64)
+                      scope = _sanitize(str(alert.get("scope", "global")), 64)
+                      detail = _sanitize(str(alert.get("detail", "")), 240)
+                      lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
+              with pathlib.Path(step_summary).open("a", encoding="utf-8") as fh:
+                  fh.write("\n".join(lines) + "\n")
+          PY
+
       - name: Run Phase A diff-gated release build
         id: release
         run: |
@@ -147,15 +184,19 @@ jobs:
 
           summary_path = pathlib.Path("dist/fetch_summary.json")
           if summary_path.is_file():
+              def _sanitize(text: str, limit: int = 240) -> str:
+                  cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
+                  return cleaned[:limit]
+
               fetch_data = json.loads(summary_path.read_text("utf-8"))
               alerts = fetch_data.get("alerts", [])
               if alerts:
                   lines.extend(["", "### Circuit-Breaker & Staleness Alerts"])
                   for alert in alerts:
-                      sev = str(alert.get("severity", "warning")).upper()
-                      code = str(alert.get("code", "alert"))
-                      scope = str(alert.get("scope", "global"))
-                      detail = str(alert.get("detail", ""))
+                      sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
+                      code = _sanitize(str(alert.get("code", "alert")), 64)
+                      scope = _sanitize(str(alert.get("scope", "global")), 64)
+                      detail = _sanitize(str(alert.get("detail", "")), 240)
                       lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
 
           print("\n".join(lines))

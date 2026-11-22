@@ -205,6 +205,11 @@ def test_phase_a_workflow_d03_d05_d08_fetch_step_and_prices_lock_pr_staging() ->
         "CHANGELOG_SUMMER.md CHANGELOG_WINTER.md; do" in text
     )
     assert "Circuit-Breaker & Staleness Alerts" in text
+    # IN-03 + MD-05: Unconditional GITHUB_STEP_SUMMARY alert reporting & Markdown sanitization
+    assert "GITHUB_STEP_SUMMARY" in text
+    assert "def _sanitize(" in text
+    assert text.count("def _sanitize(") >= 2
+    assert 'replace("<", "&lt;")' in text
 
     # ci.yml remains read-only and never runs ets2v2 fetch or reads live API secrets
     ci_text = CI_WORKFLOW_PATH.read_text("utf-8")

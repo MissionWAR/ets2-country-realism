@@ -513,6 +513,12 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ).decode("utf-8")
 
     assert "## 36-Country Fuel Price Summary" in clean_md
+    assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
+        clean_md
+    )
+    assert "| `GB` | GBP (p/L) |" in clean_md
+    assert "| `HU` | HUF |" in clean_md
+    assert "| `DE` | EUR |" in clean_md
     assert "## Circuit-Breaker & Staleness Alerts" not in clean_md
     for iso2 in ("DE", "GB", "BG", "IS"):
         assert f"| `{iso2}` |" in clean_md
@@ -534,7 +540,8 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ):
         assert attribution in clean_md, f"Missing D-16 attribution in changelog: {attribution!r}"
 
-    # 2. Lock with circuit-breaker & staleness alerts highlights Alerts section
+    # 2. Lock with circuit-breaker & staleness alerts highlights Alerts section and sanitizes MD
+    evil_detail = "Bad feed\n## Injected Heading\n`backtick` <script>x</script> " + ("A" * 300)
     alerted_lock = clean_lock.model_copy(
         update={
             "alerts": [
@@ -548,7 +555,7 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
                     severity="warning",
                     code="stale_tier1",
                     scope="NO",
-                    detail="NO entry is 19 days old (>14d threshold).",
+                    detail=evil_detail,
                 ),
             ]
         }
@@ -564,6 +571,13 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     assert "## Circuit-Breaker & Staleness Alerts" in alerted_md
     assert "price_jump_rejected" in alerted_md
     assert "stale_tier1" in alerted_md
+    assert "\n## Injected Heading" not in alerted_md
+    assert "<script>" not in alerted_md
+    assert "&lt;script&gt;x&lt;/script&gt;" in alerted_md
+    stale_line = next(line for line in alerted_md.splitlines() if "stale_tier1" in line)
+    detail_part = stale_line.split(":** ", 1)[1]
+    assert "`" not in detail_part
+    assert len(detail_part) <= 240
 
 
 def test_phase_a_release_prices_lock_mutation_bumps_both_editions_and_cli_flag(

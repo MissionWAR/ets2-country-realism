@@ -250,7 +250,9 @@ def format_national_pump_price(
 
     if code == "CZ":
         rounded_tenth = dec.quantize(_QUANT_1DEC, rounding=ROUND_HALF_UP)
-        return f"{rounded_tenth:.2f}"
+        if rounded_tenth < _HUNDRED:
+            return f"{rounded_tenth:.2f}"
+        return f"{rounded_tenth:.1f}"
 
     if code == "RO":
         q2 = dec.quantize(_QUANT_2DEC, rounding=ROUND_HALF_UP)
@@ -258,7 +260,7 @@ def format_national_pump_price(
             return f"{q2:.2f}"
         return f"{dec.quantize(_QUANT_1DEC, rounding=ROUND_HALF_UP):.1f}"
 
-    if code == "MK":
+    if code in {"MK", "TR"}:
         q2 = dec.quantize(_QUANT_2DEC, rounding=ROUND_HALF_UP)
         if q2 < _HUNDRED:
             return f"{q2:.2f}"
@@ -276,7 +278,7 @@ def format_national_pump_price(
         three_dec_str = f"{q3:.3f}"
         return f"{three_dec_str[:-1]}<sup>{three_dec_str[-1]}</sup>"
 
-    # 2-decimal national currencies (BA, CH, DK, NO, PL, RU, SE, TR, plus CY/MT)
+    # 2-decimal national currencies (BA, CH, DK, NO, PL, RU, SE, plus CY/MT)
     return f"{dec.quantize(_QUANT_2DEC, rounding=ROUND_HALF_UP):.2f}"
 
 

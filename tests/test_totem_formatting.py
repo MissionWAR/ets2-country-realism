@@ -93,24 +93,31 @@ def test_gas_font_metrics_inventory_and_width_math() -> None:
         ("HU", 614.6, "standard", "615"),
         ("IS", 312.4, "standard", "312"),
         ("RS", 197.5, "standard", "198"),
-        # Czechia .X0 convention
+        # Czechia .X0 convention (< 100 -> XX.X0, >= 100 -> XXX.X carry-safe)
         ("CZ", 38.94, "standard", "38.90"),
         ("CZ", 38.95, "standard", "39.00"),
+        ("CZ", 99.94, "standard", "99.90"),
+        ("CZ", 99.95, "standard", "100.0"),
+        ("CZ", 104.24, "standard", "104.2"),
         # Romania < 10 -> X.XX, >= 10 -> XX.X (including carry boundary 9.996 -> 10.0)
         ("RO", 7.454, "standard", "7.45"),
         ("RO", 9.994, "standard", "9.99"),
         ("RO", 9.996, "standard", "10.0"),
         ("RO", 10.14, "standard", "10.1"),
-        # North Macedonia < 100 -> XX.XX, >= 100 -> XXX.X (including carry boundary 99.996 -> 100.0)
+        # North Macedonia & Turkey < 100 -> XX.XX, >= 100 -> XXX.X (carry-safe)
         ("MK", 79.5, "standard", "79.50"),
         ("MK", 99.994, "standard", "99.99"),
         ("MK", 99.996, "standard", "100.0"),
         ("MK", 103.44, "standard", "103.4"),
+        ("TR", 44.5, "standard", "44.50"),
+        ("TR", 99.994, "standard", "99.99"),
+        ("TR", 99.996, "standard", "100.0"),
+        ("TR", 131.58, "standard", "131.6"),
         # Eurozone native 3-decimal (FI, GR, SI)
         ("FI", 1.789, "standard", "1.789"),
         ("GR", 1.8455, "standard", "1.846"),
         ("SI", 1.512, "standard", "1.512"),
-        # 2-decimal national currencies (BA, CH, DK, NO, PL, RU, SE, TR)
+        # 2-decimal national currencies (BA, CH, DK, NO, PL, RU, SE)
         ("BA", 2.65, "standard", "2.65"),
         ("CH", 1.894, "standard", "1.89"),
         ("DK", 14.29, "standard", "14.29"),
@@ -118,7 +125,6 @@ def test_gas_font_metrics_inventory_and_width_math() -> None:
         ("PL", 6.49, "standard", "6.49"),
         ("RU", 68.5, "standard", "68.50"),
         ("SE", 18.95, "standard", "18.95"),
-        ("TR", 44.5, "standard", "44.50"),
         # Eurozone tenth-cent 3-tier variants + carry edge case (1.7996 -> 1.80<sup>0</sup>)
         ("DE", 1.789, "standard", "1.78<sup>9</sup>"),
         ("DE", 1.7996, "standard", "1.80<sup>0</sup>"),
@@ -246,3 +252,47 @@ def test_exhaustive_460_board_routing_and_width_budget_compliance() -> None:
     ):
         assert board_tokens[is_board] == expected_tok
         assert token_values[expected_tok].isdigit()
+
+
+def test_all_460_boards_width_budget_under_elevated_fx_sanity_bands() -> None:
+    from ets2v2.normalize.currencies import CURRENCY_SANITY_BANDS, TERRITORY_CURRENCIES
+    from ets2v2.normalize.fuel import compute_secondary_grade_prices
+    from ets2v2.normalize.models import CountryFuelLockEntry
+
+    fuel_boards = _load_committed_boards()
+    prices_lock = load_prices_lockfile(PRICES_LOCK_PATH)
+    classifications = classify_all_fuel_boards(fuel_boards)
+    boards_by_name = {b.board_name: b for b in fuel_boards.boards}
+
+    # Stress-test every territory with elevated FX at upper sanity-band extreme (e.g. TRY=120,
+    # CZK=35 -> 105+ CZK/L at 3.0 EUR/L, RON=8 -> 16+ RON/L, MKD=90 -> 180+ MKD/L)
+    stress_entries: dict[str, CountryFuelLockEntry] = {}
+    for iso2, base_entry in prices_lock.countries.items():
+        ccy = TERRITORY_CURRENCIES[iso2]
+        fx_high = 1.0 if ccy == "EUR" else CURRENCY_SANITY_BANDS[ccy][1]
+        # Stress at elevated pump price: 2.00 EUR/L diesel / 2.20 EUR/L petrol_95 (and 3.00 EUR/L
+        # for CZ so CZK crosses 100.00 CZK/L too)
+        diesel_eur = 3.00 if iso2 == "CZ" else 2.00
+        petrol_eur = 3.15 if iso2 == "CZ" else 2.20
+        local_map, derived = compute_secondary_grade_prices(
+            {"diesel": diesel_eur * fx_high, "petrol_95": petrol_eur * fx_high}
+        )
+        stress_entries[iso2] = base_entry.model_copy(
+            update={
+                "eur_per_liter": diesel_eur,
+                "local_prices": local_map,
+                "derived_grades": derived,
+            }
+        )
+
+    # Confirm TR and CZ actually crossed 100 in this stress test!
+    assert stress_entries["TR"].local_prices["diesel"] >= 100.0
+    assert stress_entries["CZ"].local_prices["diesel"] >= 100.0
+
+    for item in classifications:
+        board = boards_by_name[item.board_name]
+        entry = stress_entries[item.iso2]
+        _token_key, display_value = resolve_totem_token_and_value(board, item, entry)
+        assert verify_totem_glyph_and_width(board, display_value) == [], (
+            f"{item.board_name} ({item.iso2}): {display_value!r}"
+        )

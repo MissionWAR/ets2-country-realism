@@ -23,8 +23,11 @@ from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
 from ets2v2.validate import (
     ValidationCollector,
     ValidationReport,
+    validate_combo_invariants,
     validate_core_realism_invariants,
     validate_local_zip,
+    validate_promods_locale_modules_consistency,
+    validate_promods_realism_invariants,
     validate_totem_invariants,
     validate_workshop_package,
 )
@@ -561,3 +564,76 @@ def test_d12_totem_boards_fault_injections(
         issue.code == "ETS2V2-INV-TOTEM-BOARDS" and "<sup>" in issue.detail
         for issue in r_sup.issues
     )
+
+
+def test_promods_locale_modules_consistency_allows_v4_and_rejects_unsorted_or_dup(
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    _, _, bl_locales = baselines
+    expected = frozenset(bl_locales.active_locales)
+
+    ok_entries = [
+        LocalizationEntry(key="custom_station", val="STATION"),
+        LocalizationEntry(key="fp_de_diesel_v4", val="164.<sup>1</sup>"),
+    ]
+    ok_collector = ValidationCollector()
+    validate_promods_locale_modules_consistency(
+        {"pm_fuel": {lang: ok_entries for lang in sorted(expected)}},
+        ok_collector,
+        expected_locales=expected,
+    )
+    assert ok_collector.items == []
+
+    # Unsorted & duplicate keys rejected
+    bad_entries = [
+        LocalizationEntry(key="fp_z", val="1.00"),
+        LocalizationEntry(key="fp_a", val="1.00"),
+        LocalizationEntry(key="fp_a", val="2.00"),
+    ]
+    bad_collector = ValidationCollector()
+    validate_promods_locale_modules_consistency(
+        {"pm_fuel": {lang: bad_entries for lang in sorted(expected)}},
+        bad_collector,
+        expected_locales=expected,
+    )
+    assert any(i.code == "ETS2V2-INV-LOCALE-SYNC" for i in bad_collector.items)
+
+
+def test_promods_realism_and_combo_invariants_direct(
+    built_editions: dict[str, BuiltEditionPaths],
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    bl_countries, bl_speeds, bl_locales = baselines
+    countries, speeds = _load_models_from_workshop(built_editions["summer"].workshop_dir)
+
+    # ProMods UK must have scotland & wales
+    uk_pm = countries["uk"].model_copy(update={"regions": ["scotland", "wales"]})
+    armenia_bad = countries["albania"].model_copy(
+        update={
+            "unit_name": "country.data.armenia",
+            "country_id": 47,
+            "name": "Armenia",
+            "leftside_traffic": True,
+        }
+    )
+    pm_countries = {**countries, "uk": uk_pm, "armenia": armenia_bad}
+    pm_collector = ValidationCollector()
+    validate_promods_realism_invariants(
+        pm_countries,
+        speeds,
+        bl_countries,
+        bl_speeds,
+        bl_locales,
+        pm_collector,
+    )
+    assert any(i.code == "ETS2V2-INV-LEFTSIDE" for i in pm_collector.items)
+
+    # Combo invariants pass cleanly with non-decreasing axles and valid TZ tokens
+    combo_collector = ValidationCollector()
+    validate_combo_invariants(
+        {"uk": uk_pm},
+        {"uk": speeds["uk"]},
+        bl_locales,
+        combo_collector,
+    )
+    assert combo_collector.items == []

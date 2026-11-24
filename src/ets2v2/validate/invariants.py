@@ -789,3 +789,352 @@ def validate_totem_invariants(
                 f"Orphan unused totem localization keys in local_module.ets2v2_fuel.sii: "
                 f"{orphans[:10]}",
             )
+
+
+def _check_tz_tokens_and_monotonic_axles(
+    slug: str,
+    model: CountryDataModel,
+    allowed_tz_keys: frozenset[str] | None,
+    country_path: str,
+    collector: ValidationCollector,
+) -> None:
+    cand_axles = model.mass_limit_per_axle_count
+    if cand_axles and cand_axles != sorted(cand_axles):
+        collector.error(
+            "ETS2V2-INV-AXLE",
+            country_path,
+            f"mass_limit_per_axle_count[] is not non-decreasing for {slug!r}: {cand_axles}",
+        )
+
+    tz_values: list[str] = []
+    if model.time_zone_name is not None:
+        tz_values.append(model.time_zone_name)
+    tz_values.extend(model.secondary_time_zone_name)
+
+    for tz_val in tz_values:
+        if not tz_val.strip() or _NUMERIC_TZ_RE.fullmatch(tz_val.strip()) is not None:
+            collector.error(
+                "ETS2V2-INV-TZ-TOKEN",
+                country_path,
+                f"Invalid or numeric-only time_zone_name {tz_val!r} for {slug!r}",
+            )
+        if allowed_tz_keys is not None:
+            for match in _TZ_TOKEN_RE.finditer(tz_val):
+                token_key = match.group(1)
+                if token_key not in allowed_tz_keys:
+                    collector.error(
+                        "ETS2V2-INV-TZ-TOKEN",
+                        country_path,
+                        f"Unsupported localization token '@@{token_key}@@' in time_zone_name "
+                        f"{tz_val!r} for {slug!r} (not in 1.62 12-key locales.json whitelist)",
+                    )
+
+
+def _check_unique_country_ids_and_units(
+    country_models: Mapping[str, CountryDataModel],
+    rel_prefix: str,
+    collector: ValidationCollector,
+) -> None:
+    seen_ids: dict[int, str] = {}
+    seen_units: dict[str, str] = {}
+    for slug in sorted(country_models):
+        model = country_models[slug]
+        sui_path = f"{rel_prefix}def/country/{slug}.sui"
+        if model.country_id in seen_ids:
+            collector.error(
+                "ETS2V2-INV-COUNTRY-COUNT",
+                sui_path,
+                f"Duplicate country_id {model.country_id} shared by {seen_ids[model.country_id]!r} "
+                f"and {slug!r}",
+            )
+        else:
+            seen_ids[model.country_id] = slug
+
+        if model.unit_name in seen_units:
+            collector.error(
+                "ETS2V2-INV-COUNTRY-COUNT",
+                sui_path,
+                f"Duplicate unit_name {model.unit_name!r} shared by "
+                f"{seen_units[model.unit_name]!r} and {slug!r}",
+            )
+        else:
+            seen_units[model.unit_name] = slug
+
+
+def validate_promods_locale_modules_consistency(
+    promods_locales: Mapping[str, Mapping[str, Sequence[LocalizationEntry]]],
+    collector: ValidationCollector,
+    *,
+    expected_locales: frozenset[str] | None = None,
+    path_prefix: str = "",
+) -> None:
+    """Validate 43-locale parity across ``pm*_fuel`` modules (allowing _v4 & verbatim keys)."""
+    rel_prefix = f"{path_prefix}/" if path_prefix else ""
+
+    for module_name in sorted(promods_locales):
+        lang_map = promods_locales[module_name]
+        filename = f"local_module.{module_name}.sii"
+
+        if "fr_qc" in lang_map:
+            collector.error(
+                "ETS2V2-INV-LOCALE-SYNC",
+                f"{rel_prefix}locale/fr_qc/{filename}",
+                f"Deprecated locale 'fr_qc' must not be emitted in {filename} (D-08)",
+            )
+
+        if expected_locales is not None:
+            actual_locales = frozenset(lang_map)
+            if actual_locales != expected_locales:
+                missing = sorted(expected_locales - actual_locales)
+                extra = sorted(actual_locales - expected_locales)
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    f"{rel_prefix}locale",
+                    f"Expected exact {len(expected_locales)} active locales for {filename} "
+                    f"(missing={missing}, extra={extra})",
+                )
+
+        reference_lang: str | None = None
+        reference_pairs: list[tuple[str, str]] | None = None
+
+        for lang in sorted(lang_map):
+            loc_path = f"{rel_prefix}locale/{lang}/{filename}"
+            entries = list(lang_map[lang])
+            if not entries:
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"ProMods locale module {filename} for {lang!r} has zero key/val entries",
+                )
+                continue
+
+            keys = [entry.key for entry in entries]
+            if len(keys) != len(set(keys)):
+                seen: set[str] = set()
+                dups: set[str] = set()
+                for k in keys:
+                    if k in seen:
+                        dups.add(k)
+                    else:
+                        seen.add(k)
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"Duplicate localization keys in {lang!r} ({filename}): {sorted(dups)}",
+                )
+
+            if keys != sorted(keys):
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"Localization keys in {lang!r} ({filename}) are not strictly sorted",
+                )
+
+            for entry in entries:
+                if not entry.key.strip():
+                    collector.error(
+                        "ETS2V2-INV-LOCALE-SYNC",
+                        loc_path,
+                        f"Empty localization key in {lang!r} ({filename})",
+                    )
+                if not entry.val:
+                    collector.error(
+                        "ETS2V2-INV-LOCALE-SYNC",
+                        loc_path,
+                        f"Empty localization value for key {entry.key!r} in {lang!r} ({filename})",
+                    )
+
+            pairs = [(entry.key, entry.val) for entry in entries]
+            if reference_pairs is None:
+                reference_lang = lang
+                reference_pairs = pairs
+            elif pairs != reference_pairs:
+                collector.error(
+                    "ETS2V2-INV-LOCALE-SYNC",
+                    loc_path,
+                    f"Locale {lang!r} ({filename}) entries diverge from "
+                    f"reference {reference_lang!r}",
+                )
+
+
+def validate_promods_realism_invariants(
+    country_models: Mapping[str, CountryDataModel],
+    speed_models: Mapping[str, SpeedLimitsFile],
+    baseline_countries: CountriesBaseline | None,
+    baseline_speed_limits: SpeedLimitsBaseline | None,
+    baseline_locales: LocalesBaseline | None,
+    collector: ValidationCollector,
+    *,
+    path_prefix: str = "",
+) -> None:
+    """Audit ProMods Edition countries/speeds: >=36 Vanilla superset, UK regions, AM RHT, IS 60t."""
+    rel_prefix = f"{path_prefix}/" if path_prefix else ""
+    base_countries_by_slug = (
+        {c.slug: c for c in baseline_countries.countries} if baseline_countries is not None else {}
+    )
+    allowed_tz_keys = frozenset(baseline_locales.tz_keys) if baseline_locales is not None else None
+
+    if base_countries_by_slug:
+        expected_vanilla = frozenset(base_countries_by_slug)
+        actual_slugs = frozenset(country_models)
+        missing_vanilla = sorted(expected_vanilla - actual_slugs)
+        if missing_vanilla:
+            collector.error(
+                "ETS2V2-INV-COUNTRY-COUNT",
+                f"{rel_prefix}def/country",
+                f"ProMods Edition must cover all {len(expected_vanilla)} Vanilla+DLC countries "
+                f"(missing={missing_vanilla})",
+            )
+
+    _check_unique_country_ids_and_units(country_models, rel_prefix, collector)
+
+    # ProMods UK scotland/wales regions[] preservation (D-05, D-07)
+    uk_model = country_models.get("uk")
+    if uk_model is None:
+        collector.error(
+            "ETS2V2-INV-REGIONS",
+            f"{rel_prefix}def/country/uk.sui",
+            "Missing UK country definition in ProMods Edition",
+        )
+    else:
+        uk_regions = set(uk_model.regions)
+        missing_uk_regions = sorted({"scotland", "wales"} - uk_regions)
+        if missing_uk_regions:
+            collector.error(
+                "ETS2V2-INV-REGIONS",
+                f"{rel_prefix}def/country/uk.sui",
+                f"ProMods UK regions[] missing required entries {missing_uk_regions} "
+                f"(got {uk_model.regions!r})",
+            )
+
+    # Armenia right-hand traffic guard (never regress to 3249064596 LHT bug)
+    armenia_model = country_models.get("armenia")
+    if armenia_model is not None and bool(armenia_model.leftside_traffic):
+        collector.error(
+            "ETS2V2-INV-LEFTSIDE",
+            f"{rel_prefix}def/country/armenia.sui",
+            "Armenia leftside_traffic must be false (right-hand traffic)",
+        )
+
+    for slug in sorted(country_models):
+        model = country_models[slug]
+        sui_path = f"{rel_prefix}def/country/{slug}.sui"
+        _check_tz_tokens_and_monotonic_axles(slug, model, allowed_tz_keys, sui_path, collector)
+
+        base_country = base_countries_by_slug.get(slug)
+        if base_country is not None:
+            cand_axles = model.mass_limit_per_axle_count
+            base_axles = base_country.mass_limit_per_axle_count
+            if len(cand_axles) < len(base_axles):
+                collector.error(
+                    "ETS2V2-INV-AXLE",
+                    sui_path,
+                    f"mass_limit_per_axle_count[] truncated for {slug!r}: "
+                    f"got {len(cand_axles)}, baseline requires >= {len(base_axles)}",
+                )
+            else:
+                for idx, base_limit in enumerate(base_axles):
+                    if cand_axles[idx] < base_limit:
+                        collector.error(
+                            "ETS2V2-INV-AXLE",
+                            sui_path,
+                            f"mass_limit_per_axle_count[{idx}] downgraded for {slug!r}: "
+                            f"got {cand_axles[idx]}, baseline requires >= {base_limit}",
+                        )
+
+        if slug == "iceland" and (
+            len(model.mass_limit_per_axle_count) < len(_ICELAND_AXLES)
+            or model.mass_limit_per_axle_count[: len(_ICELAND_AXLES)] != _ICELAND_AXLES
+        ):
+            collector.error(
+                "ETS2V2-INV-ICELAND",
+                sui_path,
+                f"Iceland mass_limit_per_axle_count[] must include 5-axle 60t "
+                f"{_ICELAND_AXLES}, got {model.mass_limit_per_axle_count}",
+            )
+
+    iceland_speed = speed_models.get("iceland")
+    if iceland_speed is not None:
+        truck_block = iceland_speed.get_block("truck")
+        spd_path = f"{rel_prefix}def/country/iceland/speed_limits.sii"
+        if truck_block is None:
+            collector.error(
+                "ETS2V2-INV-ICELAND",
+                spd_path,
+                "Missing truck speed limit block for Iceland",
+            )
+        else:
+            for lane in truck_block.lanes:
+                if lane.limit != _ICELAND_HEAVY_TRUCK_LIMIT or (
+                    lane.max_limit is not None and lane.max_limit != _ICELAND_HEAVY_TRUCK_LIMIT
+                ):
+                    collector.error(
+                        "ETS2V2-INV-ICELAND",
+                        spd_path,
+                        f"Iceland heavy truck limit on {lane.lane_speed_class!r} must be "
+                        f"{_ICELAND_HEAVY_TRUCK_LIMIT} km/h "
+                        f"(got limit={lane.limit}, max_limit={lane.max_limit})",
+                    )
+
+    # Suppress unused parameter warning while keeping signature aligned with Core invariants
+    _ = baseline_speed_limits
+
+
+def validate_combo_invariants(
+    country_models: Mapping[str, CountryDataModel],
+    speed_models: Mapping[str, SpeedLimitsFile],
+    baseline_locales: LocalesBaseline | None,
+    collector: ValidationCollector,
+    *,
+    sign_boards: Mapping[str, SignBoardTemplate] | None = None,
+    fuel_locales: Mapping[str, Sequence[LocalizationEntry]] | None = None,
+    promods_locales: Mapping[str, Mapping[str, Sequence[LocalizationEntry]]] | None = None,
+    path_prefix: str = "",
+) -> None:
+    """Audit local map-combo patch invariants (IDs, TZ whitelist, monotonic axles, locale sync)."""
+    rel_prefix = f"{path_prefix}/" if path_prefix else ""
+    allowed_tz_keys = frozenset(baseline_locales.tz_keys) if baseline_locales is not None else None
+    expected_locales = (
+        frozenset(baseline_locales.active_locales) if baseline_locales is not None else None
+    )
+
+    _check_unique_country_ids_and_units(country_models, rel_prefix, collector)
+
+    for slug in sorted(country_models):
+        model = country_models[slug]
+        sui_path = f"{rel_prefix}def/country/{slug}.sui"
+        _check_tz_tokens_and_monotonic_axles(slug, model, allowed_tz_keys, sui_path, collector)
+
+    canonical_tokens: frozenset[str] = frozenset()
+    if fuel_locales:
+        canonical_tokens = validate_fuel_locale_modules_consistency(
+            fuel_locales,
+            collector,
+            expected_locales=expected_locales,
+            path_prefix=path_prefix,
+        )
+
+    if promods_locales:
+        validate_promods_locale_modules_consistency(
+            promods_locales,
+            collector,
+            expected_locales=expected_locales,
+            path_prefix=path_prefix,
+        )
+
+    if sign_boards:
+        for board_name in sorted(sign_boards):
+            board = sign_boards[board_name]
+            board_path = f"{rel_prefix}def/sign/board/{board_name}.sii"
+            if len(board.text_slots) != 1:
+                continue
+            token = board.text_slots[0].localization_key
+            if token is not None and canonical_tokens and token not in canonical_tokens:
+                collector.error(
+                    "ETS2V2-INV-TOTEM-BOARDS",
+                    board_path,
+                    f"Dangling totem token {token!r} on {board_name!r} missing from "
+                    "local_module.ets2v2_fuel.sii",
+                )
+
+    _ = speed_models

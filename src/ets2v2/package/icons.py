@@ -92,7 +92,15 @@ def _draw_snowflake_emblem(
     draw.ellipse((cx - 3, cy - 3, cx + 3, cy + 3), fill=_TEXT_WHITE)
 
 
-def render_edition_icon_bytes(edition: Season) -> bytes:
+def _render_icon_canvas(
+    edition: Season,
+    *,
+    season_label: str,
+    meta_line_1: str,
+    meta_line_2: str,
+    badge_accent: tuple[int, int, int] | None = None,
+    badge_ribbon: str | None = None,
+) -> bytes:
     """Render a deterministic clean-room 276x162 RGB baseline JPEG icon (zero EXIF/ICC)."""
     width, height = ICON_SIZE
     horizon_y = 96
@@ -101,7 +109,11 @@ def render_edition_icon_bytes(edition: Season) -> bytes:
     sky_top = _SUMMER_SKY_TOP if is_summer else _WINTER_SKY_TOP
     sky_bottom = _SUMMER_SKY_BOTTOM if is_summer else _WINTER_SKY_BOTTOM
     ground_color = _SUMMER_GROUND if is_summer else _WINTER_GROUND
-    accent_color = _SUMMER_ACCENT if is_summer else _WINTER_ACCENT
+    accent_color = (
+        badge_accent
+        if badge_accent is not None
+        else (_SUMMER_ACCENT if is_summer else _WINTER_ACCENT)
+    )
     badge_bg = _SUMMER_BADGE_BG if is_summer else _WINTER_BADGE_BG
 
     img = Image.new("RGB", ICON_SIZE, sky_top)
@@ -155,8 +167,6 @@ def render_edition_icon_bytes(edition: Season) -> bytes:
     sub_font: ImageFont.ImageFont | ImageFont.FreeTypeFont = ImageFont.load_default(size=17)
     meta_font: ImageFont.ImageFont | ImageFont.FreeTypeFont = ImageFont.load_default(size=13)
 
-    season_label = "SUMMER CORE" if is_summer else "WINTER CORE"
-
     draw.text((25, 29), "ETS2V2", fill=_TEXT_SHADOW, font=title_font)
     draw.text((24, 28), "ETS2V2", fill=_TEXT_WHITE, font=title_font)
 
@@ -165,8 +175,19 @@ def render_edition_icon_bytes(edition: Season) -> bytes:
     draw.text((25, 73), season_label, fill=_TEXT_SHADOW, font=sub_font)
     draw.text((24, 72), season_label, fill=accent_color, font=sub_font)
 
-    draw.text((24, 104), "1.62 REALISM", fill=_TEXT_WHITE, font=meta_font)
-    draw.text((24, 122), "36 COUNTRIES", fill=_ROAD_EDGE, font=meta_font)
+    draw.text((24, 104), meta_line_1, fill=_TEXT_WHITE, font=meta_font)
+    draw.text((24, 122), meta_line_2, fill=_ROAD_EDGE, font=meta_font)
+
+    if badge_ribbon is not None:
+        ribbon_font: ImageFont.ImageFont | ImageFont.FreeTypeFont = ImageFont.load_default(size=11)
+        draw.rounded_rectangle(
+            (184, 128, 268, 150),
+            radius=5,
+            fill=badge_bg,
+            outline=accent_color,
+            width=2,
+        )
+        draw.text((192, 132), badge_ribbon, fill=accent_color, font=ribbon_font)
 
     # Clean outer border
     draw.rectangle((0, 0, width - 1, height - 1), outline=accent_color, width=2)
@@ -183,6 +204,32 @@ def render_edition_icon_bytes(edition: Season) -> bytes:
     return buf.getvalue()
 
 
+def render_edition_icon_bytes(edition: Season) -> bytes:
+    """Render a deterministic clean-room 276x162 RGB baseline JPEG icon (zero EXIF/ICC)."""
+    season_label = "SUMMER CORE" if edition == "summer" else "WINTER CORE"
+    return _render_icon_canvas(
+        edition,
+        season_label=season_label,
+        meta_line_1="1.62 REALISM",
+        meta_line_2="36 COUNTRIES",
+    )
+
+
+def render_promods_icon_bytes(edition: Season) -> bytes:
+    """Render a deterministic clean-room 276x162 RGB JPEG icon for ProMods Editions (D-07)."""
+    is_summer = edition == "summer"
+    season_label = "SUMMER PM" if is_summer else "WINTER PM"
+    accent = (255, 190, 56) if is_summer else (106, 232, 255)
+    return _render_icon_canvas(
+        edition,
+        season_label=season_label,
+        meta_line_1="PROMODS ED.",
+        meta_line_2="EU+ME+MA+TGS",
+        badge_accent=accent,
+        badge_ribbon="PROMODS",
+    )
+
+
 def generate_all_icons(out_dir: Path) -> dict[Season, Path]:
     """Generate and write clean-room ``summer.jpg`` and ``winter.jpg`` icons into ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -191,5 +238,17 @@ def generate_all_icons(out_dir: Path) -> dict[Season, Path]:
     for edition in editions:
         target = out_dir / f"{edition}.jpg"
         target.write_bytes(render_edition_icon_bytes(edition))
+        written[edition] = target
+    return written
+
+
+def generate_promods_icons(out_dir: Path) -> dict[Season, Path]:
+    """Generate clean-room ``promods_summer.jpg`` and ``promods_winter.jpg`` icons (D-07)."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: dict[Season, Path] = {}
+    editions: tuple[Season, Season] = ("summer", "winter")
+    for edition in editions:
+        target = out_dir / f"promods_{edition}.jpg"
+        target.write_bytes(render_promods_icon_bytes(edition))
         written[edition] = target
     return written

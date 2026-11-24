@@ -1031,3 +1031,226 @@ def test_scs_00003_rejects_rogue_locale_sii_and_sui_files(
     report = validate_workshop_package(ws)
     assert report.ok is False
     assert "00003" in _issue_codes(report)
+
+
+def _make_promods_workshop_clone(
+    core_ws: pathlib.Path,
+    dst: pathlib.Path,
+    *,
+    include_uk_regions: bool = True,
+    pm_fuel_extra_pairs: list[tuple[str, str]] | None = None,
+) -> pathlib.Path:
+    ws = _clone_workshop(core_ws, dst)
+    uni = ws / "universal"
+    if include_uk_regions:
+        uk_sui = uni / "def" / "country" / "uk.sui"
+        uk_text = uk_sui.read_text("utf-8")
+        uk_text = uk_text.replace(
+            "\n}\n",
+            '\n\tregions[]: "scotland"\n\tregions[]: "wales"\n}\n',
+        )
+        uk_sui.write_text(uk_text, encoding="utf-8", newline="\n")
+
+    # Add a ProMods extra country omitting iso_country_code (valid in profile="promods")
+    (uni / "def" / "country" / "andorra.sui").write_text(
+        'country_data : country.data.andorra\n{\n\tcountry_id: 15\n\tname: "Andorra"\n'
+        '\tcountry_code: "AND"\n\tfuel_price: 1.49\n\tlights_mandatory: false\n'
+        '\tdriving_tired_offence: true\n\ttime_zone: 120\n\ttime_zone_name: "@@tz_cest@@"\n'
+        "\tmass_limit_per_axle_count[]: 18000\n\tmass_limit_per_axle_count[]: 26000\n"
+        "\tmass_limit_per_axle_count[]: 36000\n\tmass_limit_per_axle_count[]: 40000\n}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    pairs = sorted(
+        [
+            ("custom_header", "PROMODS STATION"),
+            ("fp_de_diesel_v4", "164.<sup>1</sup>"),
+            ("fp_mn_diesel", "1.45"),
+            *(pm_fuel_extra_pairs or []),
+        ]
+    )
+    loc_lines = ["SiiNunit", "{", "localization_db : .pm_fuel", "{"]
+    for k, v in pairs:
+        loc_lines.append(f'\tkey[]: "{k}"')
+        loc_lines.append(f'\tval[]: "{v}"')
+    loc_lines.extend(["}", "}"])
+    pm_payload = ("\n".join(loc_lines) + "\n").encode("utf-8")
+    for lang_dir in sorted((uni / "locale").iterdir()):
+        if lang_dir.is_dir():
+            (lang_dir / "local_module.pm_fuel.sii").write_bytes(pm_payload)
+    return ws
+
+
+def test_profile_promods_accepts_valid_promods_package_and_rejects_faults(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    ws_ok = _make_promods_workshop_clone(
+        built_editions["summer"].workshop_dir,
+        tmp_path / "ws_pm_ok",
+    )
+    report_ok = validate_workshop_package(ws_ok, baseline_dir=BASELINE_DIR, profile="promods")
+    assert report_ok.ok is True, report_ok.issues
+
+    # Core profile still rejects pm_fuel & extra countries!
+    report_as_core = validate_workshop_package(ws_ok, baseline_dir=BASELINE_DIR, profile="core")
+    assert report_as_core.ok is False
+
+    # Missing UK scotland/wales regions fails profile="promods"
+    ws_no_uk_reg = _make_promods_workshop_clone(
+        built_editions["summer"].workshop_dir,
+        tmp_path / "ws_pm_no_uk",
+        include_uk_regions=False,
+    )
+    r_no_uk = validate_workshop_package(ws_no_uk_reg, baseline_dir=BASELINE_DIR, profile="promods")
+    assert r_no_uk.ok is False
+    assert "ETS2V2-INV-REGIONS" in _issue_codes(r_no_uk)
+
+    # Stray def/country.promods.sii registration file fails
+    ws_reg = _make_promods_workshop_clone(
+        built_editions["summer"].workshop_dir,
+        tmp_path / "ws_pm_reg",
+    )
+    (ws_reg / "universal" / "def" / "country.promods.sii").write_bytes(
+        b'SiiNunit\n{\n@include "country/andorra.sui"\n}\n'
+    )
+    r_reg = validate_workshop_package(ws_reg, baseline_dir=BASELINE_DIR, profile="promods")
+    assert r_reg.ok is False
+    assert "00003" in _issue_codes(r_reg)
+
+    # Mismatched pm_fuel locale and stray fr_qc fail
+    ws_bad_loc = _make_promods_workshop_clone(
+        built_editions["summer"].workshop_dir,
+        tmp_path / "ws_pm_loc",
+    )
+    de_pm = ws_bad_loc / "universal" / "locale" / "de_de" / "local_module.pm_fuel.sii"
+    de_pm.write_bytes(de_pm.read_bytes().replace(b'"1.45"', b'"1.99"'))
+    fr_qc = ws_bad_loc / "universal" / "locale" / "fr_qc"
+    fr_qc.mkdir(parents=True, exist_ok=True)
+    (fr_qc / "local_module.pm_fuel.sii").write_bytes(de_pm.read_bytes())
+    r_loc = validate_workshop_package(ws_bad_loc, baseline_dir=BASELINE_DIR, profile="promods")
+    assert r_loc.ok is False
+    assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(r_loc)
+
+
+def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    # Build a minimal valid combo local ZIP with headerless .sii fragment, omitted iso_country_code,
+    # omitted time_zone + time_zone_name, 1-road-block speed_limits.sii, and no totems.
+    icon_bytes = (ICONS_DIR / "summer.jpg").read_bytes()
+    manifest_bytes = (
+        b"SiiNunit\n{\n# ets2v2:managed-package kind=combo\nmod_package : .package_name\n{\n"
+        b'\tpackage_version: "1.62-2026.47"\n'
+        b'\tdisplay_name: "ETS2V2 Combo Patch"\n'
+        b'\tauthor: "ETS2 World Realism"\n'
+        b'\tcategory[]: "other"\n'
+        b'\ticon: "mod_icon.jpg"\n'
+        b'\tdescription_file: "description.txt"\n'
+        b"\tmp_mod_optional: true\n}\n}\n"
+    )
+    thailand_sii = (
+        b"country_data : country.data.thailand\n{\n"
+        b"\tcountry_id: 210\n"
+        b'\tname: "Thailand"\n'
+        b'\tcountry_code: "TH"\n'
+        b"\tfuel_price: 0.95\n"
+        b"\tlights_mandatory: false\n"
+        b"\tdriving_tired_offence: true\n"
+        b"\tmass_limit_per_axle_count[]: 18000\n"
+        b"\tmass_limit_per_axle_count[]: 25000\n"
+        b"\tmass_limit_per_axle_count[]: 36000\n}\n"
+    )
+    thailand_spd = (
+        b"SiiNunit\n{\n"
+        b"country_speed_limit : .speed_limit.car\n{\n"
+        b"\tvehicle_speed_class: car\n"
+        b"\tlane_speed_class[]: local_road\n"
+        b"\tlimit[]: 90\n\turban_limit[]: 60\n}\n}\n"
+    )
+
+    def _write_combo_zip(path: pathlib.Path, extra: dict[str, bytes]) -> pathlib.Path:
+        entries = {
+            "manifest.sii": manifest_bytes,
+            "mod_icon.jpg": icon_bytes,
+            "description.txt": b"Combo patch test.\n",
+            **extra,
+        }
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for k in sorted(entries):
+                zi = zipfile.ZipInfo(filename=k, date_time=(1980, 1, 1, 0, 0, 0))
+                zi.compress_type = zipfile.ZIP_DEFLATED
+                zf.writestr(zi, entries[k])
+        return path
+
+    ok_zip = _write_combo_zip(
+        tmp_path / "combo_ok.scs",
+        {
+            "def/country/thailand.sii": thailand_sii,
+            "def/country/thailand/speed_limits.sii": thailand_spd,
+        },
+    )
+    r_ok = validate_local_zip(ok_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_ok.ok is True, r_ok.issues
+
+    # Omitted speed_limits.sii is also valid in combo
+    no_spd_zip = _write_combo_zip(
+        tmp_path / "combo_no_spd.scs",
+        {"def/country/thailand.sii": thailand_sii},
+    )
+    assert validate_local_zip(no_spd_zip, baseline_dir=BASELINE_DIR, profile="combo").ok is True
+
+    # time_zone present without time_zone_name must fail
+    half_tz_zip = _write_combo_zip(
+        tmp_path / "combo_half_tz.scs",
+        {
+            "def/country/thailand.sii": thailand_sii.replace(
+                b"\tlights_mandatory: false\n",
+                b"\tlights_mandatory: false\n\ttime_zone: 420\n",
+            )
+        },
+    )
+    r_half_tz = validate_local_zip(half_tz_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_half_tz.ok is False
+    assert "00005" in _issue_codes(r_half_tz)
+
+    # 0 road blocks in speed_limits.sii (only train) must fail
+    zero_road_zip = _write_combo_zip(
+        tmp_path / "combo_zero_road.scs",
+        {
+            "def/country/thailand.sii": thailand_sii,
+            "def/country/thailand/speed_limits.sii": (
+                b"SiiNunit\n{\ncountry_speed_limit : .speed_limit.train\n{\n"
+                b"\tvehicle_speed_class: train\n\tlane_speed_class[]: local_road\n"
+                b"\tlimit[]: 80\n}\n}\n"
+            ),
+        },
+    )
+    r_zero_road = validate_local_zip(zero_road_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_zero_road.ok is False
+    assert "00005" in _issue_codes(r_zero_road)
+
+    # Invalid @@tz_fake@@, duplicate country_id, .dds, and def/country.sii fail in combo
+    bad_combo_zip = _write_combo_zip(
+        tmp_path / "combo_bad.scs",
+        {
+            "def/country.sii": b'SiiNunit\n{\n@include "country/thailand.sii"\n}\n',
+            "def/country/thailand.sii": thailand_sii.replace(
+                b"\tlights_mandatory: false\n",
+                b'\tlights_mandatory: false\n\ttime_zone: 420\n\ttime_zone_name: "@@tz_fake@@"\n',
+            ),
+            "def/country/laos.sui": thailand_sii.replace(
+                b"country.data.thailand", b"country.data.laos"
+            ),
+            "material/bad.dds": b"DDS ",
+        },
+    )
+    r_bad = validate_local_zip(bad_combo_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_bad.ok is False
+    codes = _issue_codes(r_bad)
+    assert "00003" in codes
+    assert "ETS2V2-INV-ZERO-DDS" in codes
+    assert "ETS2V2-INV-COUNTRY-COUNT" in codes
+    assert "ETS2V2-INV-TZ-TOKEN" in codes

@@ -9,10 +9,15 @@ from ets2v2.registry.models import Season
 from ets2v2.sii.hygiene import serialize_sii_text, validate_sii_hygiene
 
 DEFAULT_AUTHOR: Final[str] = "ETS2 World Realism"
+ETS2V2_MANIFEST_MARKER: Final[str] = "# ets2v2:managed-package"
 WORKSHOP_CATEGORIES: Final[tuple[str, str]] = ("other", "ai_traffic")
 LOCAL_DISPLAY_NAMES: Final[dict[Season, str]] = {
     "summer": "ETS2 World Country Realism - Summer (Core)",
     "winter": "ETS2 World Country Realism - Winter (Core)",
+}
+PROMODS_LOCAL_DISPLAY_NAMES: Final[dict[Season, str]] = {
+    "summer": "ETS2 World Country Realism - Summer (ProMods Edition)",
+    "winter": "ETS2 World Country Realism - Winter (ProMods Edition)",
 }
 
 
@@ -39,14 +44,14 @@ def render_versions_sii() -> bytes:
     return raw
 
 
-def render_manifest_sii(
-    edition: Season,
+def _render_managed_manifest_sii(
+    display_name: str,
     package_version: str,
     *,
+    kind: str,
     workshop: bool,
     author: str = DEFAULT_AUTHOR,
 ) -> bytes:
-    """Render ``manifest.sii`` for Workshop (no ``display_name``) or local ZIP distribution."""
     if not package_version.strip():
         raise ValueError("package_version must be a non-empty string")
     if not author.strip():
@@ -55,12 +60,13 @@ def render_manifest_sii(
     lines: list[str] = [
         "SiiNunit",
         "{",
+        f"{ETS2V2_MANIFEST_MARKER} kind={kind}",
         "mod_package : .package_name",
         "{",
         f"\tpackage_version: {format_sii_string(package_version)}",
     ]
     if not workshop:
-        lines.append(f"\tdisplay_name: {format_sii_string(LOCAL_DISPLAY_NAMES[edition])}")
+        lines.append(f"\tdisplay_name: {format_sii_string(display_name)}")
     lines.append(f"\tauthor: {format_sii_string(author)}")
     for category in WORKSHOP_CATEGORIES:
         lines.append(f"\tcategory[]: {format_sii_string(category)}")
@@ -73,6 +79,40 @@ def render_manifest_sii(
     raw = serialize_sii_text("\n".join(lines) + "\n")
     _assert_hygiene(raw, label="manifest.sii")
     return raw
+
+
+def render_manifest_sii(
+    edition: Season,
+    package_version: str,
+    *,
+    workshop: bool,
+    author: str = DEFAULT_AUTHOR,
+) -> bytes:
+    """Render ``manifest.sii`` for Workshop (no ``display_name``) or local ZIP distribution."""
+    return _render_managed_manifest_sii(
+        LOCAL_DISPLAY_NAMES[edition],
+        package_version,
+        kind="core",
+        workshop=workshop,
+        author=author,
+    )
+
+
+def render_promods_manifest_sii(
+    edition: Season,
+    package_version: str,
+    *,
+    workshop: bool,
+    author: str = DEFAULT_AUTHOR,
+) -> bytes:
+    """Render ``manifest.sii`` for standalone ProMods Edition Workshop or local ZIP (D-07, D-10)."""
+    return _render_managed_manifest_sii(
+        PROMODS_LOCAL_DISPLAY_NAMES[edition],
+        package_version,
+        kind="promods",
+        workshop=workshop,
+        author=author,
+    )
 
 
 def render_description_txt(edition: Season) -> bytes:
@@ -123,5 +163,57 @@ def render_description_txt(edition: Season) -> bytes:
         "  Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.\n"
         "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.\n"
         "- Clean-room synthesis from open statutory records and ETS2 1.62 metadata schemas.\n"
+    )
+    return serialize_sii_text(body)
+
+
+def render_promods_description_txt(edition: Season) -> bytes:
+    """Render deterministic UTF-8 no-BOM LF ``description.txt`` for standalone ProMods Editions."""
+    is_summer = edition == "summer"
+    title = (
+        "ETS2 World Country Realism - Summer (ProMods Edition)"
+        if is_summer
+        else "ETS2 World Country Realism - Winter (ProMods Edition)"
+    )
+    if is_summer:
+        season_summary = (
+            "Seasonal profile: Summer peak (July 15 DST offsets and summer statutory rules).\n"
+            "- Daylight Saving Time active across observing zones (CEST, EEST, WEST, BST, IDT).\n"
+            "- Croatia, Moldova, and Israel daytime lights optional in summer daylight.\n"
+            "- Finland (120/100), Estonia (110/110), and Lithuania (130/120) summer car limits."
+        )
+    else:
+        season_summary = (
+            "Seasonal profile: Winter peak (January 15 standard offsets and winter rules).\n"
+            "- Standard winter time active across Europe, Middle East, and Central Asia.\n"
+            "- Croatia, Moldova, and Israel winter daytime lights mandatory.\n"
+            "- Finland (100/80), Estonia (90/90), and Lithuania (110/110) winter car limits."
+        )
+
+    body = (
+        f"{title}\n"
+        "==================================================\n\n"
+        "Standalone all-in-one ETS2 1.62+ realism mod for ProMods (EU + ME + MA + TGS).\n"
+        "Replaces the Core Edition cleanly: enable ONLY this single mod ABOVE ProMods Def\n"
+        "in Mod Manager (do not enable the Vanilla Core Edition alongside ProMods Edition).\n\n"
+        f"{season_summary}\n\n"
+        "Key ProMods Realism Highlights:\n"
+        "- Surgically patches Vanilla + ProMods def/country/*.sui & speed_limits.sii without\n"
+        "  ever emitting def/country.sii or def/country.*.sii registration files.\n"
+        "- Preserves ProMods UK scotland/wales regions[], ProMods country geometry/IDs,\n"
+        "  TGS multi-timezone Russia, custom lane classes, and train/tram rail blocks.\n"
+        "- Monotonic carry-forward axle weight upgrades (incl. Iceland 60t 5-axle & heavy\n"
+        "  truck 80 km/h) with imperial_units parity protection.\n"
+        "- Option 4b Zero-DDS Vanilla sign boards + dynamic 43-locale local_module.ets2v2_fuel\n"
+        "  and ProMods local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii (zero .dds/.tobj).\n"
+        "- Convoy multiplayer optional (mp_mod_optional: true).\n\n"
+        "Open-Source Attribution & Licensing:\n"
+        "- Generator & build pipeline: MIT License (ETS2 World Realism).\n"
+        "- Canonical statutory country registry data: CC BY 4.0.\n"
+        "- Open European fuel data: EC Weekly Oil Bulletin CC BY 4.0, fuel-prices.eu CC BY 4.0,\n"
+        "  UK DESNZ OGL v3, Norway SSB CC BY 4.0, France Licence Ouverte, Italy MIMIT IODL 2.0,\n"
+        "  Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.\n"
+        "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.\n"
+        "- Built locally from user-installed ProMods archives (minimal realism-only footprint).\n"
     )
     return serialize_sii_text(body)

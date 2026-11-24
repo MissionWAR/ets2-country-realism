@@ -30,11 +30,14 @@ from ets2v2.sii.localization import LocalizationEntry, parse_localization_db
 from ets2v2.sii.sign_board import SignBoardTemplate, parse_sign_board
 from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
 from ets2v2.validate.invariants import (
+    validate_combo_invariants,
     validate_core_realism_invariants,
     validate_fuel_locale_modules_consistency,
+    validate_promods_locale_modules_consistency,
+    validate_promods_realism_invariants,
     validate_totem_invariants,
 )
-from ets2v2.validate.models import ValidationCollector, ValidationReport
+from ets2v2.validate.models import PackageProfile, ValidationCollector, ValidationReport
 from ets2v2.vfs.dir_archive import DirectoryArchive
 from ets2v2.vfs.types import (
     ProtectedPayloadError,
@@ -172,12 +175,16 @@ EXPECTED_CORE_COUNTRY_SLUGS: Final[frozenset[str]] = frozenset(
 _PACKAGE_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,256}$")
 _COUNTRY_SII_RE: Final[re.Pattern[str]] = re.compile(r"^def/country(?:\.[^/]+)?\.sii$")
 _COUNTRY_SUI_RE: Final[re.Pattern[str]] = re.compile(r"^def/country/([a-z0-9_]+)\.sui$")
+_COUNTRY_SII_FRAGMENT_RE: Final[re.Pattern[str]] = re.compile(r"^def/country/([a-z0-9_]+)\.sii$")
 _SPEED_LIMITS_RE: Final[re.Pattern[str]] = re.compile(
     r"^def/country/([a-z0-9_]+)/speed_limits\.sii$"
 )
 _SIGN_BOARD_RE: Final[re.Pattern[str]] = re.compile(r"^def/sign/board/([a-z0-9_]+)\.sii$")
 _FUEL_LOCALE_RE: Final[re.Pattern[str]] = re.compile(
     r"^locale/([^/]+)/local_module\.ets2v2_fuel\.sii$"
+)
+_PROMODS_FUEL_LOCALE_RE: Final[re.Pattern[str]] = re.compile(
+    r"^locale/([^/]+)/local_module\.(pm_fuel|pm_me_fuel|pm_tgs_fuel)\.sii$"
 )
 _LOCALE_CODE_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z]{2}_[a-z]{2}$")
 _WINDOWS_DRIVE_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z]:")
@@ -863,6 +870,8 @@ def _validate_country_required_fields(
     model: CountryDataModel,
     display_path: str,
     collector: ValidationCollector,
+    *,
+    profile: PackageProfile = "core",
 ) -> None:
     if model.country_id <= 0:
         collector.error("00005", display_path, "Missing or invalid positive country_id")
@@ -870,9 +879,16 @@ def _validate_country_required_fields(
         collector.error("00005", display_path, "Missing required country name")
     if not model.country_code:
         collector.error("00005", display_path, "Missing required country_code")
-    if not model.iso_country_code:
+    if profile == "core" and not model.iso_country_code:
         collector.error("00005", display_path, "Missing required iso_country_code")
-    if model.time_zone is None or model.time_zone_name is None:
+    if profile == "combo":
+        if (model.time_zone is None) != (model.time_zone_name is None):
+            collector.error(
+                "00005",
+                display_path,
+                "time_zone and time_zone_name must either both be present or both omitted",
+            )
+    elif model.time_zone is None or model.time_zone_name is None:
         collector.error("00005", display_path, "Missing required time_zone or time_zone_name")
     if model.lights_mandatory is None:
         collector.error("00005", display_path, "Missing required lights_mandatory attribute")
@@ -884,15 +900,25 @@ def _validate_speed_limits_required_blocks(
     parsed: SpeedLimitsFile,
     display_path: str,
     collector: ValidationCollector,
+    *,
+    profile: PackageProfile = "core",
 ) -> None:
     present = set(parsed.vehicle_classes)
-    missing = sorted(_REQUIRED_VEHICLE_CLASSES - present)
-    if missing:
-        collector.error(
-            "00005",
-            display_path,
-            f"Missing required vehicle_speed_class block(s): {', '.join(missing)}",
-        )
+    if profile == "combo":
+        if not (present & _REQUIRED_VEHICLE_CLASSES):
+            collector.error(
+                "00005",
+                display_path,
+                "Expected at least 1 road vehicle_speed_class block (car, truck, or bus)",
+            )
+    else:
+        missing = sorted(_REQUIRED_VEHICLE_CLASSES - present)
+        if missing:
+            collector.error(
+                "00005",
+                display_path,
+                f"Missing required vehicle_speed_class block(s): {', '.join(missing)}",
+            )
     for block in parsed.blocks:
         if not block.lanes:
             collector.error(
@@ -910,11 +936,13 @@ def _validate_package_contents(
     expected_slugs: frozenset[str],
     valid_locales: frozenset[str] | None,
     collector: ValidationCollector,
+    profile: PackageProfile = "core",
 ) -> tuple[
     dict[str, CountryDataModel],
     dict[str, SpeedLimitsFile],
     dict[str, SignBoardTemplate],
     dict[str, list[LocalizationEntry]],
+    dict[str, dict[str, list[LocalizationEntry]]],
 ]:
     """Audit all files inside a mounted package archive against SCS 00001-00010 & WARN rules."""
     rel_prefix = f"{prefix}/" if prefix else ""
@@ -933,6 +961,7 @@ def _validate_package_contents(
     speed_models: dict[str, SpeedLimitsFile] = {}
     sign_boards: dict[str, SignBoardTemplate] = {}
     fuel_locales: dict[str, list[LocalizationEntry]] = {}
+    promods_locales: dict[str, dict[str, list[LocalizationEntry]]] = {}
 
     for vfs_path in archive.list_paths():
         display_path = _p(vfs_path)
@@ -947,7 +976,7 @@ def _validate_package_contents(
             collector.error(
                 "ETS2V2-INV-ZERO-DDS",
                 display_path,
-                f"Zero-DDS policy forbids {suffix!r} texture/object assets in Core packages",
+                f"Zero-DDS policy forbids {suffix!r} texture/object assets in packages",
             )
             continue
 
@@ -983,7 +1012,7 @@ def _validate_package_contents(
             collector.error(
                 "00003",
                 display_path,
-                "Core builds must not emit def/country.sii or def/country.*.sii (D-05)",
+                "Packages must not emit def/country.sii or def/country.*.sii (D-05 / D-08)",
             )
             continue
 
@@ -1021,12 +1050,20 @@ def _validate_package_contents(
             if raw is None:
                 continue
 
-            is_sii = suffix == ".sii"
-            _record_sii_hygiene(raw, display_path, require_siinunit=is_sii, collector=collector)
+            country_sii_match = (
+                _COUNTRY_SII_FRAGMENT_RE.fullmatch(vfs_path) if profile != "core" else None
+            )
+            require_siinunit = (suffix == ".sii") and (country_sii_match is None)
+            _record_sii_hygiene(
+                raw,
+                display_path,
+                require_siinunit=require_siinunit,
+                collector=collector,
+            )
 
             if not detect_3nk(raw) and _detect_unsupported_binary_magic(raw) is None:
                 try:
-                    doc = SiiDocument.parse(raw, require_siinunit=is_sii)
+                    doc = SiiDocument.parse(raw, require_siinunit=require_siinunit)
                 except SiiEncodingError:
                     doc = None
                 if doc is not None and doc.find_units(class_name="mod_package"):
@@ -1037,8 +1074,9 @@ def _validate_package_contents(
                     )
 
             sui_match = _COUNTRY_SUI_RE.fullmatch(vfs_path)
-            if sui_match is not None:
-                slug = sui_match.group(1)
+            country_match = sui_match if sui_match is not None else country_sii_match
+            if country_match is not None:
+                slug = country_match.group(1)
                 try:
                     country_model = parse_country_data(raw)
                 except (SiiEncodingError, ValueError, ValidationError) as exc:
@@ -1048,7 +1086,12 @@ def _validate_package_contents(
                         f"Unable to load country_data unit: {exc}",
                     )
                 else:
-                    _validate_country_required_fields(country_model, display_path, collector)
+                    _validate_country_required_fields(
+                        country_model,
+                        display_path,
+                        collector,
+                        profile=profile,
+                    )
                     country_models[slug] = country_model
                 continue
 
@@ -1064,7 +1107,12 @@ def _validate_package_contents(
                         f"Unable to load speed_limits.sii: {exc}",
                     )
                 else:
-                    _validate_speed_limits_required_blocks(speed_model, display_path, collector)
+                    _validate_speed_limits_required_blocks(
+                        speed_model,
+                        display_path,
+                        collector,
+                        profile=profile,
+                    )
                     speed_models[slug] = speed_model
                 continue
 
@@ -1098,40 +1146,150 @@ def _validate_package_contents(
                     fuel_locales[locale_code] = loc_entries
                 continue
 
+            if profile != "core":
+                pm_loc_match = _PROMODS_FUEL_LOCALE_RE.fullmatch(vfs_path)
+                if pm_loc_match is not None:
+                    locale_code = pm_loc_match.group(1)
+                    module_name = pm_loc_match.group(2)
+                    try:
+                        loc_entries = parse_localization_db(raw)
+                    except (SiiEncodingError, ValueError, ValidationError) as exc:
+                        collector.error(
+                            "00008",
+                            display_path,
+                            f"Unable to load ProMods fuel localization_db: {exc}",
+                        )
+                    else:
+                        promods_locales.setdefault(module_name, {})[locale_code] = loc_entries
+                    continue
+
             if vfs_path.startswith("locale/"):
                 collector.error(
                     "00003",
                     display_path,
-                    f"Unexpected locale file {vfs_path!r}; only "
-                    "locale/<lang>/local_module.ets2v2_fuel.sii is permitted (Option 4b)",
+                    f"Unexpected locale file {vfs_path!r}; only permitted fuel locale modules "
+                    "are allowed",
                 )
                 continue
 
-    # Check all expected 36 country .sui and speed_limits.sii files exist (SCS 00002)
-    for slug in sorted(expected_slugs):
-        sui_path = f"def/country/{slug}.sui"
-        spd_path = f"def/country/{slug}/speed_limits.sii"
-        if not archive.exists(sui_path):
-            collector.error(
-                "00002",
-                _p(sui_path),
-                f"Missing required country definition {sui_path!r}",
-            )
-        if not archive.exists(spd_path):
-            collector.error(
-                "00002",
-                _p(spd_path),
-                f"Missing required speed limits file {spd_path!r}",
-            )
+    # Check expected 36 Vanilla country files exist in core and promods profiles (SCS 00002)
+    if profile in {"core", "promods"}:
+        for slug in sorted(expected_slugs):
+            sui_path = f"def/country/{slug}.sui"
+            spd_path = f"def/country/{slug}/speed_limits.sii"
+            if not archive.exists(sui_path):
+                collector.error(
+                    "00002",
+                    _p(sui_path),
+                    f"Missing required country definition {sui_path!r}",
+                )
+            if not archive.exists(spd_path):
+                collector.error(
+                    "00002",
+                    _p(spd_path),
+                    f"Missing required speed limits file {spd_path!r}",
+                )
 
     _map_archive_diagnostics(archive, prefix=prefix, collector=collector)
-    return country_models, speed_models, sign_boards, fuel_locales
+    return country_models, speed_models, sign_boards, fuel_locales, promods_locales
+
+
+def _dispatch_profile_invariants(
+    profile: PackageProfile,
+    *,
+    country_models: dict[str, CountryDataModel],
+    speed_models: dict[str, SpeedLimitsFile],
+    sign_boards: dict[str, SignBoardTemplate],
+    fuel_locales: dict[str, list[LocalizationEntry]],
+    promods_locales: dict[str, dict[str, list[LocalizationEntry]]],
+    bl_countries: CountriesBaseline | None,
+    bl_speeds: SpeedLimitsBaseline | None,
+    bl_locales: LocalesBaseline | None,
+    bl_fuel_boards: FuelBoardsBaseline | None,
+    collector: ValidationCollector,
+    path_prefix: str = "",
+) -> None:
+    expected_locales = frozenset(bl_locales.active_locales) if bl_locales is not None else None
+    if profile == "core":
+        if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
+            validate_core_realism_invariants(
+                country_models,
+                speed_models,
+                bl_countries,
+                bl_speeds,
+                bl_locales,
+                collector,
+                path_prefix=path_prefix,
+            )
+        if bl_fuel_boards is not None and bl_locales is not None:
+            validate_totem_invariants(
+                sign_boards,
+                fuel_locales,
+                bl_fuel_boards,
+                bl_locales,
+                collector,
+                path_prefix=path_prefix,
+            )
+        elif fuel_locales:
+            validate_fuel_locale_modules_consistency(
+                fuel_locales,
+                collector,
+                path_prefix=path_prefix,
+            )
+        return
+
+    if profile == "promods":
+        validate_promods_realism_invariants(
+            country_models,
+            speed_models,
+            bl_countries,
+            bl_speeds,
+            bl_locales,
+            collector,
+            path_prefix=path_prefix,
+        )
+        if bl_fuel_boards is not None and bl_locales is not None:
+            validate_totem_invariants(
+                sign_boards,
+                fuel_locales,
+                bl_fuel_boards,
+                bl_locales,
+                collector,
+                path_prefix=path_prefix,
+            )
+        elif fuel_locales:
+            validate_fuel_locale_modules_consistency(
+                fuel_locales,
+                collector,
+                expected_locales=expected_locales,
+                path_prefix=path_prefix,
+            )
+        if promods_locales:
+            validate_promods_locale_modules_consistency(
+                promods_locales,
+                collector,
+                expected_locales=expected_locales,
+                path_prefix=path_prefix,
+            )
+        return
+
+    validate_combo_invariants(
+        country_models,
+        speed_models,
+        bl_locales,
+        collector,
+        sign_boards=sign_boards,
+        fuel_locales=fuel_locales,
+        promods_locales=promods_locales,
+        path_prefix=path_prefix,
+    )
 
 
 def validate_workshop_package(
     workshop_dir: Path,
     *,
     baseline_dir: Path | None = None,
+    profile: PackageProfile = "core",
 ) -> ValidationReport:
     """Validate an unpacked Steam Workshop directory root against SCS rules and invariants."""
     collector = ValidationCollector()
@@ -1298,41 +1456,35 @@ def validate_workshop_package(
                 collector.error("00008", pkg_name, f"Unable to open {pkg_name}/: {exc}")
                 continue
             with archive_dir:
-                country_models, speed_models, sign_boards, fuel_locales = (
-                    _validate_package_contents(
-                        archive_dir,
-                        prefix=pkg_name,
-                        workshop_mode=True,
-                        expected_slugs=expected_slugs,
-                        valid_locales=valid_locales,
-                        collector=collector,
-                    )
-                )
-            if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
-                validate_core_realism_invariants(
+                (
                     country_models,
                     speed_models,
-                    bl_countries,
-                    bl_speeds,
-                    bl_locales,
-                    collector,
-                    path_prefix=pkg_name,
-                )
-            if bl_fuel_boards is not None and bl_locales is not None:
-                validate_totem_invariants(
                     sign_boards,
                     fuel_locales,
-                    bl_fuel_boards,
-                    bl_locales,
-                    collector,
-                    path_prefix=pkg_name,
+                    promods_locales,
+                ) = _validate_package_contents(
+                    archive_dir,
+                    prefix=pkg_name,
+                    workshop_mode=True,
+                    expected_slugs=expected_slugs,
+                    valid_locales=valid_locales,
+                    collector=collector,
+                    profile=profile,
                 )
-            elif fuel_locales:
-                validate_fuel_locale_modules_consistency(
-                    fuel_locales,
-                    collector,
-                    path_prefix=pkg_name,
-                )
+            _dispatch_profile_invariants(
+                profile,
+                country_models=country_models,
+                speed_models=speed_models,
+                sign_boards=sign_boards,
+                fuel_locales=fuel_locales,
+                promods_locales=promods_locales,
+                bl_countries=bl_countries,
+                bl_speeds=bl_speeds,
+                bl_locales=bl_locales,
+                bl_fuel_boards=bl_fuel_boards,
+                collector=collector,
+                path_prefix=pkg_name,
+            )
         elif pkg_zip_link:
             declared_root_names.add(f"{pkg_name}.zip")
             collector.error(
@@ -1368,41 +1520,35 @@ def validate_workshop_package(
                     )
                     continue
                 with archive_zip:
-                    country_models, speed_models, sign_boards, fuel_locales = (
-                        _validate_package_contents(
-                            archive_zip,
-                            prefix=f"{pkg_name}.zip",
-                            workshop_mode=True,
-                            expected_slugs=expected_slugs,
-                            valid_locales=valid_locales,
-                            collector=collector,
-                        )
-                    )
-                if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
-                    validate_core_realism_invariants(
+                    (
                         country_models,
                         speed_models,
-                        bl_countries,
-                        bl_speeds,
-                        bl_locales,
-                        collector,
-                        path_prefix=f"{pkg_name}.zip",
-                    )
-                if bl_fuel_boards is not None and bl_locales is not None:
-                    validate_totem_invariants(
                         sign_boards,
                         fuel_locales,
-                        bl_fuel_boards,
-                        bl_locales,
-                        collector,
-                        path_prefix=f"{pkg_name}.zip",
+                        promods_locales,
+                    ) = _validate_package_contents(
+                        archive_zip,
+                        prefix=f"{pkg_name}.zip",
+                        workshop_mode=True,
+                        expected_slugs=expected_slugs,
+                        valid_locales=valid_locales,
+                        collector=collector,
+                        profile=profile,
                     )
-                elif fuel_locales:
-                    validate_fuel_locale_modules_consistency(
-                        fuel_locales,
-                        collector,
-                        path_prefix=f"{pkg_name}.zip",
-                    )
+                _dispatch_profile_invariants(
+                    profile,
+                    country_models=country_models,
+                    speed_models=speed_models,
+                    sign_boards=sign_boards,
+                    fuel_locales=fuel_locales,
+                    promods_locales=promods_locales,
+                    bl_countries=bl_countries,
+                    bl_speeds=bl_speeds,
+                    bl_locales=bl_locales,
+                    bl_fuel_boards=bl_fuel_boards,
+                    collector=collector,
+                    path_prefix=f"{pkg_name}.zip",
+                )
         else:
             collector.error("00002", pkg_name, f"Declared package {pkg_name!r} not found")
 
@@ -1448,6 +1594,7 @@ def validate_local_zip(
     zip_path: Path,
     *,
     baseline_dir: Path | None = None,
+    profile: PackageProfile = "core",
 ) -> ValidationReport:
     """Validate a standalone local playtest ``.zip`` package against SCS rules and invariants."""
     collector = ValidationCollector()
@@ -1476,33 +1623,34 @@ def validate_local_zip(
         return collector.build_report(zip_path, "local_zip")
 
     with archive:
-        country_models, speed_models, sign_boards, fuel_locales = _validate_package_contents(
+        (
+            country_models,
+            speed_models,
+            sign_boards,
+            fuel_locales,
+            promods_locales,
+        ) = _validate_package_contents(
             archive,
             prefix="",
             workshop_mode=False,
             expected_slugs=expected_slugs,
             valid_locales=valid_locales,
             collector=collector,
+            profile=profile,
         )
 
-    if bl_countries is not None and bl_speeds is not None and bl_locales is not None:
-        validate_core_realism_invariants(
-            country_models,
-            speed_models,
-            bl_countries,
-            bl_speeds,
-            bl_locales,
-            collector,
-        )
-    if bl_fuel_boards is not None and bl_locales is not None:
-        validate_totem_invariants(
-            sign_boards,
-            fuel_locales,
-            bl_fuel_boards,
-            bl_locales,
-            collector,
-        )
-    elif fuel_locales:
-        validate_fuel_locale_modules_consistency(fuel_locales, collector)
+    _dispatch_profile_invariants(
+        profile,
+        country_models=country_models,
+        speed_models=speed_models,
+        sign_boards=sign_boards,
+        fuel_locales=fuel_locales,
+        promods_locales=promods_locales,
+        bl_countries=bl_countries,
+        bl_speeds=bl_speeds,
+        bl_locales=bl_locales,
+        bl_fuel_boards=bl_fuel_boards,
+        collector=collector,
+    )
 
     return collector.build_report(zip_path, "local_zip")

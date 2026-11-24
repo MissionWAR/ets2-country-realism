@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 4 context gathered — ready for Phase 4 research & planning (ProMods Companion Builder & Local Map Combo Composer)
+**Current focus:** Phase 4 planned & verified — ready to execute Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Context Gathered
-Plan: 0 of 4 in current phase
-Status: Phase 4 context locked (`04-CONTEXT.md`, `D-01`..`D-16`); Phase 3 complete, verified (`03-VERIFICATION.md` `PASSED`, `16/16` must-haves), merged into `master` & tagged `phase-03` (**390 tests passing**)
-Last activity: 2026-11-24 — Gathered Phase 4 context (`04-CONTEXT.md`, `04-DISCUSSION-LOG.md`)
+Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Planned & Verified
+Plan: 0 of 4 in current phase (4 plans verified across 3 waves)
+Status: Phase 4 planned (`04-RESEARCH.md`, `04-PATTERNS.md`, `04-01-PLAN.md`..`04-04-PLAN.md`, `VERIFICATION PASSED` with 0 blockers/0 warnings); Phase 3 complete, verified (`03-VERIFICATION.md` `PASSED`, `16/16` must-haves), merged into `master` & tagged `phase-03` (**390 tests passing**)
+Last activity: 2026-11-24 — Researched, pattern-mapped, planned, and verified Phase 4 (`04-01`..`04-04`)
 
 Progress: [██████░░░░] 60%
 
@@ -69,6 +69,6 @@ None blocking Phase 4 research or planning.
 ## Session Continuity
 
 Last session: 2026-11-24
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-CONTEXT.md
-Next action: Run `/gsd-plan-phase 4` to research and plan Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
+Stopped at: Phase 4 planned and verified (`04-01`..`04-04`, `VERIFICATION PASSED`)
+Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-01-PLAN.md
+Next action: Run `/gsd-execute-phase 4` to execute Phase 4 (ProMods Companion Builder & Local Map Combo Composer)

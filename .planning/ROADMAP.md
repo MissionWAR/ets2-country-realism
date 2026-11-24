@@ -80,11 +80,12 @@ Plans:
   2. CI exports versioned `realism-snapshot-{summer|winter}.json` artifacts consumed offline by both the ProMods Companion Builder and `ets2v2 compose-local` with zero network access required at compose time.
   3. Running `ets2v2 compose-local` against a local `mod/` load order resolves `.sui` and `.sii` fragments (`SEA`, `RoC`, `Project Japan`), `base/` mount prefixes (`EAA`), empty `SiiNunit { }` suppression stubs (`UMCF`, `gmc.beyond.fix`, `SemEuropa`), and sub-national country aliases into a single `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs`.
   4. `FieldOwnershipPolicy` preserves higher map axle limits (`max_of_map_and_real`: EAA `80t`, Iceland `60t`, RusMap/TST `48t`, Finland `105t`), skips timezone overrides on multi-TZ definitions (`patch_if_single_tz`: TST `27`-TZ Russia, UMCF `5`-TZ Kazakhstan, EAA Brazil), emits clear diagnostics + `--unpacked-defs` fallback on `AEM!`/encrypted ZIPs, and leaves hardcoded numeric totems (`JRR`/`7RM`) untouched unless `--patch-hardcoded-totems` is passed.
-**Plans**: TBD
-  - [ ] `04-01`: Versioned `realism-snapshot-{summer|winter}.json` contract, schema validator, and CI artifact export (`MAP-02`)
-  - [ ] `04-02`: Local ProMods Companion Builder (`EU + ME + MA + TGS`, `pm_*_fuel` 43-locale sync, zero Git ProMods assets) (`MAP-01`)
-  - [ ] `04-03`: `ets2v2 compose-local` VFS load-order scanner (`.sui`/`.sii` fragments, `base/`, empty `SiiNunit {}` stubs) and country alias resolver (`MAP-03`)
-  - [ ] `04-04`: `FieldOwnershipPolicy` merge guardrails (`max_of_map_and_real`, `patch_if_single_tz`), `AEM!` diagnostics + `--unpacked-defs`, opt-in `--patch-hardcoded-totems`, and `zz_ETS2V2_ComboPatch_*.scs` emitter (`MAP-04`, `MAP-05`)
+**Plans**: 4 plans
+Plans:
+- [ ] `04-01-PLAN.md` — Unlock `merge/` with 6 AST DAG walls, 76-territory ProMods `EU+ME+MA+TGS v1.71` law registry + `country_aliases.json` + 76-territory `prices.lock.json` & FX isolation, frozen `RealismSnapshot` v1 + `SHA256SUMS.txt` + `ets2v2 registry snapshot-verify`, and rolling `snapshots-latest` GitHub Release (`MAP-02`)
+- [ ] `04-02-PLAN.md` — Local ProMods Companion Builder (`EU+ME+MA+TGS` `def`/`defmap` + `assets` discovery, dynamic 43-locale `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` `_v0`–`_v4` updater, clean-room ProMods icons, profile-parameterized Offline SCS Validator, `ets2v2 package promods`, zero Git ProMods assets) (`MAP-01`)
+- [ ] `04-03-PLAN.md` — `ets2v2 compose-local` multi-source load-order resolver (`--game-log`, plaintext `--profile` + `ScsC` guard + Workshop `227300`, `--modlist`, D-10 self-exclusion, smart `--unpacked-defs`), `VfsStack` combo country scanner (headerless `.sui`/`.sii`, `base/`, empty `SiiNunit {}` stubs, protected diagnostics), and 3-tier `country_aliases.json` resolver (`MAP-03`)
+- [ ] `04-04-PLAN.md` — `FieldOwnershipPolicy` merge guardrails (`max_of_map_and_real` axles, `patch_if_single_tz`, custom-lane preservation, `imperial_units` parity guard), opt-in `--patch-hardcoded-totems` (JRR/7RM), pre-write validated `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs` emitter, and `ets2v2 compose-local` CLI (`MAP-04`, `MAP-05`)
 
 ### Phase 5: Global Tier 1/2/3 Coverage & Internal OSM Audit
 **Goal**: Global map-combo snapshots cover `200+` countries and territories cleanly via Tier 1 non-EU open APIs, fault-isolated Tier 2 national portals, and Tier 3 curated baselines, while an internal CI audit surfaces statutory speed-limit drift against OSM without polluting `CC BY 4.0` outputs.

@@ -37,6 +37,7 @@ from ets2v2.registry import (
     build_realism_snapshot,
     load_law_registry,
     validate_law_registry,
+    verify_snapshot_file,
     write_realism_snapshot,
 )
 from ets2v2.validate import (
@@ -292,6 +293,36 @@ def _handle_registry_snapshot(args: argparse.Namespace) -> int:
     print(
         f"Wrote realism snapshot ({snapshot.edition}, {snapshot.anchor_date}, "
         f"{len(snapshot.countries)} countries) -> {out_path}"
+    )
+    return 0
+
+
+def _handle_registry_snapshot_verify(args: argparse.Namespace) -> int:
+    snapshot_path = cast(Path, args.snapshot_path)
+    checksums_path = cast(Path | None, args.checksums)
+    expected_edition = cast(Season | None, args.expected_edition)
+    as_json = cast(bool, args.json)
+
+    result = verify_snapshot_file(
+        snapshot_path,
+        checksums_path=checksums_path,
+        expected_edition=expected_edition,
+    )
+
+    if as_json:
+        payload: object = result.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0 if result.ok else 1
+
+    if not result.ok:
+        for issue in result.issues:
+            print(f"error: {issue}", file=sys.stderr)
+        return 1
+
+    checksum_note = "checksum verified" if result.checksum_verified else "no checksum manifest"
+    print(
+        f"Snapshot verification passed ({result.edition}, {result.anchor_date}, "
+        f"{result.country_count} countries, {checksum_note}): {snapshot_path}"
     )
     return 0
 
@@ -734,6 +765,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output JSON file path for the generated realism snapshot.",
     )
     registry_snapshot.set_defaults(handler=_handle_registry_snapshot)
+
+    registry_snapshot_verify = registry_subparsers.add_parser(
+        "snapshot-verify",
+        help="Verify a v1 realism snapshot file offline (schema, hygiene, and SHA256SUMS.txt).",
+    )
+    registry_snapshot_verify.add_argument(
+        "snapshot_path",
+        type=Path,
+        help="Path to the realism-snapshot-{summer,winter}.json file to verify.",
+    )
+    registry_snapshot_verify.add_argument(
+        "--checksums",
+        type=Path,
+        default=None,
+        help=(
+            "Optional path to SHA256SUMS.txt manifest (auto-checks sibling SHA256SUMS.txt "
+            "next to snapshot_path when omitted)."
+        ),
+    )
+    registry_snapshot_verify.add_argument(
+        "--expected-edition",
+        choices=("summer", "winter"),
+        default=None,
+        help="Optional expected seasonal edition (summer or winter).",
+    )
+    registry_snapshot_verify.add_argument(
+        "--json",
+        action="store_true",
+        help="Print SnapshotVerificationResult as JSON.",
+    )
+    registry_snapshot_verify.set_defaults(handler=_handle_registry_snapshot_verify)
 
     package_parser = subparsers.add_parser(
         "package",

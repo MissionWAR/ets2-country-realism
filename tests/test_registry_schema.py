@@ -452,3 +452,100 @@ def test_validator_rejects_stray_subdirectory_and_uppercase_json_extension(
     issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
     assert any("non-file" in issue.lower() and "stray_subdir" in issue for issue in issues)
     assert any("non-json" in issue.lower() and "de.JSON" in issue for issue in issues)
+
+
+def test_country_mapping_entry_allows_null_country_id_strictly_for_non_vanilla() -> None:
+    non_vanilla = CountryMappingEntry(
+        ets2_slug="gibraltar",
+        iso2="GI",
+        iso3="gib",
+        country_id=None,
+        name_english="Gibraltar",
+        vanilla_1_62=False,
+    )
+    assert non_vanilla.country_id is None
+    assert non_vanilla.vanilla_1_62 is False
+
+    with pytest.raises(ValidationError, match="country_id"):
+        CountryMappingEntry(
+            ets2_slug="germany",
+            iso2="DE",
+            iso3="deu",
+            country_id=None,
+            name_english="Germany",
+            vanilla_1_62=True,
+        )
+
+
+def test_validator_partitions_baseline_checks_and_validates_non_vanilla_entries(
+    tmp_path: pathlib.Path,
+) -> None:
+    laws_dir, mappings_path, baseline_dir = _write_synthetic_registry(tmp_path)
+
+    gib_record = CountryLawRecord(
+        iso2="GI",
+        iso3="gib",
+        ets2_slug="gibraltar",
+        iana_timezone="Europe/Gibraltar",
+        speed_unit="kmh",
+        currency="GBP",
+        driving_tired_offence=True,
+        mass_limit_per_axle_count=[18000, 26000, 36000, 40000],
+        summer=_make_seasonal_ruleset(lights_mandatory=False, car_motorway=50, truck_limit=50),
+        winter=_make_seasonal_ruleset(lights_mandatory=False, car_motorway=50, truck_limit=50),
+        statutory_notes=["Gibraltar metric km/h limits."],
+        sources=["https://www.gibraltarlaws.gov.gi/"],
+    )
+    (laws_dir / "countries" / "gi.json").write_bytes(serialize_registry_json_bytes(gib_record))
+
+    mapping = CountryMappingRegistry(
+        schema_version=1,
+        baseline_game_version="1.62.3.3",
+        countries=[
+            CountryMappingEntry(
+                ets2_slug="gibraltar",
+                iso2="GI",
+                iso3="gib",
+                country_id=None,
+                name_english="Gibraltar",
+                vanilla_1_62=False,
+            ),
+            CountryMappingEntry(
+                ets2_slug="iceland",
+                iso2="IS",
+                iso3="isl",
+                country_id=26,
+                name_english="Iceland",
+                vanilla_1_62=True,
+            ),
+        ],
+    )
+    mappings_path.write_bytes(serialize_registry_json_bytes(mapping))
+    assert validate_law_registry(laws_dir, mappings_path, baseline_dir) == []
+
+    # Marking a baseline slug as vanilla_1_62=False must fail loudly
+    bad_mapping = CountryMappingRegistry(
+        schema_version=1,
+        baseline_game_version="1.62.3.3",
+        countries=[
+            CountryMappingEntry(
+                ets2_slug="gibraltar",
+                iso2="GI",
+                iso3="gib",
+                country_id=None,
+                name_english="Gibraltar",
+                vanilla_1_62=False,
+            ),
+            CountryMappingEntry(
+                ets2_slug="iceland",
+                iso2="IS",
+                iso3="isl",
+                country_id=26,
+                name_english="Iceland",
+                vanilla_1_62=False,
+            ),
+        ],
+    )
+    mappings_path.write_bytes(serialize_registry_json_bytes(bad_mapping))
+    issues = validate_law_registry(laws_dir, mappings_path, baseline_dir)
+    assert any("vanilla_1_62=true" in issue for issue in issues)

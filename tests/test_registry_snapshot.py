@@ -348,3 +348,227 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
     assert exit_code == 0
     restored = RealismSnapshot.model_validate_json(snap_out.read_text("utf-8"))
     assert restored == snap
+
+
+def test_timezone_overrides_cover_promods_numeric_zones_and_seasonal_nuuk() -> None:
+    from ets2v2.registry.timezone import resolve_ets2_timezone
+
+    _, bl_locales = _load_inputs()
+    tz_keys = bl_locales.tz_keys
+
+    nuuk_winter = resolve_ets2_timezone("America/Nuuk", date(2026, 1, 15), tz_keys)
+    nuuk_summer = resolve_ets2_timezone("America/Nuuk", date(2026, 7, 15), tz_keys)
+    assert nuuk_winter.abbreviation == "WGT"
+    assert nuuk_winter.ets2_time_zone_name == "WGT"
+    assert nuuk_winter.offset_minutes == -120
+    assert nuuk_winter.is_dst is False
+    assert nuuk_winter.observes_dst is True
+    assert nuuk_summer.abbreviation == "WGST"
+    assert nuuk_summer.ets2_time_zone_name == "WGST"
+    assert nuuk_summer.offset_minutes == -60
+    assert nuuk_summer.is_dst is True
+
+    uz = resolve_ets2_timezone("Asia/Tashkent", date(2026, 7, 15), tz_keys)
+    assert uz.offset_minutes == 300
+    assert uz.ets2_time_zone_name == "UZT"
+
+    kz = resolve_ets2_timezone("Asia/Almaty", date(2026, 7, 15), tz_keys)
+    assert kz.offset_minutes == 300
+    assert kz.ets2_time_zone_name == "AQTT"
+
+    for zone in ("Asia/Baghdad", "Asia/Riyadh", "Asia/Amman", "Asia/Damascus"):
+        resolved = resolve_ets2_timezone(zone, date(2026, 7, 15), tz_keys)
+        assert resolved.offset_minutes == 180
+        assert resolved.ets2_time_zone_name == "AST"
+
+    ma = resolve_ets2_timezone("Africa/Casablanca", date(2026, 7, 15), tz_keys)
+    assert ma.offset_minutes == 60
+    assert ma.ets2_time_zone_name == "@@tz_west@@"
+
+
+def test_sha256sums_verify_snapshot_file_and_sibling_auto_verification(
+    tmp_path: pathlib.Path,
+) -> None:
+    from ets2v2.registry.snapshot import (
+        load_realism_snapshot,
+        parse_sha256sums,
+        render_sha256sums,
+        verify_snapshot_file,
+        write_sha256sums,
+    )
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries, bl_locales = _load_inputs()
+
+    summer = build_realism_snapshot(registry, bl_countries, bl_locales, "summer")
+    winter = build_realism_snapshot(registry, bl_countries, bl_locales, "winter")
+
+    snap_dir = tmp_path / "snapshots"
+    summer_path = snap_dir / "realism-snapshot-summer.json"
+    winter_path = snap_dir / "realism-snapshot-winter.json"
+    write_realism_snapshot(summer, summer_path)
+    write_realism_snapshot(winter, winter_path)
+
+    assert load_realism_snapshot(summer_path) == summer
+
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    rendered = render_sha256sums([winter_path, summer_path])
+    written = write_sha256sums([winter_path, summer_path], sums_path)
+    assert rendered == written
+    assert not written.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in written
+    lines = written.decode("utf-8").splitlines()
+    assert len(lines) == 2
+    assert lines[0].endswith("  realism-snapshot-summer.json")
+    assert lines[1].endswith("  realism-snapshot-winter.json")
+
+    parsed = parse_sha256sums(sums_path)
+    assert set(parsed.keys()) == {
+        "realism-snapshot-summer.json",
+        "realism-snapshot-winter.json",
+    }
+
+    # Explicit checksums verification succeeds
+    res_explicit = verify_snapshot_file(
+        summer_path,
+        checksums_path=sums_path,
+        expected_edition="summer",
+    )
+    assert res_explicit.ok is True
+    assert res_explicit.checksum_verified is True
+    assert res_explicit.schema_version == 1
+    assert res_explicit.edition == "summer"
+    assert res_explicit.issues == []
+
+    # Sibling SHA256SUMS.txt auto-verification when checksums_path=None (D-04)
+    res_sibling = verify_snapshot_file(summer_path, expected_edition="summer")
+    assert res_sibling.ok is True
+    assert res_sibling.checksum_verified is True
+
+    # Edition mismatch fails loudly
+    res_wrong_ed = verify_snapshot_file(summer_path, expected_edition="winter")
+    assert res_wrong_ed.ok is False
+    assert any("edition" in issue.lower() for issue in res_wrong_ed.issues)
+
+    # Tampered snapshot fails sibling auto-verification loudly
+    original_bytes = summer_path.read_bytes()
+    summer_path.write_bytes(original_bytes.replace(b'"2026-07-15"', b'"2026-07-16"'))
+    res_tampered = verify_snapshot_file(summer_path)
+    assert res_tampered.ok is False
+    assert res_tampered.checksum_verified is False
+    assert any(
+        "sha-256" in issue.lower() or "mismatch" in issue.lower() for issue in res_tampered.issues
+    )
+    summer_path.write_bytes(original_bytes)
+
+    # Missing entry in checksums fails loudly
+    other_sums = tmp_path / "other_sums.txt"
+    write_sha256sums([winter_path], other_sums)
+    res_missing_entry = verify_snapshot_file(summer_path, checksums_path=other_sums)
+    assert res_missing_entry.ok is False
+    assert any("not found" in issue.lower() for issue in res_missing_entry.issues)
+
+    # Reject BOM, CRLF, and schema_version=2
+    no_sibling_dir = tmp_path / "isolated"
+    no_sibling_dir.mkdir()
+    bom_snap = no_sibling_dir / "bom.json"
+    bom_snap.write_bytes(b"\xef\xbb\xbf" + original_bytes)
+    assert verify_snapshot_file(bom_snap).ok is False
+
+    crlf_snap = no_sibling_dir / "crlf.json"
+    crlf_snap.write_bytes(original_bytes.replace(b"\n", b"\r\n"))
+    assert verify_snapshot_file(crlf_snap).ok is False
+
+    v2_snap = no_sibling_dir / "v2.json"
+    v2_snap.write_bytes(original_bytes.replace(b'"schema_version": 1', b'"schema_version": 2'))
+    assert verify_snapshot_file(v2_snap).ok is False
+
+    # parse_sha256sums rejects path separators, BOM, CRLF, and duplicate filenames
+    bad_sep = tmp_path / "bad_sep.txt"
+    bad_sep.write_bytes(f"{'a' * 64}  ../evil.json\n".encode())
+    with pytest.raises(ValueError):
+        parse_sha256sums(bad_sep)
+
+    bad_dup = tmp_path / "bad_dup.txt"
+    bad_dup.write_bytes(f"{'a' * 64}  snap.json\n{'b' * 64}  snap.json\n".encode())
+    with pytest.raises(ValueError, match="Duplicate"):
+        parse_sha256sums(bad_dup)
+
+
+def test_load_or_build_snapshot_and_cli_snapshot_verify(
+    tmp_path: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from ets2v2.registry.snapshot import load_or_build_snapshot, write_sha256sums
+
+    # Offline repo checkout fallback (snapshot_path=None)
+    fallback_snap = load_or_build_snapshot(
+        "summer",
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        prices_lock_path=REPO_ROOT / "state" / "prices.lock.json",
+    )
+    assert fallback_snap.schema_version == 1
+    assert fallback_snap.edition == "summer"
+
+    # Explicit snapshot + sibling SHA256SUMS.txt auto-verification
+    snap_dir = tmp_path / "snaps"
+    snap_path = snap_dir / "realism-snapshot-summer.json"
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    write_realism_snapshot(fallback_snap, snap_path)
+    write_sha256sums([snap_path], sums_path)
+
+    loaded_explicit = load_or_build_snapshot(
+        "summer",
+        snapshot_path=snap_path,
+        checksums_path=sums_path,
+    )
+    assert loaded_explicit == fallback_snap
+
+    loaded_sibling = load_or_build_snapshot("summer", snapshot_path=snap_path)
+    assert loaded_sibling == fallback_snap
+
+    # CLI tracer: ets2v2 registry snapshot-verify -> exit 0 with JSON output
+    exit_ok = main(
+        [
+            "registry",
+            "snapshot-verify",
+            str(snap_path),
+            "--checksums",
+            str(sums_path),
+            "--expected-edition",
+            "summer",
+            "--json",
+        ]
+    )
+    out_ok = capsys.readouterr()
+    assert exit_ok == 0
+    report_ok = cast(dict[str, object], json.loads(out_ok.out))
+    assert report_ok["ok"] is True
+    assert report_ok["checksum_verified"] is True
+    assert report_ok["schema_version"] == 1
+    assert report_ok["edition"] == "summer"
+
+    # Tampered snapshot -> load_or_build_snapshot raises ValueError & CLI exits 1
+    snap_path.write_bytes(snap_path.read_bytes().replace(b'"2026-07-15"', b'"2026-07-16"'))
+    with pytest.raises(ValueError, match="verification failed"):
+        load_or_build_snapshot("summer", snapshot_path=snap_path)
+
+    exit_bad = main(
+        [
+            "registry",
+            "snapshot-verify",
+            str(snap_path),
+            "--checksums",
+            str(sums_path),
+            "--expected-edition",
+            "summer",
+            "--json",
+        ]
+    )
+    out_bad = capsys.readouterr()
+    assert exit_bad == 1
+    report_bad = cast(dict[str, object], json.loads(out_bad.out))
+    assert report_bad["ok"] is False
+    assert report_bad["checksum_verified"] is False

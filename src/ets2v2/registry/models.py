@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from typing import Final, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -99,6 +101,9 @@ class CountryLawRecord(BaseModel):
         return values
 
 
+_ALIAS_SLUG_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9_]{1,64}$")
+
+
 class CountryMappingEntry(BaseModel):
     """Canonical mapping entry between an ETS2 country slug and ISO-3166 alpha-2 code."""
 
@@ -107,9 +112,18 @@ class CountryMappingEntry(BaseModel):
     ets2_slug: str = Field(pattern=r"^[a-z0-9_]{1,32}$")
     iso2: str = Field(pattern=r"^[A-Z]{2}$")
     iso3: str = Field(pattern=r"^[a-z]{3}$")
-    country_id: int = Field(ge=1)
+    country_id: int | None = Field(default=None, ge=1)
     name_english: str = Field(min_length=1)
     vanilla_1_62: bool
+
+    @model_validator(mode="after")
+    def _validate_vanilla_country_id(self) -> CountryMappingEntry:
+        if self.vanilla_1_62 and self.country_id is None:
+            raise ValueError(
+                f"vanilla_1_62=True entry {self.ets2_slug!r} ({self.iso2}) "
+                f"requires non-null country_id"
+            )
+        return self
 
 
 class CountryMappingRegistry(BaseModel):
@@ -120,6 +134,49 @@ class CountryMappingRegistry(BaseModel):
     schema_version: Literal[1] = 1
     baseline_game_version: str = Field(min_length=1)
     countries: list[CountryMappingEntry] = Field(min_length=1)
+
+
+class CountryAliasEntry(BaseModel):
+    """Single map-mod slug alias mapping to a canonical ISO-2 territory (D-02, D-13)."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    iso2: str = Field(pattern=r"^[A-Z]{2}$")
+    iana_timezone_override: str | None = None
+    note: str | None = None
+
+    @field_validator("iana_timezone_override")
+    @classmethod
+    def _validate_iana_timezone_override(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not value:
+            raise ValueError("iana_timezone_override must be non-empty when specified")
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid iana_timezone_override {value!r}") from exc
+        return value
+
+
+class CountryAliasRegistry(BaseModel):
+    """Top-level ``data/mappings/country_aliases.json`` schema (D-02, D-13)."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    aliases: dict[str, CountryAliasEntry] = Field(default_factory=dict)
+
+    @field_validator("aliases")
+    @classmethod
+    def _validate_alias_keys(
+        cls,
+        value: dict[str, CountryAliasEntry],
+    ) -> dict[str, CountryAliasEntry]:
+        for slug in value:
+            if _ALIAS_SLUG_RE.fullmatch(slug) is None:
+                raise ValueError(f"Invalid alias map slug {slug!r}")
+        return value
 
 
 class LawRegistryBundle(BaseModel):

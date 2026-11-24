@@ -16,10 +16,25 @@ SUMMER_ANCHOR_MONTH_DAY: Final[tuple[int, int]] = (7, 15)
 WINTER_ANCHOR_MONTH_DAY: Final[tuple[int, int]] = (1, 15)
 
 # Explicit ETS2/human abbreviation overrides for IANA zones whose tzname() is numeric ("+03").
-IANA_NUMERIC_ABBR_OVERRIDES: Final[dict[str, str]] = {
-    "Europe/Istanbul": "TRT",
+# Tuple entries map (standard_abbr, dst_abbr) for seasonal numeric zones such as America/Nuuk.
+IANA_NUMERIC_ABBR_OVERRIDES: Final[dict[str, str | tuple[str, str]]] = {
+    "Africa/Casablanca": "WEST",
+    "America/Nuuk": ("WGT", "WGST"),
+    "Asia/Almaty": "AQTT",
     "Asia/Amman": "AST",
+    "Asia/Ashgabat": "TMT",
+    "Asia/Baghdad": "AST",
+    "Asia/Baku": "AZT",
+    "Asia/Bishkek": "KGT",
     "Asia/Damascus": "AST",
+    "Asia/Dushanbe": "TJT",
+    "Asia/Riyadh": "AST",
+    "Asia/Tashkent": "UZT",
+    "Asia/Tbilisi": "GET",
+    "Asia/Ulaanbaatar": "ULAT",
+    "Asia/Yerevan": "AMT",
+    "Europe/Istanbul": "TRT",
+    "Europe/Minsk": "MSK",
 }
 
 
@@ -90,7 +105,11 @@ def resolve_ets2_timezone(
     raw_abbr = dt.tzname()
     if raw_abbr is None or not raw_abbr or raw_abbr[0] in {"+", "-"}:
         if iana_tz in IANA_NUMERIC_ABBR_OVERRIDES:
-            abbr = IANA_NUMERIC_ABBR_OVERRIDES[iana_tz]
+            override = IANA_NUMERIC_ABBR_OVERRIDES[iana_tz]
+            if isinstance(override, tuple):
+                abbr = override[1] if is_dst else override[0]
+            else:
+                abbr = override
         else:
             abbr = _format_utc_offset_fallback(offset_minutes)
     else:

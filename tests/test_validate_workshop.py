@@ -86,11 +86,11 @@ def _issue_codes(report: ValidationReport) -> set[str]:
 
 
 def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
-    """Enforce Layer 8 isolation: validate NEVER imports package/normalize/fetch/httpx/openpyxl."""
+    """Enforce Layer 8 isolation: validate NEVER imports package/merge/normalize/fetch/publish."""
     py_files = sorted(VALIDATE_PKG_DIR.rglob("*.py"))
     assert py_files, "Expected Python modules under src/ets2v2/validate/"
 
-    forbidden_subpkgs = ("package", "normalize", "fetch")
+    forbidden_subpkgs = ("package", "merge", "normalize", "fetch", "publish")
     forbidden_roots = ("httpx", "openpyxl")
     violations: list[str] = []
     for py_file in py_files:

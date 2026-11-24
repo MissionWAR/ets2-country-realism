@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 3 complete & verified — ready for Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
+**Current focus:** Phase 4 context gathered — ready for Phase 4 research & planning (ProMods Companion Builder & Local Map Combo Composer)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 3 of 5 (Open European Fuel/FX Pipeline & Zero-DDS Totem Engine) — Complete
-Plan: 4 of 4 in current phase
-Status: Phase 3 complete, verified (`03-VERIFICATION.md` `PASSED`, `16/16` must-haves), deep code & ASVS L2 security review resolved (`03-REVIEW.md` `18/18` findings fixed), **390 tests passing** (`ruff`/`basedpyright` `0` errors), merged into `master` & tagged `phase-03`
-Last activity: 2026-11-22 — Completed Phase 3 (`03-01`..`03-04` + 7 review-fix commits `048b93f`..`a5291e1`), merged to `master`, tagged `phase-03`
+Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Context Gathered
+Plan: 0 of 4 in current phase
+Status: Phase 4 context locked (`04-CONTEXT.md`, `D-01`..`D-16`); Phase 3 complete, verified (`03-VERIFICATION.md` `PASSED`, `16/16` must-haves), merged into `master` & tagged `phase-03` (**390 tests passing**)
+Last activity: 2026-11-24 — Gathered Phase 4 context (`04-CONTEXT.md`, `04-DISCUSSION-LOG.md`)
 
 Progress: [██████░░░░] 60%
 
@@ -64,11 +64,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None blocking Phase 3 planning.
+None blocking Phase 4 research or planning.
 
 ## Session Continuity
 
-Last session: 2026-11-22
-Stopped at: Phase 3 complete, verified, review-resolved, merged to `master`, tagged `phase-03`
-Resume file: .planning/ROADMAP.md
-Next action: Run `/gsd-discuss-phase 4` (or `/gsd-plan-phase 4`) to start Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
+Last session: 2026-11-24
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-CONTEXT.md
+Next action: Run `/gsd-plan-phase 4` to research and plan Phase 4 (ProMods Companion Builder & Local Map Combo Composer)

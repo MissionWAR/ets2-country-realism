@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ets2v2.normalize.currencies import VANILLA_36_ISO2S
 from ets2v2.normalize.models import PricesLockfile
 from ets2v2.normalize.totem_format import format_national_pump_price
 from ets2v2.publish.ledger import PublishedEditionState
@@ -32,13 +33,18 @@ def _render_fuel_summary_table(
     snapshot: RealismSnapshot,
     prices_lock: PricesLockfile | None,
 ) -> list[str]:
+    if set(snapshot.countries) >= VANILLA_36_ISO2S:
+        table_iso2s = sorted(iso2 for iso2 in snapshot.countries if iso2 in VANILLA_36_ISO2S)
+    else:
+        table_iso2s = sorted(snapshot.countries)
+
     lines: list[str] = [
-        f"## {len(snapshot.countries)}-Country Fuel Price Summary",
+        f"## {len(table_iso2s)}-Country Fuel Price Summary",
         "",
         "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |",
         "|------|----------|-------------:|-------------:|---------:|--------|-----------|",
     ]
-    for iso2 in sorted(snapshot.countries):
+    for iso2 in table_iso2s:
         country = snapshot.countries[iso2]
         lock_entry = prices_lock.countries.get(iso2) if prices_lock is not None else None
         local_diesel_val = country.fuel.local_prices.get("diesel")
@@ -283,6 +289,16 @@ def render_edition_changelog(
     else:
         prev_version = f"`{previous_state.package_version}`"
 
+    if set(snapshot.countries) >= VANILLA_36_ISO2S and len(snapshot.countries) > len(
+        VANILLA_36_ISO2S
+    ):
+        countries_line = (
+            f"- **Countries Covered:** `{len(VANILLA_36_ISO2S)}` (Core) / "
+            f"`{len(snapshot.countries)}` (Snapshot)"
+        )
+    else:
+        countries_line = f"- **Countries Covered:** `{len(snapshot.countries)}`"
+
     lines: list[str] = [
         f"# ETS2 World Country Realism — {edition_title} Edition Changelog",
         "",
@@ -293,7 +309,7 @@ def render_edition_changelog(
         f"- **Previous Version:** {prev_version}",
         f"- **ETS2 Baseline:** `{snapshot.baseline_game_version}`",
         f"- **Seasonal Anchor Date:** `{snapshot.anchor_date}`",
-        f"- **Countries Covered:** `{len(snapshot.countries)}`",
+        countries_line,
     ]
     if file_count is not None:
         lines.append(f"- **Workshop Files:** `{file_count}`")

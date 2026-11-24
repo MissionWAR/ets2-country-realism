@@ -114,12 +114,15 @@ def test_all_36_countries_summer_matches_1_62_baseline_and_kaliningrad_preserved
     baseline_locales = _load_baseline_locales()
 
     assert frozenset(baseline_locales.tz_keys) == EXPECTED_TWELVE_TZ_KEYS
-    assert len(registry.laws_by_iso2) == 36
+    assert len(registry.laws_by_iso2) == 76
+    vanilla_iso2s = {e.iso2 for e in registry.mappings.countries if e.vanilla_1_62}
+    assert len(vanilla_iso2s) == 36
 
     baseline_by_slug = {country.slug: country for country in baseline_countries.countries}
     summer_date = resolve_season_anchor_date("summer")
 
-    for iso2, law in sorted(registry.laws_by_iso2.items()):
+    for iso2 in sorted(vanilla_iso2s):
+        law = registry.laws_by_iso2[iso2]
         bl_country = baseline_by_slug[law.ets2_slug]
         resolved = resolve_ets2_timezone(
             law.iana_timezone,
@@ -154,13 +157,15 @@ def test_all_36_countries_winter_offsets_names_and_whitelist() -> None:
     baseline_locales = _load_baseline_locales()
     winter_date = resolve_season_anchor_date("winter")
 
+    vanilla_iso2s = {e.iso2 for e in registry.mappings.countries if e.vanilla_1_62}
     assert len(CET_ISO2) == 24
     assert len(EET_ISO2) == 7
-    assert CET_ISO2 | EET_ISO2 | {"PT", "GB", "IS", "RU", "TR"} == set(registry.laws_by_iso2)
+    assert CET_ISO2 | EET_ISO2 | {"PT", "GB", "IS", "RU", "TR"} == vanilla_iso2s
 
     cet_count = 0
     eet_count = 0
-    for iso2, law in sorted(registry.laws_by_iso2.items()):
+    for iso2 in sorted(vanilla_iso2s):
+        law = registry.laws_by_iso2[iso2]
         resolved = resolve_ets2_timezone(
             law.iana_timezone,
             winter_date,
@@ -253,7 +258,7 @@ def test_permanent_utc_plus_3_numeric_tzname_overrides(
 @pytest.mark.parametrize(
     ("iana_tz", "expected_offset", "expected_abbr"),
     [
-        ("Asia/Tbilisi", 240, "UTC+4"),
+        ("Asia/Dubai", 240, "UTC+4"),
         ("Asia/Tehran", 210, "UTC+3:30"),
         ("America/Sao_Paulo", -180, "UTC-3"),
     ],

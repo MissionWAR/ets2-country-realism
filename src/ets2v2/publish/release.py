@@ -36,7 +36,9 @@ from ets2v2.registry.snapshot import (
     RealismSnapshot,
     build_realism_snapshot,
     serialize_snapshot_bytes,
+    verify_snapshot_file,
     write_realism_snapshot,
+    write_sha256sums,
 )
 from ets2v2.registry.timezone import DEFAULT_ANCHOR_YEAR
 from ets2v2.validate.models import ValidationReport
@@ -282,7 +284,7 @@ def run_phase_a_release(
             new_ledger_editions[edition] = PublishedEditionState(
                 anchor_date=staged.snapshot.anchor_date,
                 baseline_game_version=staged.snapshot.baseline_game_version,
-                country_count=len(staged.snapshot.countries),
+                country_count=len(bl_countries.countries),
                 file_count=staged.built.workshop_file_count,
                 package_version=staged.package_version,
                 payload_sha256=staged.canonical_sha256,
@@ -306,6 +308,24 @@ def run_phase_a_release(
             changelog_path=changelog_path,
             validation_ok=True,
         )
+
+    snapshot_paths = [
+        snapshots_dir / "realism-snapshot-summer.json",
+        snapshots_dir / "realism-snapshot-winter.json",
+    ]
+    checksums_path = snapshots_dir / "SHA256SUMS.txt"
+    write_sha256sums(snapshot_paths, checksums_path)
+
+    for edition in _EDITIONS:
+        written_snapshot_path = snapshots_dir / f"realism-snapshot-{edition}.json"
+        verification = verify_snapshot_file(
+            written_snapshot_path,
+            checksums_path=checksums_path,
+            expected_edition=edition,
+        )
+        if not verification.ok or not verification.checksum_verified:
+            joined = "; ".join(verification.issues)
+            raise ValueError(f"Emitted {edition} realism snapshot failed verification: {joined}")
 
     any_changed = bool(changed_editions)
     if write_state and any_changed:

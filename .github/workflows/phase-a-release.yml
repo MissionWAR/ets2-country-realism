@@ -127,6 +127,12 @@ jobs:
           uv run --offline ets2v2 validate local dist/local/ETS2V2_Core_Summer.zip
           uv run --offline ets2v2 validate local dist/local/ETS2V2_Core_Winter.zip
 
+      - name: Verify v1 realism snapshots and SHA256SUMS manifest
+        run: |
+          set -euo pipefail
+          uv run --offline ets2v2 registry snapshot-verify dist/snapshots/realism-snapshot-summer.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition summer
+          uv run --offline ets2v2 registry snapshot-verify dist/snapshots/realism-snapshot-winter.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition winter
+
       - name: Log clean no-op exit when nothing changed
         if: steps.release.outputs.any_changed != 'true' && env.FORCE_RUN != 'true' && steps.release.outputs.force_run != 'true'
         run: echo "No canonical content changes detected for Summer or Winter; exiting cleanly as no-op."
@@ -145,6 +151,27 @@ jobs:
             dist/release_summary.json
             CHANGELOG_SUMMER.md
             CHANGELOG_WINTER.md
+
+      - name: Publish rolling public snapshots-latest GitHub Release
+        if: (steps.release.outputs.any_changed == 'true' || env.FORCE_RUN == 'true' || steps.release.outputs.force_run == 'true') && (github.event_name == 'schedule' || github.ref == 'refs/heads/master')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="snapshots-latest"
+          TITLE="Latest Realism Snapshots (schema_version=1)"
+          NOTES="Automated rolling public release of verified schema_version=1 summer/winter realism snapshots and SHA256SUMS.txt for offline ProMods Companion Builder and ets2v2 compose-local."
+          ASSETS=(
+            dist/snapshots/realism-snapshot-summer.json
+            dist/snapshots/realism-snapshot-winter.json
+            dist/snapshots/SHA256SUMS.txt
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES"
+          else
+            gh release create "$TAG" "${ASSETS[@]}" --title "$TITLE" --notes "$NOTES"
+          fi
 
       - name: Create or update persistent Release PR
         if: steps.release.outputs.any_changed == 'true' && (github.event_name == 'schedule' || github.ref == 'refs/heads/master')

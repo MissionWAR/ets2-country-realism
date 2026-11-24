@@ -25,7 +25,11 @@ from ets2v2.publish.release import (
     run_phase_a_release,
 )
 from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.snapshot import RealismSnapshot, build_realism_snapshot
+from ets2v2.registry.snapshot import (
+    RealismSnapshot,
+    build_realism_snapshot,
+    verify_snapshot_file,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LAWS_DIR = REPO_ROOT / "data" / "laws"
@@ -138,17 +142,48 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
     assert (changelogs_dir / "CHANGELOG_WINTER.md").is_file()
     assert (out_dir / "release_summary.json").is_file()
 
-    # Validate v1 snapshot schema cleanly
-    summer_snap = RealismSnapshot.model_validate_json(
-        (out_dir / "snapshots" / "realism-snapshot-summer.json").read_text("utf-8")
+    # Validate v1 snapshot schema (76 territories) and SHA256SUMS.txt integrity cleanly
+    summer_snap_path = out_dir / "snapshots" / "realism-snapshot-summer.json"
+    winter_snap_path = out_dir / "snapshots" / "realism-snapshot-winter.json"
+    checksums_path = out_dir / "snapshots" / "SHA256SUMS.txt"
+    assert checksums_path.is_file()
+
+    sums_raw = checksums_path.read_bytes()
+    assert not sums_raw.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in sums_raw
+    assert sums_raw.endswith(b"\n")
+    sums_lines = sums_raw.decode("utf-8").splitlines()
+    assert len(sums_lines) == 2
+    assert sums_lines[0].endswith("  realism-snapshot-summer.json")
+    assert sums_lines[1].endswith("  realism-snapshot-winter.json")
+
+    summer_verify = verify_snapshot_file(
+        summer_snap_path,
+        checksums_path=checksums_path,
+        expected_edition="summer",
     )
+    winter_verify = verify_snapshot_file(
+        winter_snap_path,
+        checksums_path=checksums_path,
+        expected_edition="winter",
+    )
+    assert summer_verify.ok is True
+    assert summer_verify.checksum_verified is True
+    assert summer_verify.country_count == 76
+    assert winter_verify.ok is True
+    assert winter_verify.checksum_verified is True
+    assert winter_verify.country_count == 76
+
+    summer_snap = RealismSnapshot.model_validate_json(summer_snap_path.read_text("utf-8"))
     assert summer_snap.schema_version == 1
-    assert len(summer_snap.countries) == 36
+    assert len(summer_snap.countries) == 76
 
     state_bytes_after_run1 = state_path.read_bytes()
     ledger_after_run1 = load_published_ledger(state_path)
     assert ledger_after_run1.editions["summer"].package_version == "1.62-2026.47"
     assert ledger_after_run1.editions["winter"].package_version == "1.62-2026.47"
+    assert ledger_after_run1.editions["summer"].country_count == 36
+    assert ledger_after_run1.editions["winter"].country_count == 36
 
     # Run 2: exact same data on a LATER ISO week (+14 days -> 2026-W49) -> clean NO-OP!
     summary_2 = run_phase_a_release(
@@ -513,6 +548,8 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ).decode("utf-8")
 
     assert "## 36-Country Fuel Price Summary" in clean_md
+    assert "- **Countries Covered:** `36` (Core) / `76` (Snapshot)" in clean_md
+    assert "| `KZ` |" not in clean_md
     assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
         clean_md
     )

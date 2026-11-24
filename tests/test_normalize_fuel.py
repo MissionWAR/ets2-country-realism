@@ -8,9 +8,10 @@ import pytest
 
 from ets2v2.baseline.models import CountriesBaseline
 from ets2v2.normalize.currencies import (
+    ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_TERRITORY_CURRENCIES,
     BAM_FIXED_PEG_PER_EUR,
-    EUROPEAN_TERRITORY_ISO2S,
-    TERRITORY_CURRENCIES,
+    PROMODS_EXTENDED_ISO2S,
 )
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
@@ -23,6 +24,7 @@ from ets2v2.normalize.fuel import (
 )
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
+    PROMODS_CURATED_SEED_SOURCE,
     load_prices_lockfile,
     seed_initial_lockfile,
     serialize_lockfile_bytes,
@@ -219,7 +221,7 @@ def test_normalize_country_fuel_prices_uses_3dp_round_half_up_for_eur_per_liter(
     assert set(res.entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
 
 
-def test_seed_initial_lockfile_produces_deterministic_39_territory_v1_lockfile(
+def test_seed_initial_lockfile_produces_deterministic_76_territory_v1_lockfile(
     tmp_path: pathlib.Path,
 ) -> None:
     baseline = CountriesBaseline.model_validate_json(BASELINE_COUNTRIES_PATH.read_text("utf-8"))
@@ -228,19 +230,24 @@ def test_seed_initial_lockfile_produces_deterministic_39_territory_v1_lockfile(
 
     assert lock_a == lock_b
     assert lock_a.schema_version == 1
-    assert set(lock_a.countries.keys()) == set(EUROPEAN_TERRITORY_ISO2S)
-    assert len(lock_a.countries) == 39
-    assert {"IE", "CY", "MT"} <= set(lock_a.countries.keys())
+    assert set(lock_a.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
+    assert len(lock_a.countries) == 76
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL"} <= set(lock_a.countries.keys())
     assert lock_a.countries["BG"].currency == "EUR"
     assert lock_a.fx_rates["EUR"].rate_per_eur == 1.0
     assert lock_a.fx_rates["BAM"].rate_per_eur == BAM_FIXED_PEG_PER_EUR
-    assert len(lock_a.fx_rates) == 17
+    assert len(lock_a.fx_rates) == 41
 
     for iso2, entry in lock_a.countries.items():
-        assert entry.currency == TERRITORY_CURRENCIES[iso2]
+        assert entry.currency == ALL_TERRITORY_CURRENCIES[iso2]
         assert MIN_EUR_PER_LITER <= entry.eur_per_liter <= MAX_EUR_PER_LITER
         assert set(entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
-        assert entry.source == BASELINE_SEEDED_SOURCE
+        expected_source = (
+            PROMODS_CURATED_SEED_SOURCE
+            if iso2 in PROMODS_EXTENDED_ISO2S
+            else BASELINE_SEEDED_SOURCE
+        )
+        assert entry.source == expected_source
         assert entry.fallback_used is True
 
     # Canonical bytes round-trip cleanly

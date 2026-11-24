@@ -374,6 +374,57 @@ def test_fetch_all_fx_quotes_partial_outage_and_cross_validation() -> None:
     assert validated.rates["RUB"].validator_provider == "fawazahmed0"
 
 
+def test_fetch_all_fx_quotes_preserves_extended_promods_currencies() -> None:
+    def _extended_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.startswith("https://api.frankfurter.dev/v2/rates"):
+            rows = [
+                {"date": "2026-11-20", "base": "EUR", "quote": c, "rate": r}
+                for c, r in sorted(
+                    {**_SAMPLE_RATES, "CNY": 7.85, "ILS": 4.00, "KZT": 540.0}.items()
+                )
+            ]
+            return httpx.Response(200, json=rows)
+        if url == ECB_DAILY_XML_URL:
+            cubes = "\n".join(
+                f'        <Cube currency="{c}" rate="{r}"/>'
+                for c, r in sorted(
+                    {
+                        **{k: _SAMPLE_RATES[k] for k in ECB_COVERED_CURRENCIES},
+                        "CNY": 7.86,
+                        "ILS": 4.01,
+                    }.items()
+                )
+            )
+            xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01" '
+                'xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">\n'
+                f'  <Cube><Cube time="2026-11-20">\n{cubes}\n  </Cube></Cube>\n'
+                "</gesmes:Envelope>\n"
+            )
+            return httpx.Response(200, content=xml.encode("utf-8"))
+        if url in {FAWAZ_JSDELIVR_URL, FAWAZ_CLOUDFLARE_URL}:
+            rates = {
+                c.lower(): r
+                for c, r in {**_SAMPLE_RATES, "CNY": 7.85, "ILS": 4.00, "KZT": 540.0}.items()
+            }
+            return httpx.Response(200, json={"date": "2026-11-20", "eur": rates})
+        if url == CBR_DAILY_XML_URL:
+            return httpx.Response(200, content=_cbr_daily_xml_bytes())
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_extended_handler)) as client:
+        bundle = fetch_all_fx_quotes(client, sleep_fn=lambda _: None)
+
+    assert bundle.quotes["frankfurter_v2"].rates["CNY"] == pytest.approx(7.85)
+    assert bundle.quotes["frankfurter_v2"].rates["ILS"] == pytest.approx(4.00)
+    assert bundle.quotes["frankfurter_v2"].rates["KZT"] == pytest.approx(540.0)
+    assert bundle.quotes["ecb_xml"].rates["CNY"] == pytest.approx(7.86)
+    assert bundle.quotes["ecb_xml"].rates["ILS"] == pytest.approx(4.01)
+    assert bundle.quotes["fawazahmed0"].rates["KZT"] == pytest.approx(540.0)
+
+
 def test_run_fx_only_fetch_and_cli_tracer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

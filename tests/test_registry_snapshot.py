@@ -280,7 +280,7 @@ def test_cli_registry_snapshot_winter_date_override_and_invalid_date(
     assert not bad_out.exists()
 
 
-def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra_eu(
+def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preserves_v1(
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -290,7 +290,8 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries, bl_locales = _load_inputs()
     lock = seed_initial_lockfile(bl_countries)
-    assert {"IE", "CY", "MT"} <= set(lock.countries.keys())
+    assert len(lock.countries) == 76
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL"} <= set(lock.countries.keys())
 
     # Override DE with an exact 3-decimal EUR/L and live national source to verify injection
     de_live = lock.countries["DE"].model_copy(
@@ -309,23 +310,49 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
         "summer",
         prices_lock=custom_lock,
     )
+    snap_winter = build_realism_snapshot(
+        registry,
+        bl_countries,
+        bl_locales,
+        "winter",
+        prices_lock=custom_lock,
+    )
     assert snap.schema_version == 1
-    # Core snapshot MUST remain strictly 36 Vanilla+DLC countries (IE/CY/MT excluded per D-04!)
-    assert len(snap.countries) == 36
-    assert "IE" not in snap.countries
-    assert "CY" not in snap.countries
-    assert "MT" not in snap.countries
+    assert len(snap.countries) == 76
+    assert len(snap_winter.countries) == 76
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "GL", "GG", "GI", "IM", "JE"} <= set(
+        snap.countries.keys()
+    )
+
+    # imperial_units derived strictly for non-vanilla territories (D-02)
+    imperial_iso2s = {iso2 for iso2, c in snap.countries.items() if c.imperial_units}
+    assert imperial_iso2s == {"GB", "GG", "IM", "JE"}
+    assert snap.countries["GI"].imperial_units is False
+
+    # ProMods seasonal timezones resolved accurately via zoneinfo + overrides
+    assert snap.countries["GL"].time_zone_name == "WGST"
+    assert snap_winter.countries["GL"].time_zone_name == "WGT"
+    assert snap.countries["UZ"].time_zone == 300
+    assert snap.countries["UZ"].time_zone_name == "UZT"
+    assert snap.countries["KZ"].time_zone == 300
+    assert snap.countries["KZ"].time_zone_name == "AQTT"
+    assert snap.countries["JO"].time_zone == 180
+    assert snap.countries["JO"].time_zone_name == "AST"
+    assert snap.countries["SY"].time_zone == 180
+    assert snap.countries["SY"].time_zone_name == "AST"
 
     assert snap.countries["DE"].fuel.eur_per_liter == 1.659
     assert snap.countries["DE"].fuel.source == "de_tankerkoenig"
     assert snap.countries["DE"].fuel.currency == "EUR"
     assert set(snap.countries["DE"].fuel.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
 
-    # Verify locked schema_version=1 JSON keys (extra="forbid" D-13)
+    # Verify locked schema_version=1 JSON keys (extra="forbid" D-02)
     raw_obj = cast(dict[str, object], json.loads(serialize_snapshot_bytes(snap).decode("utf-8")))
     assert set(raw_obj.keys()) == EXPECTED_TOP_LEVEL_KEYS
     raw_countries = cast(dict[str, dict[str, object]], raw_obj["countries"])
+    assert len(raw_countries) == 76
     assert set(raw_countries["DE"].keys()) == EXPECTED_COUNTRY_KEYS
+    assert set(raw_countries["KZ"].keys()) == EXPECTED_COUNTRY_KEYS
     assert set(cast(dict[str, object], raw_countries["DE"]["fuel"]).keys()) == EXPECTED_FUEL_KEYS
 
     # CLI: ets2v2 registry snapshot --prices-lock ...

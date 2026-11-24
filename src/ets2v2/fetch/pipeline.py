@@ -27,7 +27,7 @@ from ets2v2.fetch.models import (
     RawFuelFeedResult,
 )
 from ets2v2.fetch.national import fetch_all_national_feeds
-from ets2v2.normalize.currencies import EUROPEAN_TERRITORY_ISO2S, TERRITORY_CURRENCIES
+from ets2v2.normalize.currencies import ALL_LOCKFILE_TERRITORY_ISO2S, ALL_TERRITORY_CURRENCIES
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
     MAX_WOW_JUMP_RATIO,
@@ -41,6 +41,7 @@ from ets2v2.normalize.fx import FxProviderQuote, cross_validate_fx_rates, round_
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_LICENSE,
     BASELINE_SEEDED_SOURCE,
+    PROMODS_CURATED_SEED_SOURCE,
     evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
@@ -115,7 +116,7 @@ def _validate_supplemental_grade(
     rounded_val = round_local_price(local_val)
     if (
         previous_entry is not None
-        and previous_entry.source != BASELINE_SEEDED_SOURCE
+        and previous_entry.source not in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
         and iso2 not in normalized_allow
     ):
         prev_local = previous_entry.local_prices.get(grade)
@@ -173,6 +174,8 @@ def _build_baseline_entry(
     fx_entry: FxRateLockEntry,
     data_date: str,
     fetched_at: str,
+    source: str = BASELINE_SEEDED_SOURCE,
+    license_name: str = BASELINE_SEEDED_LICENSE,
 ) -> CountryFuelLockEntry:
     rate = fx_entry.rate_per_eur
     diesel_eur_3dp = round_eur_per_liter(diesel_eur)
@@ -188,8 +191,8 @@ def _build_baseline_entry(
         eur_per_liter=diesel_eur_3dp,
         local_prices=full_local,
         derived_grades=derived,
-        source=BASELINE_SEEDED_SOURCE,
-        license=BASELINE_SEEDED_LICENSE,
+        source=source,
+        license=license_name,
         data_date=data_date,
         fetched_at=fetched_at,
         fallback_used=True,
@@ -283,6 +286,7 @@ def run_price_fetch(
             fx_provider_quotes,
             previous_fx=existing_lock.fx_rates if existing_lock is not None else None,
             fetched_at=now_iso,
+            include_extended=True,
         )
         alerts.extend(fx_validation.alerts)
 
@@ -391,9 +395,9 @@ def run_price_fetch(
     candidates_by_iso2: dict[str, list[_FuelCandidate]] = {}
     for feed_res in ordered_ok_feeds:
         for quote in feed_res.quotes:
-            if quote.iso2 not in EUROPEAN_TERRITORY_ISO2S:
+            if quote.iso2 not in ALL_LOCKFILE_TERRITORY_ISO2S:
                 continue
-            currency = TERRITORY_CURRENCIES[quote.iso2]
+            currency = ALL_TERRITORY_CURRENCIES[quote.iso2]
             fx_entry = fx_validation.rates[currency]
             try:
                 local_map = _quote_to_local_prices(quote, fx_entry=fx_entry)
@@ -422,8 +426,8 @@ def run_price_fetch(
     countries_updated = 0
     countries_fallback = 0
 
-    for iso2 in sorted(EUROPEAN_TERRITORY_ISO2S):
-        currency = TERRITORY_CURRENCIES[iso2]
+    for iso2 in sorted(ALL_LOCKFILE_TERRITORY_ISO2S):
+        currency = ALL_TERRITORY_CURRENCIES[iso2]
         fx_entry = fx_validation.rates[currency]
         previous_entry = existing_lock.countries.get(iso2) if existing_lock is not None else None
         candidates = candidates_by_iso2.get(iso2, [])
@@ -502,15 +506,17 @@ def run_price_fetch(
                 countries_fallback += 1
             continue
 
-        # No valid live feed covered this territory -> retain lockfile or seed from 1.62 baseline.
+        # No valid live feed covered this territory -> retain lockfile or seed baseline/ProMods.
         if previous_entry is not None:
-            if previous_entry.source == BASELINE_SEEDED_SOURCE:
+            if previous_entry.source in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}:
                 countries[iso2] = _build_baseline_entry(
                     iso2,
                     diesel_eur=previous_entry.eur_per_liter,
                     fx_entry=fx_entry,
                     data_date=previous_entry.data_date,
                     fetched_at=now_iso,
+                    source=previous_entry.source,
+                    license_name=previous_entry.license,
                 )
             else:
                 countries[iso2] = previous_entry.model_copy(update={"fallback_used": True})
@@ -528,13 +534,15 @@ def run_price_fetch(
                         )
                     )
         else:
-            seed_eur = baseline_seed.countries[iso2].eur_per_liter
+            seed_entry = baseline_seed.countries[iso2]
             countries[iso2] = _build_baseline_entry(
                 iso2,
-                diesel_eur=seed_eur,
+                diesel_eur=seed_entry.eur_per_liter,
                 fx_entry=fx_entry,
                 data_date=now_date_str,
                 fetched_at=now_iso,
+                source=seed_entry.source,
+                license_name=seed_entry.license,
             )
         countries_fallback += 1
 

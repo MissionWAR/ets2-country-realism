@@ -131,12 +131,12 @@ YEAR_ROUND_DRL_FALSE: frozenset[str] = frozenset(
 )
 
 
-def test_committed_registry_exact_36_vanilla_countries_and_clean_room_hygiene() -> None:
+def test_committed_registry_exact_76_vanilla_and_promods_countries_and_clean_room_hygiene() -> None:
     assert MAPPINGS_PATH.is_file(), f"Missing {MAPPINGS_PATH}"
     assert COUNTRIES_LAWS_DIR.is_dir(), f"Missing {COUNTRIES_LAWS_DIR}"
 
     law_files = sorted(COUNTRIES_LAWS_DIR.glob("*.json"))
-    assert len(law_files) == 36
+    assert len(law_files) == 76
 
     raw_scs = [
         p for p in DATA_DIR.rglob("*") if p.is_file() and p.suffix.lower() in {".sii", ".sui"}
@@ -144,11 +144,38 @@ def test_committed_registry_exact_36_vanilla_countries_and_clean_room_hygiene() 
     assert raw_scs == []
 
     bundle = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
-    assert len(bundle.mappings.countries) == 36
-    assert len(bundle.laws_by_iso2) == 36
+    assert len(bundle.mappings.countries) == 76
+    assert len(bundle.laws_by_iso2) == 76
 
-    for forbidden_non_vanilla in ("AM", "JO", "SY", "SM", "SJ"):
-        assert forbidden_non_vanilla not in bundle.laws_by_iso2
+    vanilla_entries = [e for e in bundle.mappings.countries if e.vanilla_1_62]
+    promods_entries = [e for e in bundle.mappings.countries if not e.vanilla_1_62]
+    assert len(vanilla_entries) == 36
+    assert len(promods_entries) == 40
+    assert all(e.country_id is not None for e in vanilla_entries)
+    assert all(e.country_id is None for e in promods_entries)
+
+    expected_promods_sample = {
+        "AM",
+        "JO",
+        "SY",
+        "SM",
+        "SJ",
+        "KZ",
+        "CN",
+        "MA",
+        "TN",
+        "EG",
+        "IL",
+        "SA",
+        "IE",
+        "CY",
+        "MT",
+        "UA",
+        "MD",
+        "UZ",
+    }
+    promods_iso2s = {e.iso2 for e in promods_entries}
+    assert expected_promods_sample <= promods_iso2s
 
     assert validate_law_registry(LAWS_DIR, MAPPINGS_PATH, BASELINE_DIR) == []
 
@@ -164,11 +191,13 @@ def test_committed_registry_currencies_timezones_and_axle_mass_invariants() -> N
         (BASELINE_DIR / "countries.json").read_text("utf-8")
     )
     bl_by_slug = {c.slug: c for c in bl_countries.countries}
+    vanilla_iso2s = {e.iso2 for e in bundle.mappings.countries if e.vanilla_1_62}
 
-    assert set(bundle.laws_by_iso2) == set(EXPECTED_CURRENCIES)
-    assert set(bundle.laws_by_iso2) == set(EXPECTED_TIMEZONES)
+    assert vanilla_iso2s == set(EXPECTED_CURRENCIES)
+    assert vanilla_iso2s == set(EXPECTED_TIMEZONES)
 
-    for iso2, record in bundle.laws_by_iso2.items():
+    for iso2 in sorted(vanilla_iso2s):
+        record = bundle.laws_by_iso2[iso2]
         assert record.currency == EXPECTED_CURRENCIES[iso2], f"Currency mismatch for {iso2}"
         assert record.iana_timezone == EXPECTED_TIMEZONES[iso2], f"Timezone mismatch for {iso2}"
 
@@ -200,9 +229,10 @@ def test_committed_registry_currencies_timezones_and_axle_mass_invariants() -> N
 
 def test_committed_registry_statutory_drl_policies() -> None:
     bundle = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    vanilla_iso2s = {e.iso2 for e in bundle.mappings.countries if e.vanilla_1_62}
     assert len(YEAR_ROUND_DRL_TRUE) == 23
     assert len(YEAR_ROUND_DRL_FALSE) == 12
-    assert YEAR_ROUND_DRL_TRUE | YEAR_ROUND_DRL_FALSE | {"HR"} == set(bundle.laws_by_iso2)
+    assert YEAR_ROUND_DRL_TRUE | YEAR_ROUND_DRL_FALSE | {"HR"} == vanilla_iso2s
 
     for iso2 in YEAR_ROUND_DRL_TRUE:
         rec = bundle.laws_by_iso2[iso2]
@@ -217,6 +247,25 @@ def test_committed_registry_statutory_drl_policies() -> None:
     hr = bundle.laws_by_iso2["HR"]
     assert hr.summer.lights_mandatory is False
     assert hr.winter.lights_mandatory is True
+
+    # Key ProMods statutory DRL, timezone, and speed_unit contracts (D-01)
+    for seasonal_iso2 in ("MD", "IL", "PS"):
+        rec = bundle.laws_by_iso2[seasonal_iso2]
+        assert rec.summer.lights_mandatory is False, f"{seasonal_iso2} summer DRL must be False"
+        assert rec.winter.lights_mandatory is True, f"{seasonal_iso2} winter DRL must be True"
+
+    ua = bundle.laws_by_iso2["UA"]
+    assert ua.summer.lights_mandatory is True
+    assert ua.winter.lights_mandatory is True
+
+    assert bundle.laws_by_iso2["KZ"].iana_timezone == "Asia/Almaty"
+    assert bundle.laws_by_iso2["UZ"].iana_timezone == "Asia/Tashkent"
+    assert bundle.laws_by_iso2["JO"].iana_timezone == "Asia/Amman"
+    assert bundle.laws_by_iso2["SY"].iana_timezone == "Asia/Damascus"
+
+    for mph_iso2 in ("GG", "IM", "JE"):
+        assert bundle.laws_by_iso2[mph_iso2].speed_unit == "mph"
+    assert bundle.laws_by_iso2["GI"].speed_unit == "kmh"
 
 
 def test_committed_registry_statutory_speed_fixes_and_seasonal_drops() -> None:
@@ -359,4 +408,4 @@ def test_cli_registry_validate_default_committed_tree(
     exit_code = main(["registry", "validate"])
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "36 countries" in captured.out
+    assert "76 countries" in captured.out

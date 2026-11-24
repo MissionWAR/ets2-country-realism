@@ -11,9 +11,13 @@ from typing import Final
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ets2v2.normalize.currencies import (
+    ALL_CURRENCY_SANITY_BANDS,
+    ALL_REFERENCE_FX_RATES,
     BAM_FIXED_PEG_PER_EUR,
     CURRENCY_SANITY_BANDS,
     ECB_COVERED_CURRENCIES,
+    EXTENDED_ECB_CURRENCIES,
+    EXTENDED_PROMODS_CURRENCIES,
     MAJOR_ECB_CURRENCIES,
     TERRITORY_CURRENCIES,
 )
@@ -30,6 +34,9 @@ CBR_FX_PROVIDER: Final[str] = "cbr_xml"
 
 _THREE_DP: Final[Decimal] = Decimal("0.001")
 _REQUIRED_NON_EUR_CURRENCIES: Final[tuple[str, ...]] = tuple(sorted(CURRENCY_SANITY_BANDS))
+_OPTIONAL_EXTENDED_CURRENCIES: Final[tuple[str, ...]] = tuple(sorted(EXTENDED_PROMODS_CURRENCIES))
+_ALL_ECB_COVERED: Final[frozenset[str]] = ECB_COVERED_CURRENCIES | EXTENDED_ECB_CURRENCIES
+_ALL_MAJOR_ECB: Final[frozenset[str]] = MAJOR_ECB_CURRENCIES | EXTENDED_ECB_CURRENCIES
 
 
 class FxProviderQuote(BaseModel):
@@ -49,7 +56,7 @@ class FxProviderQuote(BaseModel):
 
 
 class FxValidationResult(BaseModel):
-    """Outcome of D-07 multi-provider FX cross-validation across all 17 European currencies."""
+    """Outcome of D-07 multi-provider FX cross-validation across European + optional extended FX."""
 
     model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
 
@@ -106,14 +113,14 @@ def compute_divergence_pct(rate_a: float, rate_b: float) -> float:
 def _check_sanity_rate(currency: str, rate: float) -> str | None:
     if not math.isfinite(rate) or rate <= 0.0:
         return f"non-finite or non-positive rate {rate!r}"
-    low, high = CURRENCY_SANITY_BANDS[currency]
+    low, high = ALL_CURRENCY_SANITY_BANDS[currency]
     if not (low <= rate <= high):
         return f"rate {rate!r} outside sanity envelope [{low}, {high}] (possible inversion/scaling)"
     return None
 
 
 def _validator_chain_for(currency: str) -> tuple[str, ...]:
-    if currency in ECB_COVERED_CURRENCIES:
+    if currency in _ALL_ECB_COVERED:
         return (ECB_FX_PROVIDER, FAWAZ_FX_PROVIDER)
     if currency == "RUB":
         return (CBR_FX_PROVIDER, FAWAZ_FX_PROVIDER)
@@ -146,6 +153,7 @@ def _resolve_fallback_or_missing(
     alerts: list[LockAlert],
     missing: list[str],
     emit_retained_alert: bool,
+    is_extended: bool = False,
 ) -> None:
     prev = previous_fx.get(currency)
     if prev is not None:
@@ -186,6 +194,32 @@ def _resolve_fallback_or_missing(
         )
         return
 
+    if is_extended:
+        ref_rate = ALL_REFERENCE_FX_RATES[currency]
+        resolved[currency] = FxRateLockEntry(
+            currency=currency,
+            rate_per_eur=ref_rate,
+            provider="promods_reference_fx",
+            validator_provider=None,
+            validator_rate_per_eur=None,
+            divergence_pct=0.0,
+            data_date=fetched_date,
+            fetched_at=fetched_at,
+            fallback_used=True,
+        )
+        alerts.append(
+            LockAlert(
+                severity="warning",
+                code="fx_reference_fallback",
+                scope=currency,
+                detail=(
+                    f"No valid live FX provider or previous lockfile entry for extended "
+                    f"currency {currency}; using curated reference rate 1 EUR = {ref_rate}."
+                ),
+            )
+        )
+        return
+
     missing.append(currency)
     alerts.append(
         LockAlert(
@@ -199,13 +233,180 @@ def _resolve_fallback_or_missing(
     )
 
 
+def _validate_single_currency(
+    currency: str,
+    *,
+    is_extended: bool,
+    provider_quotes: Mapping[str, FxProviderQuote],
+    prev_map: Mapping[str, FxRateLockEntry],
+    fetched_date: str,
+    fetched_at: str,
+    resolved: dict[str, FxRateLockEntry],
+    alerts: list[LockAlert],
+    missing: list[str],
+) -> None:
+    primary_data, primary_err = _extract_provider_rate(
+        provider_quotes, PRIMARY_FX_PROVIDER, currency
+    )
+    if primary_err is not None:
+        alerts.append(
+            LockAlert(
+                severity="warning" if is_extended else "error",
+                code="fx_sanity_rejected",
+                scope=currency,
+                detail=f"Rejected primary FX quote for {currency}: {primary_err}.",
+            )
+        )
+        primary_data = None
+
+    validator_candidates: list[tuple[str, float, str]] = []
+    for candidate_provider in _validator_chain_for(currency):
+        cand_data, cand_err = _extract_provider_rate(provider_quotes, candidate_provider, currency)
+        if cand_err is not None:
+            alerts.append(
+                LockAlert(
+                    severity="warning",
+                    code="fx_sanity_rejected",
+                    scope=currency,
+                    detail=f"Ignored invalid validator FX quote for {currency}: {cand_err}.",
+                )
+            )
+            continue
+        if cand_data is not None:
+            validator_candidates.append((candidate_provider, cand_data[0], cand_data[1]))
+
+    if primary_data is not None:
+        active_provider = PRIMARY_FX_PROVIDER
+        active_rate, active_date = primary_data
+        fallback_used = False
+        remaining_validators = validator_candidates
+    elif validator_candidates:
+        active_provider, active_rate, active_date = validator_candidates[0]
+        fallback_used = True
+        remaining_validators = validator_candidates[1:]
+        reason = (
+            f"failed sanity bounds for {currency}"
+            if primary_err is not None
+            else f"omitted {currency}"
+        )
+        alerts.append(
+            LockAlert(
+                severity="warning",
+                code="fx_primary_fallback",
+                scope=currency,
+                detail=(
+                    f"Primary FX provider {PRIMARY_FX_PROVIDER!r} {reason}; "
+                    f"promoted {active_provider!r} ({active_rate})."
+                ),
+            )
+        )
+    else:
+        _resolve_fallback_or_missing(
+            currency,
+            previous_fx=prev_map,
+            fetched_date=fetched_date,
+            fetched_at=fetched_at,
+            resolved=resolved,
+            alerts=alerts,
+            missing=missing,
+            emit_retained_alert=primary_err is None,
+            is_extended=is_extended,
+        )
+        return
+
+    if remaining_validators:
+        val_provider, val_rate, _val_date = remaining_validators[0]
+        div_dec = _compute_divergence_pct_decimal(active_rate, val_rate)
+        div_pct = float(div_dec)
+        if div_dec > Decimal(str(DIVERGENCE_REJECT_PCT)):
+            alerts.append(
+                LockAlert(
+                    severity="warning" if is_extended else "error",
+                    code="fx_divergence_rejected",
+                    scope=currency,
+                    detail=(
+                        f"{currency} FX divergence {div_pct:.2f}% exceeds "
+                        f"{DIVERGENCE_REJECT_PCT:.1f}% limit "
+                        f"({active_provider}={active_rate}, {val_provider}={val_rate})."
+                    ),
+                )
+            )
+            _resolve_fallback_or_missing(
+                currency,
+                previous_fx=prev_map,
+                fetched_date=fetched_date,
+                fetched_at=fetched_at,
+                resolved=resolved,
+                alerts=alerts,
+                missing=missing,
+                emit_retained_alert=False,
+                is_extended=is_extended,
+            )
+            return
+
+        warn_threshold = (
+            MAJOR_DIVERGENCE_WARN_PCT
+            if currency in _ALL_MAJOR_ECB
+            else VOLATILE_DIVERGENCE_WARN_PCT
+        )
+        if div_dec > Decimal(str(warn_threshold)):
+            alerts.append(
+                LockAlert(
+                    severity="warning",
+                    code="fx_divergence_warning",
+                    scope=currency,
+                    detail=(
+                        f"{currency} FX divergence {div_pct:.2f}% exceeds "
+                        f"{warn_threshold:.1f}% tier threshold "
+                        f"({active_provider}={active_rate}, {val_provider}={val_rate})."
+                    ),
+                )
+            )
+
+        resolved[currency] = FxRateLockEntry(
+            currency=currency,
+            rate_per_eur=active_rate,
+            provider=active_provider,
+            validator_provider=val_provider,
+            validator_rate_per_eur=val_rate,
+            divergence_pct=round(div_pct, 4),
+            data_date=active_date,
+            fetched_at=fetched_at,
+            fallback_used=fallback_used,
+        )
+    else:
+        alerts.append(
+            LockAlert(
+                severity="warning",
+                code="fx_validator_unavailable",
+                scope=currency,
+                detail=(
+                    f"No cross-validator quote available for {currency}; "
+                    f"accepted {active_provider!r} ({active_rate}) within sanity band."
+                ),
+            )
+        )
+        resolved[currency] = FxRateLockEntry(
+            currency=currency,
+            rate_per_eur=active_rate,
+            provider=active_provider,
+            validator_provider=None,
+            validator_rate_per_eur=None,
+            divergence_pct=None,
+            data_date=active_date,
+            fetched_at=fetched_at,
+            fallback_used=fallback_used,
+        )
+
+
 def cross_validate_fx_rates(
     provider_quotes: Mapping[str, FxProviderQuote],
     *,
     previous_fx: Mapping[str, FxRateLockEntry] | None,
     fetched_at: str,
+    include_extended: bool = False,
 ) -> FxValidationResult:
-    """Cross-validate multi-provider FX quotes per D-07 tolerances and currency-split rules."""
+    """Cross-validate multi-provider FX quotes per D-07 tolerances and CI isolation (T-04-03)."""
     if TERRITORY_CURRENCIES.get("BG") != "EUR":
         raise ValueError("Invariant violation: Bulgaria (BG) must be mapped to EUR")
 
@@ -234,157 +435,30 @@ def cross_validate_fx_rates(
     missing: list[str] = []
 
     for currency in _REQUIRED_NON_EUR_CURRENCIES:
-        primary_data, primary_err = _extract_provider_rate(
-            provider_quotes, PRIMARY_FX_PROVIDER, currency
+        _validate_single_currency(
+            currency,
+            is_extended=False,
+            provider_quotes=provider_quotes,
+            prev_map=prev_map,
+            fetched_date=fetched_date,
+            fetched_at=fetched_at,
+            resolved=resolved,
+            alerts=alerts,
+            missing=missing,
         )
-        if primary_err is not None:
-            alerts.append(
-                LockAlert(
-                    severity="error",
-                    code="fx_sanity_rejected",
-                    scope=currency,
-                    detail=f"Rejected primary FX quote for {currency}: {primary_err}.",
-                )
-            )
-            primary_data = None
 
-        validator_candidates: list[tuple[str, float, str]] = []
-        for candidate_provider in _validator_chain_for(currency):
-            cand_data, cand_err = _extract_provider_rate(
-                provider_quotes, candidate_provider, currency
-            )
-            if cand_err is not None:
-                alerts.append(
-                    LockAlert(
-                        severity="warning",
-                        code="fx_sanity_rejected",
-                        scope=currency,
-                        detail=f"Ignored invalid validator FX quote for {currency}: {cand_err}.",
-                    )
-                )
-                continue
-            if cand_data is not None:
-                validator_candidates.append((candidate_provider, cand_data[0], cand_data[1]))
-
-        if primary_data is not None:
-            active_provider = PRIMARY_FX_PROVIDER
-            active_rate, active_date = primary_data
-            fallback_used = False
-            remaining_validators = validator_candidates
-        elif validator_candidates:
-            active_provider, active_rate, active_date = validator_candidates[0]
-            fallback_used = True
-            remaining_validators = validator_candidates[1:]
-            reason = (
-                f"failed sanity bounds for {currency}"
-                if primary_err is not None
-                else f"omitted {currency}"
-            )
-            alerts.append(
-                LockAlert(
-                    severity="warning",
-                    code="fx_primary_fallback",
-                    scope=currency,
-                    detail=(
-                        f"Primary FX provider {PRIMARY_FX_PROVIDER!r} {reason}; "
-                        f"promoted {active_provider!r} ({active_rate})."
-                    ),
-                )
-            )
-        else:
-            _resolve_fallback_or_missing(
+    if include_extended:
+        for currency in _OPTIONAL_EXTENDED_CURRENCIES:
+            _validate_single_currency(
                 currency,
-                previous_fx=prev_map,
+                is_extended=True,
+                provider_quotes=provider_quotes,
+                prev_map=prev_map,
                 fetched_date=fetched_date,
                 fetched_at=fetched_at,
                 resolved=resolved,
                 alerts=alerts,
                 missing=missing,
-                emit_retained_alert=primary_err is None,
-            )
-            continue
-
-        if remaining_validators:
-            val_provider, val_rate, _val_date = remaining_validators[0]
-            div_dec = _compute_divergence_pct_decimal(active_rate, val_rate)
-            div_pct = float(div_dec)
-            if div_dec > Decimal(str(DIVERGENCE_REJECT_PCT)):
-                alerts.append(
-                    LockAlert(
-                        severity="error",
-                        code="fx_divergence_rejected",
-                        scope=currency,
-                        detail=(
-                            f"{currency} FX divergence {div_pct:.2f}% exceeds "
-                            f"{DIVERGENCE_REJECT_PCT:.1f}% limit "
-                            f"({active_provider}={active_rate}, {val_provider}={val_rate})."
-                        ),
-                    )
-                )
-                _resolve_fallback_or_missing(
-                    currency,
-                    previous_fx=prev_map,
-                    fetched_date=fetched_date,
-                    fetched_at=fetched_at,
-                    resolved=resolved,
-                    alerts=alerts,
-                    missing=missing,
-                    emit_retained_alert=False,
-                )
-                continue
-
-            warn_threshold = (
-                MAJOR_DIVERGENCE_WARN_PCT
-                if currency in MAJOR_ECB_CURRENCIES
-                else VOLATILE_DIVERGENCE_WARN_PCT
-            )
-            if div_dec > Decimal(str(warn_threshold)):
-                alerts.append(
-                    LockAlert(
-                        severity="warning",
-                        code="fx_divergence_warning",
-                        scope=currency,
-                        detail=(
-                            f"{currency} FX divergence {div_pct:.2f}% exceeds "
-                            f"{warn_threshold:.1f}% tier threshold "
-                            f"({active_provider}={active_rate}, {val_provider}={val_rate})."
-                        ),
-                    )
-                )
-
-            resolved[currency] = FxRateLockEntry(
-                currency=currency,
-                rate_per_eur=active_rate,
-                provider=active_provider,
-                validator_provider=val_provider,
-                validator_rate_per_eur=val_rate,
-                divergence_pct=round(div_pct, 4),
-                data_date=active_date,
-                fetched_at=fetched_at,
-                fallback_used=fallback_used,
-            )
-        else:
-            alerts.append(
-                LockAlert(
-                    severity="warning",
-                    code="fx_validator_unavailable",
-                    scope=currency,
-                    detail=(
-                        f"No cross-validator quote available for {currency}; "
-                        f"accepted {active_provider!r} ({active_rate}) within sanity band."
-                    ),
-                )
-            )
-            resolved[currency] = FxRateLockEntry(
-                currency=currency,
-                rate_per_eur=active_rate,
-                provider=active_provider,
-                validator_provider=None,
-                validator_rate_per_eur=None,
-                divergence_pct=None,
-                data_date=active_date,
-                fetched_at=fetched_at,
-                fallback_used=fallback_used,
             )
 
     sorted_rates = {code: resolved[code] for code in sorted(resolved)}

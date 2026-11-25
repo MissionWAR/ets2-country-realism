@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 4 complete & verified (`04-VERIFICATION.md` `PASSED`, `19/19` must-haves) — ready for optional Phase 4 code review/merge into `master` or planning Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
+**Current focus:** Phase 4 complete, verified & code-reviewed (`04-VERIFICATION.md` `PASSED` `19/19`, `04-REVIEW.md` `resolved` `19/19`) — merged into `master` (`phase-04`), ready to start Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Complete & Verified
+Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Complete, Verified & Reviewed
 Plan: 4 of 4 in current phase (4/4 complete across 3 waves)
-Status: Phase 4 executed & verified (`04-01`..`04-04` complete on `gsd/phase-04-promods-companion-builder-local-map-combo-composer`, `04-VERIFICATION.md` `PASSED`, `19/19` must-haves, `5/5` requirements `MAP-01`..`MAP-05`, **482 offline tests + 2 `@pytest.mark.local_promods` tests passing**, 0 ruff/basedpyright errors)
-Last activity: 2026-11-25 — Executed and verified Phase 4 (`04-01`..`04-04`, `04-VERIFICATION.md` `PASSED`)
+Status: Phase 4 merged into `master` and tagged `phase-04` (`04-01`..`04-04` complete, `04-VERIFICATION.md` `PASSED` `19/19` must-haves, `5/5` requirements `MAP-01`..`MAP-05`, `04-REVIEW.md` `resolved` `19/19` findings, **505 tests passing**, 0 ruff/basedpyright errors)
+Last activity: 2026-11-25 — Resolved all 19 Phase 4 review findings and merged Phase 4 into `master` (`phase-04`)
 
 Progress: [████████░░] 80%
 
@@ -69,6 +69,6 @@ None blocking Phase 4 closeout or Phase 5 planning.
 ## Session Continuity
 
 Last session: 2026-11-25
-Stopped at: Phase 4 executed & verified (`04-01`..`04-04`, `04-VERIFICATION.md` `PASSED`, `19/19` must-haves on `gsd/phase-04-promods-companion-builder-local-map-combo-composer`)
-Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-VERIFICATION.md
-Next action: Run `/gsd-code-review 4` (optional deep review before merging `gsd/phase-04-promods-companion-builder-local-map-combo-composer` into `master` & tagging `phase-04`), or proceed to `/gsd-discuss-phase 5`
+Stopped at: Phase 4 executed, verified, code-reviewed, merged into `master`, and tagged `phase-04`
+Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-REVIEW.md
+Next action: Run `/gsd-discuss-phase 5` to start Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)

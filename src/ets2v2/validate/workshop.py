@@ -958,6 +958,7 @@ def _validate_package_contents(
     )
 
     country_models: dict[str, CountryDataModel] = {}
+    seen_country_slugs: dict[str, str] = {}
     speed_models: dict[str, SpeedLimitsFile] = {}
     sign_boards: dict[str, SignBoardTemplate] = {}
     fuel_locales: dict[str, list[LocalizationEntry]] = {}
@@ -1077,6 +1078,15 @@ def _validate_package_contents(
             country_match = sui_match if sui_match is not None else country_sii_match
             if country_match is not None:
                 slug = country_match.group(1)
+                if slug in seen_country_slugs:
+                    collector.error(
+                        "00003",
+                        display_path,
+                        f"Duplicate country definition for slug {slug!r} "
+                        f"(already defined by {seen_country_slugs[slug]!r})",
+                    )
+                    continue
+                seen_country_slugs[slug] = vfs_path
                 try:
                     country_model = parse_country_data(raw)
                 except (SiiEncodingError, ValueError, ValidationError) as exc:
@@ -1171,6 +1181,13 @@ def _validate_package_contents(
                     "are allowed",
                 )
                 continue
+
+            collector.error(
+                "00003",
+                display_path,
+                f"Unexpected SII/SUI file {vfs_path!r} outside permitted realism allowlist",
+            )
+            continue
 
     # Check expected 36 Vanilla country files exist in core and promods profiles (SCS 00002)
     if profile in {"core", "promods"}:

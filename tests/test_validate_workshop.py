@@ -1254,3 +1254,53 @@ def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
     assert "ETS2V2-INV-ZERO-DDS" in codes
     assert "ETS2V2-INV-COUNTRY-COUNT" in codes
     assert "ETS2V2-INV-TZ-TOKEN" in codes
+
+    # MD-03: duplicate .sui + .sii for same slug rejected with 00003
+    dup_slug_zip = _write_combo_zip(
+        tmp_path / "combo_dup_slug.scs",
+        {
+            "def/country/thailand.sui": thailand_sii,
+            "def/country/thailand.sii": thailand_sii,
+        },
+    )
+    r_dup_slug = validate_local_zip(dup_slug_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_dup_slug.ok is False
+    assert any(i.code == "00003" and "Duplicate country" in i.detail for i in r_dup_slug.issues)
+
+    # MD-03: rogue .sii files outside realism allowlist rejected with 00003
+    rogue_zip = _write_combo_zip(
+        tmp_path / "combo_rogue.scs",
+        {
+            "def/country/thailand.sii": thailand_sii,
+            "def/economy_data.sii": b"SiiNunit\n{\neconomy_data : economy.data.storage\n{\n}\n}\n",
+            "def/country/germany/traffic.sii": b"SiiNunit\n{\ncountry_traffic_info : .t\n{\n}\n}\n",
+        },
+    )
+    r_rogue = validate_local_zip(rogue_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_rogue.ok is False
+    rogue_paths = {i.path for i in r_rogue.issues if i.code == "00003"}
+    assert "def/economy_data.sii" in rogue_paths
+    assert "def/country/germany/traffic.sii" in rogue_paths
+
+    # MD-03: dangling sign-board token when fuel_locales is absent fails combo validation
+    dangling_board_zip = _write_combo_zip(
+        tmp_path / "combo_dangling_board.scs",
+        {
+            "def/country/thailand.sii": thailand_sii,
+            "def/sign/board/custom_board.sii": (
+                b"SiiNunit\n{\n"
+                b"sign_board_template : _nameless.100.a\n{\n"
+                b'\tboard_name: "custom_board"\n'
+                b"\twidth: 1.5\n\theight: 0.6\n"
+                b'\tmodel_name: ""\n\titems: 1\n\titems[0]: _nameless.200.slot0\n'
+                b"}\n"
+                b"sign_template_text : _nameless.200.slot0\n{\n"
+                b'\tfont_face: "/font/sign/dot_matrix.font"\n'
+                b'\ttext: "@@fp_xx_missing_ets2v2@@"\n'
+                b"}\n}\n"
+            ),
+        },
+    )
+    r_dangling = validate_local_zip(dangling_board_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_dangling.ok is False
+    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_dangling)

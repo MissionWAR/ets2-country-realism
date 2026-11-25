@@ -1127,6 +1127,7 @@ def validate_combo_invariants(
         )
 
     canonical_tokens: frozenset[str] = frozenset()
+    canonical_token_values: dict[str, str] = {}
     if fuel_locales:
         canonical_tokens = validate_fuel_locale_modules_consistency(
             fuel_locales,
@@ -1134,6 +1135,11 @@ def validate_combo_invariants(
             expected_locales=expected_locales,
             path_prefix=path_prefix,
         )
+        for lang in sorted(fuel_locales):
+            entries = fuel_locales[lang]
+            if entries:
+                canonical_token_values = {entry.key: entry.val for entry in entries}
+                break
 
     if promods_locales:
         validate_promods_locale_modules_consistency(
@@ -1149,13 +1155,26 @@ def validate_combo_invariants(
             board_path = f"{rel_prefix}def/sign/board/{board_name}.sii"
             if len(board.text_slots) != 1:
                 continue
-            token = board.text_slots[0].localization_key
-            if token is not None and canonical_tokens and token not in canonical_tokens:
+            slot = board.text_slots[0]
+            token = slot.localization_key
+            if token is None:
+                continue
+            if token not in canonical_tokens:
                 collector.error(
                     "ETS2V2-INV-TOTEM-BOARDS",
                     board_path,
                     f"Dangling totem token {token!r} on {board_name!r} missing from "
                     "local_module.ets2v2_fuel.sii",
                 )
+            elif slot.font_face is not None and token in canonical_token_values:
+                font_name = slot.font_face.rsplit("/", 1)[-1]
+                token_val = canonical_token_values[token]
+                if font_name in _NON_SUP_GAS_FONTS and "<sup>" in token_val:
+                    collector.error(
+                        "ETS2V2-INV-TOTEM-BOARDS",
+                        board_path,
+                        f"Board {board_name!r} uses non-<sup> font {font_name!r} but references "
+                        f"token {token!r} whose value {token_val!r} contains <sup> markup",
+                    )
 
     _ = speed_models

@@ -637,3 +637,54 @@ def test_promods_realism_and_combo_invariants_direct(
         combo_collector,
     )
     assert combo_collector.items == []
+
+
+def test_md03_combo_invariants_reject_dangling_board_tokens_without_locales_and_7seg_sup(
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    """MD-03 regression: dangling board token without fuel_locales & 7-seg <sup> font check."""
+    from ets2v2.sii.sign_board import parse_sign_board
+
+    _, _, bl_locales = baselines
+    dangling_board = parse_sign_board(
+        b"SiiNunit\n{\n"
+        b"sign_board_template : _nameless.100.a\n{\n"
+        b'\tboard_name: "custom_board"\n'
+        b"\twidth: 1.5\n\theight: 0.6\n"
+        b'\tmodel_name: ""\n\titems: 1\n\titems[0]: _nameless.200.slot0\n'
+        b"}\n"
+        b"sign_template_text : _nameless.200.slot0\n{\n"
+        b'\tfont_face: "/font/sign/gas_segment_7_standard.font"\n'
+        b'\ttext: "@@fp_xx_missing_ets2v2@@"\n'
+        b"}\n}\n"
+    )
+
+    # 1. Missing fuel_locales -> dangling token MUST fail
+    col_missing = ValidationCollector()
+    validate_combo_invariants(
+        {},
+        {},
+        bl_locales,
+        col_missing,
+        sign_boards={"custom_board": dangling_board},
+        fuel_locales={},
+    )
+    assert any(i.code == "ETS2V2-INV-TOTEM-BOARDS" for i in col_missing.items)
+
+    # 2. 7-segment non-sup font referencing a <sup> token -> MUST fail
+    sup_locales = {
+        lang: [LocalizationEntry(key="fp_xx_missing_ets2v2", val="1.59<sup>9</sup>")]
+        for lang in bl_locales.active_locales
+    }
+    col_sup = ValidationCollector()
+    validate_combo_invariants(
+        {},
+        {},
+        bl_locales,
+        col_sup,
+        sign_boards={"custom_board": dangling_board},
+        fuel_locales=sup_locales,
+    )
+    assert any(
+        i.code == "ETS2V2-INV-TOTEM-BOARDS" and "non-<sup>" in i.detail for i in col_sup.items
+    )

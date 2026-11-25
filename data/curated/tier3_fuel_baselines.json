@@ -1,0 +1,1310 @@
+{
+  "baselines": {
+    "AD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.49,
+      "petrol_95_eur_per_liter": 1.535,
+      "source_note": "Govern d'Andorra official retail fuel tariff reference.",
+      "verified_date": "2026-11-25"
+    },
+    "AE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.67,
+      "petrol_95_eur_per_liter": 0.69,
+      "source_note": "UAE Ministry of Energy and Infrastructure monthly fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "AF": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.82,
+      "petrol_95_eur_per_liter": 0.86,
+      "source_note": "Afghanistan national market retail diesel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "AG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.18,
+      "petrol_95_eur_per_liter": 1.24,
+      "source_note": "Antigua and Barbuda Ministry of Finance retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "AM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.38,
+      "petrol_95_eur_per_liter": 1.421,
+      "source_note": "Armenia national statistical retail diesel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "AO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.202,
+      "petrol_95_eur_per_liter": 0.305,
+      "source_note": "Angola IRDP regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "AR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.05,
+      "petrol_95_eur_per_liter": 1.02,
+      "source_note": "Argentina Secretaria de Energia pump price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "AU": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.14,
+      "source_note": "Australian Institute of Petroleum national weekly retail average.",
+      "verified_date": "2026-11-25"
+    },
+    "AW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.24,
+      "source_note": "Aruba Department of Economic Affairs monthly fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "AX": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.88,
+      "petrol_95_eur_per_liter": 1.936,
+      "source_note": "Åland / Nordic retail diesel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "AZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.59,
+      "petrol_95_eur_per_liter": 0.608,
+      "source_note": "Tariff Council of Azerbaijan regulated retail diesel price.",
+      "verified_date": "2026-11-25"
+    },
+    "BB": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.78,
+      "petrol_95_eur_per_liter": 1.92,
+      "source_note": "Barbados Ministry of Energy regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.82,
+      "petrol_95_eur_per_liter": 0.96,
+      "source_note": "Bangladesh Energy Regulatory Commission monthly fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "BF": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.03,
+      "petrol_95_eur_per_liter": 1.295,
+      "source_note": "Burkina Faso Ministry of Trade regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "BH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.44,
+      "petrol_95_eur_per_liter": 0.49,
+      "source_note": "Bahrain National Oil and Gas Authority retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.32,
+      "source_note": "Burundi Ministry of Hydraulics and Energy retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "BJ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.07,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Benin Ministry of Economy regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.92,
+      "petrol_95_eur_per_liter": 2.08,
+      "source_note": "Bermuda Ministry of Finance maximum retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.215,
+      "petrol_95_eur_per_liter": 0.368,
+      "source_note": "Brunei Darussalam regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "BO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.5,
+      "petrol_95_eur_per_liter": 0.5,
+      "source_note": "Bolivia ANH regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "BR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.99,
+      "petrol_95_eur_per_liter": 1.01,
+      "source_note": "Brazil ANP weekly national retail price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "BS": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.38,
+      "petrol_95_eur_per_liter": 1.42,
+      "source_note": "Bahamas Price Control Commission retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BT": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.79,
+      "petrol_95_eur_per_liter": 0.77,
+      "source_note": "Bhutan Department of Trade regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.98,
+      "petrol_95_eur_per_liter": 1.01,
+      "source_note": "Botswana BERA monthly regulated retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "BY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.76,
+      "petrol_95_eur_per_liter": 0.783,
+      "source_note": "Belneftekhim regulated domestic retail diesel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "BZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.42,
+      "petrol_95_eur_per_liter": 1.54,
+      "source_note": "Belize Ministry of Finance regulated pump price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "CA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.08,
+      "source_note": "Natural Resources Canada national average retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "CD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.16,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "DR Congo Ministry of National Economy retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CF": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.75,
+      "petrol_95_eur_per_liter": 1.98,
+      "source_note": "Central African Republic Ministry of Energy retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.76,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Republic of the Congo Ministry of Hydrocarbons retail tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.09,
+      "petrol_95_eur_per_liter": 1.335,
+      "source_note": "Cote d'Ivoire Ministry of Mines and Energy monthly fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CL": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.98,
+      "petrol_95_eur_per_liter": 1.22,
+      "source_note": "Chile CNE national retail fuel price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "CM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.26,
+      "petrol_95_eur_per_liter": 1.28,
+      "source_note": "Cameroon CSPH regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.02,
+      "petrol_95_eur_per_liter": 1.051,
+      "source_note": "China NDRC domestic retail refined-oil guidance ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "CO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.64,
+      "petrol_95_eur_per_liter": 0.92,
+      "source_note": "Colombia MinMinas / CREG national fuel tariff seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "CR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.14,
+      "petrol_95_eur_per_liter": 1.29,
+      "source_note": "Costa Rica ARESEP regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CU": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.02,
+      "petrol_95_eur_per_liter": 1.15,
+      "source_note": "Cuba Ministry of Finance and Prices retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "CV": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.22,
+      "petrol_95_eur_per_liter": 1.36,
+      "source_note": "Cabo Verde ARME monthly regulated retail fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "CW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Curacao RAC monthly regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "DJ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.38,
+      "petrol_95_eur_per_liter": 1.46,
+      "source_note": "Djibouti Ministry of Trade regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "DM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.32,
+      "source_note": "Dominica Ministry of Trade regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "DO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Dominican Republic MICM weekly regulated fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "DZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.201,
+      "petrol_95_eur_per_liter": 0.207,
+      "source_note": "Algeria ARH regulated domestic retail diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "EC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.44,
+      "petrol_95_eur_per_liter": 0.65,
+      "source_note": "Ecuador ARCH regulated retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "EG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.348,
+      "petrol_95_eur_per_liter": 0.358,
+      "source_note": "Egypt Automatic Fuel Pricing Committee regulated diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "EH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.2,
+      "source_note": "Western Sahara regional retail diesel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "ER": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.42,
+      "petrol_95_eur_per_liter": 1.54,
+      "source_note": "Eritrea Ministry of Energy and Mines retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "ET": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.78,
+      "petrol_95_eur_per_liter": 0.82,
+      "source_note": "Ethiopia Ministry of Trade regulated domestic fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "FJ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.08,
+      "petrol_95_eur_per_liter": 1.16,
+      "source_note": "Fiji FCCC monthly regulated retail motor fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "FK": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.52,
+      "petrol_95_eur_per_liter": 1.58,
+      "source_note": "Falkland Islands Government published retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "FM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.24,
+      "source_note": "Micronesia FSM Petroleum Corporation retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "FO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.95,
+      "petrol_95_eur_per_liter": 2.009,
+      "source_note": "Faroe Islands retail fuel distributor reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "GA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.89,
+      "petrol_95_eur_per_liter": 0.92,
+      "source_note": "Gabon Caistab regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "GD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.24,
+      "petrol_95_eur_per_liter": 1.3,
+      "source_note": "Grenada Ministry of Finance monthly retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "GE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.154,
+      "source_note": "Geostat national retail diesel price bulletin reference.",
+      "verified_date": "2026-11-25"
+    },
+    "GF": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.64,
+      "petrol_95_eur_per_liter": 1.78,
+      "source_note": "Prefecture de la Guyane monthly maximum retail fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "GG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.85,
+      "petrol_95_eur_per_liter": 1.906,
+      "source_note": "States of Guernsey retail motor fuel price reference.",
+      "verified_date": "2026-11-25"
+    },
+    "GH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 0.92,
+      "source_note": "Ghana NPA bi-weekly indicative retail fuel price floor.",
+      "verified_date": "2026-11-25"
+    },
+    "GI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.56,
+      "petrol_95_eur_per_liter": 1.607,
+      "source_note": "Gibraltar retail motor fuel price reference.",
+      "verified_date": "2026-11-25"
+    },
+    "GL": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.81,
+      "petrol_95_eur_per_liter": 0.834,
+      "source_note": "KNI / Polaroil Greenland regulated fuel tariff schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "GM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.08,
+      "source_note": "Gambia Ministry of Finance monthly retail fuel bulletin.",
+      "verified_date": "2026-11-25"
+    },
+    "GN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.29,
+      "petrol_95_eur_per_liter": 1.29,
+      "source_note": "Guinea Ministry of Commerce regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "GP": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.62,
+      "petrol_95_eur_per_liter": 1.76,
+      "source_note": "Prefecture de la Guadeloupe monthly maximum retail fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "GQ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.69,
+      "petrol_95_eur_per_liter": 0.78,
+      "source_note": "Equatorial Guinea Ministry of Mines regulated fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "GT": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.98,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Guatemala MEM weekly reference retail fuel bulletin.",
+      "verified_date": "2026-11-25"
+    },
+    "GW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.21,
+      "petrol_95_eur_per_liter": 1.26,
+      "source_note": "Guinea-Bissau Ministry of Economy regulated fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "GY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.96,
+      "petrol_95_eur_per_liter": 0.98,
+      "source_note": "Guyana Ministry of Finance retail motor fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "HK": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 2.56,
+      "petrol_95_eur_per_liter": 3.05,
+      "source_note": "Hong Kong Consumer Council weekly retail pump price monitor.",
+      "verified_date": "2026-11-25"
+    },
+    "HN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.96,
+      "petrol_95_eur_per_liter": 1.06,
+      "source_note": "Honduras SEN weekly regulated fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "HT": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.16,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Haiti MEF regulated domestic retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "ID": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.395,
+      "petrol_95_eur_per_liter": 0.581,
+      "source_note": "Indonesia ESDM / Pertamina regulated Biosolar & Pertalite tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "IL": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.92,
+      "petrol_95_eur_per_liter": 1.978,
+      "source_note": "Israel Ministry of Energy monthly motor fuel benchmark.",
+      "verified_date": "2026-11-25"
+    },
+    "IM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.85,
+      "petrol_95_eur_per_liter": 1.906,
+      "source_note": "Isle of Man retail motor fuel price reference.",
+      "verified_date": "2026-11-25"
+    },
+    "IN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.96,
+      "petrol_95_eur_per_liter": 1.05,
+      "source_note": "India PPAC metropolitan retail motor fuel price reference.",
+      "verified_date": "2026-11-25"
+    },
+    "IQ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.239,
+      "petrol_95_eur_per_liter": 0.246,
+      "source_note": "Iraq Ministry of Oil regulated domestic diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "IR": {
+      "clamped_to_floor": true,
+      "diesel_eur_per_liter": 0.01,
+      "petrol_95_eur_per_liter": 0.025,
+      "source_note": "Iran NIOPDC subsidized domestic diesel tariff; clamped to ETS2 0.010 EUR/L floor.",
+      "verified_date": "2026-11-25"
+    },
+    "JE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.85,
+      "petrol_95_eur_per_liter": 1.906,
+      "source_note": "States of Jersey retail motor fuel price reference.",
+      "verified_date": "2026-11-25"
+    },
+    "JM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.24,
+      "petrol_95_eur_per_liter": 1.26,
+      "source_note": "Petrojam Jamaica ex-refinery and retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "JO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.151,
+      "petrol_95_eur_per_liter": 1.186,
+      "source_note": "Jordan Energy and Minerals Regulatory Commission monthly fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "JP": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 1.06,
+      "source_note": "Japan METI / ANRE weekly national retail price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "KE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.19,
+      "petrol_95_eur_per_liter": 1.29,
+      "source_note": "Kenya EPRA monthly Nairobi retail pump price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "KG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.85,
+      "petrol_95_eur_per_liter": 0.876,
+      "source_note": "Kyrgyzstan National Statistical Committee retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "KH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.96,
+      "petrol_95_eur_per_liter": 1.02,
+      "source_note": "Cambodia Ministry of Commerce bi-weekly retail fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "KI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.22,
+      "petrol_95_eur_per_liter": 1.26,
+      "source_note": "Kiribati Oil Company published domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "KM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.32,
+      "petrol_95_eur_per_liter": 1.44,
+      "source_note": "Comoros SCH regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "KN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.18,
+      "petrol_95_eur_per_liter": 1.22,
+      "source_note": "Saint Kitts and Nevis Ministry of Trade retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "KP": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.1,
+      "petrol_95_eur_per_liter": 1.2,
+      "source_note": "DPRK curated regional retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "KR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.02,
+      "petrol_95_eur_per_liter": 1.12,
+      "source_note": "South Korea KNOC Opinet national retail price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "KW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.346,
+      "petrol_95_eur_per_liter": 0.316,
+      "source_note": "Kuwait KNPC regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "KY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.42,
+      "petrol_95_eur_per_liter": 1.46,
+      "source_note": "Cayman Islands OfReg weekly retail motor fuel monitor.",
+      "verified_date": "2026-11-25"
+    },
+    "KZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.65,
+      "petrol_95_eur_per_liter": 0.67,
+      "source_note": "Kazakhstan Ministry of Energy regulated retail diesel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "LA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.96,
+      "petrol_95_eur_per_liter": 1.1,
+      "source_note": "Laos Ministry of Industry and Commerce retail fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "LB": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.257,
+      "petrol_95_eur_per_liter": 1.295,
+      "source_note": "Lebanon Ministry of Energy and Water published fuel tariff table.",
+      "verified_date": "2026-11-25"
+    },
+    "LC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.25,
+      "petrol_95_eur_per_liter": 1.27,
+      "source_note": "Saint Lucia Ministry of Commerce tri-weekly fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "LI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.94,
+      "petrol_95_eur_per_liter": 1.998,
+      "source_note": "Liechtenstein / Swiss customs area retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "LK": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.92,
+      "petrol_95_eur_per_liter": 0.98,
+      "source_note": "Sri Lanka Ceylon Petroleum Corporation monthly retail tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "LR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 0.89,
+      "source_note": "Liberia Ministry of Commerce / LPRC monthly fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "LS": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.08,
+      "source_note": "Lesotho Petroleum Fund monthly regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "LY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.028,
+      "petrol_95_eur_per_liter": 0.029,
+      "source_note": "Libya National Oil Corporation regulated domestic diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.318,
+      "source_note": "Morocco Ministry of Energy Transition retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "MC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.85,
+      "petrol_95_eur_per_liter": 1.906,
+      "source_note": "Principality of Monaco retail motor fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "MD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.318,
+      "source_note": "ANRE Moldova daily maximum retail diesel ceiling reference.",
+      "verified_date": "2026-11-25"
+    },
+    "MG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.99,
+      "petrol_95_eur_per_liter": 1.19,
+      "source_note": "Madagascar OMH regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.26,
+      "petrol_95_eur_per_liter": 1.22,
+      "source_note": "Marshall Islands MEC retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "ML": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.18,
+      "petrol_95_eur_per_liter": 1.3,
+      "source_note": "Mali ONAP regulated domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.98,
+      "petrol_95_eur_per_liter": 1.02,
+      "source_note": "Myanmar Supervisory Committee on Oil Import retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "MN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.98,
+      "petrol_95_eur_per_liter": 1.009,
+      "source_note": "Mongolia Ministry of Mining and Heavy Industry retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "MO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.58,
+      "petrol_95_eur_per_liter": 1.62,
+      "source_note": "Macao Consumer Council retail motor fuel price monitor.",
+      "verified_date": "2026-11-25"
+    },
+    "MQ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.61,
+      "petrol_95_eur_per_liter": 1.75,
+      "source_note": "Prefecture de la Martinique monthly maximum retail fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "MR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.24,
+      "source_note": "Mauritania Ministry of Petroleum regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MU": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.32,
+      "source_note": "Mauritius State Trading Corporation regulated retail tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MV": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.89,
+      "petrol_95_eur_per_liter": 0.87,
+      "source_note": "Maldives State Trading Organization published retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "MW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.44,
+      "petrol_95_eur_per_liter": 1.35,
+      "source_note": "Malawi MERA regulated domestic retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "MX": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.18,
+      "petrol_95_eur_per_liter": 1.13,
+      "source_note": "Mexico CRE national retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "MY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.62,
+      "petrol_95_eur_per_liter": 0.432,
+      "source_note": "Malaysia MOF / OpenDOSM weekly retail price seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "MZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.26,
+      "petrol_95_eur_per_liter": 1.25,
+      "source_note": "Mozambique ARENE regulated Maputo retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "NA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.05,
+      "petrol_95_eur_per_liter": 1.08,
+      "source_note": "Namibia Ministry of Mines and Energy monthly Walvis Bay tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "NC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.44,
+      "petrol_95_eur_per_liter": 1.56,
+      "source_note": "Gouvernement de la Nouvelle-Caledonie monthly fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "NE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.02,
+      "petrol_95_eur_per_liter": 0.76,
+      "source_note": "Niger Ministry of Commerce regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "NG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.82,
+      "petrol_95_eur_per_liter": 0.58,
+      "source_note": "Nigeria NBS national AGO diesel & PMS petrol watch baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "NI": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.11,
+      "petrol_95_eur_per_liter": 1.24,
+      "source_note": "Nicaragua INE weekly regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "NP": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.02,
+      "petrol_95_eur_per_liter": 1.12,
+      "source_note": "Nepal Oil Corporation published Kathmandu Valley retail tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "NR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.36,
+      "petrol_95_eur_per_liter": 1.38,
+      "source_note": "Nauru Utilities Corporation retail fuel tariff baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "NZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.16,
+      "petrol_95_eur_per_liter": 1.48,
+      "source_note": "New Zealand MBIE weekly retail motor fuel monitoring report.",
+      "verified_date": "2026-11-25"
+    },
+    "OM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.62,
+      "petrol_95_eur_per_liter": 0.575,
+      "source_note": "Oman Ministry of Energy and Minerals monthly fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "PA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.81,
+      "petrol_95_eur_per_liter": 0.87,
+      "source_note": "Panama SNE bi-weekly maximum retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "PE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Peru OSINERGMIN national retail fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "PF": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.54,
+      "petrol_95_eur_per_liter": 1.54,
+      "source_note": "Gouvernement de la Polynesie francaise regulated fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "PG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.04,
+      "petrol_95_eur_per_liter": 1.08,
+      "source_note": "Papua New Guinea ICCC monthly Port Moresby fuel price cap.",
+      "verified_date": "2026-11-25"
+    },
+    "PH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.92,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Philippines DOE Metro Manila weekly retail fuel monitor.",
+      "verified_date": "2026-11-25"
+    },
+    "PK": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.86,
+      "petrol_95_eur_per_liter": 0.84,
+      "source_note": "Pakistan OGRA fortnightly regulated retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "PM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.54,
+      "petrol_95_eur_per_liter": 1.62,
+      "source_note": "Prefecture de Saint-Pierre-et-Miquelon regulated fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "PR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.94,
+      "petrol_95_eur_per_liter": 0.84,
+      "source_note": "Puerto Rico DACO weekly retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "PS": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.92,
+      "petrol_95_eur_per_liter": 1.978,
+      "source_note": "Palestinian General Petroleum Corporation monthly retail tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "PW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.24,
+      "petrol_95_eur_per_liter": 1.2,
+      "source_note": "Palau national retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "PY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.89,
+      "petrol_95_eur_per_liter": 0.92,
+      "source_note": "Petropar Paraguay national retail fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "QA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.52,
+      "petrol_95_eur_per_liter": 0.535,
+      "source_note": "QatarEnergy monthly regulated domestic retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "RE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.38,
+      "petrol_95_eur_per_liter": 1.68,
+      "source_note": "Prefecture de La Reunion monthly maximum retail fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "RW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.14,
+      "source_note": "Rwanda RURA bi-monthly Kigali retail fuel price ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "SA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.433,
+      "petrol_95_eur_per_liter": 0.446,
+      "source_note": "Saudi Aramco domestic retail diesel tariff schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "SB": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.24,
+      "petrol_95_eur_per_liter": 1.28,
+      "source_note": "Solomon Islands Ministry of Commerce monthly fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "SC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.42,
+      "petrol_95_eur_per_liter": 1.46,
+      "source_note": "Seychelles SEYPEC published domestic retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "SD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.86,
+      "petrol_95_eur_per_liter": 0.89,
+      "source_note": "Sudan Ministry of Energy and Petroleum retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "SG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.76,
+      "petrol_95_eur_per_liter": 1.94,
+      "source_note": "Singapore Department of Statistics retail motor fuel average.",
+      "verified_date": "2026-11-25"
+    },
+    "SJ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.65,
+      "petrol_95_eur_per_liter": 1.7,
+      "source_note": "Svalbard local motor fuel distributor reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "SL": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.18,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Sierra Leone PRA monthly regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "SM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.78,
+      "petrol_95_eur_per_liter": 1.833,
+      "source_note": "San Marino retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "SN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.15,
+      "petrol_95_eur_per_liter": 1.51,
+      "source_note": "Senegal Ministry of Petroleum regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "SO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.16,
+      "source_note": "Somalia national market retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "SR": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.12,
+      "source_note": "Suriname Ministry of Economic Affairs retail fuel schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "SS": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.32,
+      "source_note": "South Sudan Ministry of Petroleum retail fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "ST": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.34,
+      "petrol_95_eur_per_liter": 1.42,
+      "source_note": "Sao Tome and Principe AGER regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "SV": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.88,
+      "petrol_95_eur_per_liter": 0.95,
+      "source_note": "El Salvador DGEHM bi-weekly reference retail fuel prices.",
+      "verified_date": "2026-11-25"
+    },
+    "SX": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Sint Maarten Ministry of TEATT regulated retail fuel ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "SY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.094,
+      "petrol_95_eur_per_liter": 1.127,
+      "source_note": "Syria domestic retail diesel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "SZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.08,
+      "petrol_95_eur_per_liter": 1.06,
+      "source_note": "Eswatini Ministry of Natural Resources monthly fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.38,
+      "petrol_95_eur_per_liter": 1.42,
+      "source_note": "Turks and Caicos Islands retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "TD": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 0.79,
+      "source_note": "Chad Ministry of Hydrocarbons regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Togo Ministry of Commerce regulated retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TH": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.88,
+      "petrol_95_eur_per_liter": 1.04,
+      "source_note": "Thailand EPPO Bangkok reference retail motor fuel prices.",
+      "verified_date": "2026-11-25"
+    },
+    "TJ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.1,
+      "petrol_95_eur_per_liter": 1.133,
+      "source_note": "Tajikistan Agency on Statistics retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "TL": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.12,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Timor-Leste ANPM retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "TM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.259,
+      "petrol_95_eur_per_liter": 0.267,
+      "source_note": "Turkmenistan state regulated retail diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.661,
+      "petrol_95_eur_per_liter": 0.681,
+      "source_note": "Tunisia Ministry of Industry, Mines and Energy regulated diesel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TO": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.32,
+      "source_note": "Tonga Competent Authority monthly retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "TT": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.6,
+      "petrol_95_eur_per_liter": 0.94,
+      "source_note": "Trinidad and Tobago Ministry of Energy regulated fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TV": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.34,
+      "petrol_95_eur_per_liter": 1.38,
+      "source_note": "Tuvalu Department of Energy retail fuel tariff baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "TW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.82,
+      "petrol_95_eur_per_liter": 0.87,
+      "source_note": "Taiwan CPC Corporation weekly published retail motor fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "TZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.06,
+      "petrol_95_eur_per_liter": 1.11,
+      "source_note": "Tanzania EWURA monthly Dar es Salaam retail fuel cap.",
+      "verified_date": "2026-11-25"
+    },
+    "UA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.32,
+      "petrol_95_eur_per_liter": 1.36,
+      "source_note": "Ukraine State Statistics Service retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "UG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.36,
+      "source_note": "Uganda Ministry of Energy monthly retail fuel bulletin.",
+      "verified_date": "2026-11-25"
+    },
+    "US": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.92,
+      "petrol_95_eur_per_liter": 0.8,
+      "source_note": "U.S. EIA weekly national retail average seed baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "UY": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.14,
+      "petrol_95_eur_per_liter": 1.66,
+      "source_note": "Uruguay URSEA / MIEM monthly maximum retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "UZ": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.05,
+      "petrol_95_eur_per_liter": 1.082,
+      "source_note": "Uzbekistan Statistics Agency retail diesel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "VA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.72,
+      "petrol_95_eur_per_liter": 1.82,
+      "source_note": "Vatican City State tax-exempt retail fuel station tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "VC": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.22,
+      "petrol_95_eur_per_liter": 1.26,
+      "source_note": "Saint Vincent and the Grenadines Ministry of Finance fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "VE": {
+      "clamped_to_floor": true,
+      "diesel_eur_per_liter": 0.01,
+      "petrol_95_eur_per_liter": 0.035,
+      "source_note": "Venezuela PDVSA subsidized domestic retail tariff; clamped to ETS2 0.010 EUR/L floor.",
+      "verified_date": "2026-11-25"
+    },
+    "VG": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.28,
+      "petrol_95_eur_per_liter": 1.26,
+      "source_note": "British Virgin Islands retail motor fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "VN": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.76,
+      "petrol_95_eur_per_liter": 0.84,
+      "source_note": "Vietnam MOIT / MOF weekly retail petroleum price ceiling.",
+      "verified_date": "2026-11-25"
+    },
+    "VU": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.36,
+      "petrol_95_eur_per_liter": 1.4,
+      "source_note": "Vanuatu Department of Energy retail fuel reference baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "WS": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.14,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Samoa Ministry of Finance monthly retail fuel price schedule.",
+      "verified_date": "2026-11-25"
+    },
+    "YE": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 0.95,
+      "petrol_95_eur_per_liter": 1.02,
+      "source_note": "Yemen Oil Company domestic retail motor fuel reference.",
+      "verified_date": "2026-11-25"
+    },
+    "YT": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.52,
+      "petrol_95_eur_per_liter": 1.74,
+      "source_note": "Prefecture de Mayotte monthly maximum retail fuel decree.",
+      "verified_date": "2026-11-25"
+    },
+    "ZA": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.04,
+      "petrol_95_eur_per_liter": 1.14,
+      "source_note": "South Africa DMRE / CEF Gauteng monthly retail fuel baseline.",
+      "verified_date": "2026-11-25"
+    },
+    "ZM": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.14,
+      "petrol_95_eur_per_liter": 1.18,
+      "source_note": "Zambia ERB monthly regulated Lusaka retail fuel tariff.",
+      "verified_date": "2026-11-25"
+    },
+    "ZW": {
+      "clamped_to_floor": false,
+      "diesel_eur_per_liter": 1.42,
+      "petrol_95_eur_per_liter": 1.44,
+      "source_note": "Zimbabwe ZERA monthly maximum retail motor fuel tariff.",
+      "verified_date": "2026-11-25"
+    }
+  },
+  "license": "CC BY 4.0",
+  "provenance": "Clean-room curated retail diesel and petrol_95 EUR/L reference baselines from public national ministry schedules and central-bank statistical bulletins.",
+  "schema_version": 1,
+  "verified_date": "2026-11-25"
+}

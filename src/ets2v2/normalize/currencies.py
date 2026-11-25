@@ -1,8 +1,170 @@
-"""39-territory European + 37 ProMods (76 total) currency registry, FX tiers, and sanity bands."""
+"""Data-driven 225-territory global currency registry, FX tiers, sanity bands, and Tier 3 seeds."""
 
 from __future__ import annotations
 
-from typing import Final
+import functools
+import re
+from datetime import date
+from pathlib import Path
+from typing import Final, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+_REPO_DATA_DIR: Final[Path] = Path(__file__).resolve().parents[3] / "data"
+DEFAULT_CURRENCIES_JSON_PATH: Final[Path] = _REPO_DATA_DIR / "mappings" / "currencies.json"
+DEFAULT_TIER3_BASELINES_JSON_PATH: Final[Path] = (
+    _REPO_DATA_DIR / "curated" / "tier3_fuel_baselines.json"
+)
+TIER3_CURATED_BASELINE_SOURCE: Final[str] = "tier3_curated_baseline"
+TIER3_CURATED_BASELINE_LICENSE: Final[str] = "CC BY 4.0"
+
+_ISO2_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{2}$")
+_ISO4217_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{3}$")
+
+
+class CurrencyMetadataEntry(BaseModel):
+    """Canonical clean-room ISO-4217 currency entry in ``data/mappings/currencies.json``."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    tier: Literal["pinned", "core", "extended"]
+    ecb_covered: bool
+    major_ecb: bool
+    fixed_peg_per_eur: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
+    reference_rate_per_eur: float = Field(gt=0.0, allow_inf_nan=False)
+    sanity_min: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
+    sanity_max: float | None = Field(default=None, gt=0.0, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def _validate_sanity_band(self) -> CurrencyMetadataEntry:
+        if self.tier == "pinned":
+            if self.sanity_min is not None or self.sanity_max is not None:
+                raise ValueError("Pinned currency must not specify sanity_min/sanity_max")
+            return self
+        if self.sanity_min is None or self.sanity_max is None:
+            raise ValueError("Non-pinned currency requires both sanity_min and sanity_max")
+        if self.sanity_min >= self.sanity_max:
+            raise ValueError("sanity_min must be strictly less than sanity_max")
+        if not (self.sanity_min <= self.reference_rate_per_eur <= self.sanity_max):
+            raise ValueError("reference_rate_per_eur must fall inside [sanity_min, sanity_max]")
+        return self
+
+
+class CurrencyRegistry(BaseModel):
+    """Top-level ``data/mappings/currencies.json`` schema (D-10)."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    verified_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    provenance: str = Field(min_length=1)
+    currencies: dict[str, CurrencyMetadataEntry]
+    territory_currencies: dict[str, str]
+
+    @field_validator("verified_date")
+    @classmethod
+    def _validate_verified_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def _validate_cross_references(self) -> CurrencyRegistry:
+        for code in self.currencies:
+            if _ISO4217_RE.fullmatch(code) is None:
+                raise ValueError(f"Invalid ISO-4217 currency code {code!r}")
+        eur_meta = self.currencies.get("EUR")
+        if eur_meta is None or eur_meta.tier != "pinned" or eur_meta.reference_rate_per_eur != 1.0:
+            raise ValueError("currencies.json must pin EUR with tier='pinned' and rate=1.0")
+        for iso2, code in self.territory_currencies.items():
+            if _ISO2_RE.fullmatch(iso2) is None:
+                raise ValueError(f"Invalid ISO-2 territory code {iso2!r}")
+            if code not in self.currencies:
+                raise ValueError(
+                    f"Territory {iso2!r} references unknown ISO-4217 currency {code!r}"
+                )
+        return self
+
+
+class Tier3FuelBaselineEntry(BaseModel):
+    """Curated EUR/L retail fuel baseline entry in ``data/curated/tier3_fuel_baselines.json``."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    diesel_eur_per_liter: float = Field(ge=0.01, le=5.00, allow_inf_nan=False)
+    petrol_95_eur_per_liter: float = Field(ge=0.01, le=5.00, allow_inf_nan=False)
+    clamped_to_floor: bool = False
+    verified_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    source_note: str = Field(min_length=1)
+
+    @field_validator("verified_date")
+    @classmethod
+    def _validate_verified_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def _validate_floor_clamp(self) -> Tier3FuelBaselineEntry:
+        if self.clamped_to_floor and self.diesel_eur_per_liter != 0.01:
+            raise ValueError(
+                "clamped_to_floor=True entries must clamp diesel_eur_per_liter to exactly 0.01"
+            )
+        return self
+
+
+class Tier3FuelBaselineRegistry(BaseModel):
+    """Top-level ``data/curated/tier3_fuel_baselines.json`` schema (D-10, D-11)."""
+
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    verified_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    license: str = Field(min_length=1)
+    provenance: str = Field(min_length=1)
+    baselines: dict[str, Tier3FuelBaselineEntry]
+
+    @field_validator("verified_date")
+    @classmethod
+    def _validate_verified_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def _validate_iso2_keys(self) -> Tier3FuelBaselineRegistry:
+        for iso2 in self.baselines:
+            if _ISO2_RE.fullmatch(iso2) is None:
+                raise ValueError(f"Invalid ISO-2 key in tier3_fuel_baselines.json: {iso2!r}")
+        return self
+
+
+def _read_clean_json_text(path: Path, *, label: str) -> str:
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing {label} registry file: {path}")
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise ValueError(f"{label} must be UTF-8 without BOM: {path}")
+    if b"\r" in raw:
+        raise ValueError(f"{label} must use LF line endings only: {path}")
+    return raw.decode("utf-8")
+
+
+@functools.lru_cache(maxsize=8)
+def load_currency_registry(path: Path = DEFAULT_CURRENCIES_JSON_PATH) -> CurrencyRegistry:
+    """Strictly load and validate ``data/mappings/currencies.json`` (cached, 100% offline)."""
+    text = _read_clean_json_text(path, label="currencies.json")
+    return CurrencyRegistry.model_validate_json(text)
+
+
+@functools.lru_cache(maxsize=8)
+def load_tier3_fuel_baselines(
+    path: Path = DEFAULT_TIER3_BASELINES_JSON_PATH,
+) -> Tier3FuelBaselineRegistry:
+    """Strictly load and validate ``data/curated/tier3_fuel_baselines.json`` (cached, offline)."""
+    text = _read_clean_json_text(path, label="tier3_fuel_baselines.json")
+    return Tier3FuelBaselineRegistry.model_validate_json(text)
+
+
+_DEFAULT_CURRENCY_REG: Final[CurrencyRegistry] = load_currency_registry()
+_DEFAULT_TIER3_REG: Final[Tier3FuelBaselineRegistry] = load_tier3_fuel_baselines()
 
 # All 36 Vanilla+DLC ETS2 1.62 country slugs -> ISO-2 codes (Layer 5 isolated from registry).
 VANILLA_SLUG_TO_ISO2: Final[dict[str, str]] = {
@@ -90,111 +252,45 @@ PROMODS_EXTENDED_ISO2S: Final[frozenset[str]] = frozenset(
         "UZ",
     }
 )
-ALL_LOCKFILE_TERRITORY_ISO2S: Final[frozenset[str]] = (
-    EUROPEAN_TERRITORY_ISO2S | PROMODS_EXTENDED_ISO2S
+
+# All 225 canonical global territories backed by data/mappings/currencies.json (D-09, D-10).
+ALL_LOCKFILE_TERRITORY_ISO2S: Final[frozenset[str]] = frozenset(
+    _DEFAULT_CURRENCY_REG.territory_currencies.keys()
 )
 
-# Canonical 39-territory ISO-2 -> ISO-4217 mapping (36 Vanilla+DLC + IE, CY, MT per D-04).
-# Bulgaria (BG) adopted EUR on 2026-01-01; Montenegro (ME) and Kosovo (XK) use EUR unilaterally.
+# Canonical 39-territory European ISO-2 -> ISO-4217 mapping (36 Vanilla+DLC + IE, CY, MT per D-04).
 TERRITORY_CURRENCIES: Final[dict[str, str]] = {
-    "AL": "ALL",
-    "AT": "EUR",
-    "BA": "BAM",
-    "BE": "EUR",
-    "BG": "EUR",
-    "CH": "CHF",
-    "CY": "EUR",
-    "CZ": "CZK",
-    "DE": "EUR",
-    "DK": "DKK",
-    "EE": "EUR",
-    "ES": "EUR",
-    "FI": "EUR",
-    "FR": "EUR",
-    "GB": "GBP",
-    "GR": "EUR",
-    "HR": "EUR",
-    "HU": "HUF",
-    "IE": "EUR",
-    "IS": "ISK",
-    "IT": "EUR",
-    "LT": "EUR",
-    "LU": "EUR",
-    "LV": "EUR",
-    "ME": "EUR",
-    "MK": "MKD",
-    "MT": "EUR",
-    "NL": "EUR",
-    "NO": "NOK",
-    "PL": "PLN",
-    "PT": "EUR",
-    "RO": "RON",
-    "RS": "RSD",
-    "RU": "RUB",
-    "SE": "SEK",
-    "SI": "EUR",
-    "SK": "EUR",
-    "TR": "TRY",
-    "XK": "EUR",
-}
-
-_PROMODS_EXTENDED_TERRITORY_CURRENCIES: Final[dict[str, str]] = {
-    "AD": "EUR",
-    "AM": "AMD",
-    "AX": "EUR",
-    "AZ": "AZN",
-    "BY": "BYN",
-    "CN": "CNY",
-    "DZ": "DZD",
-    "EG": "EGP",
-    "FO": "DKK",
-    "GE": "GEL",
-    "GG": "GBP",
-    "GI": "GBP",
-    "GL": "DKK",
-    "IL": "ILS",
-    "IM": "GBP",
-    "IQ": "IQD",
-    "JE": "GBP",
-    "JO": "JOD",
-    "KG": "KGS",
-    "KZ": "KZT",
-    "LB": "LBP",
-    "LI": "CHF",
-    "LY": "LYD",
-    "MA": "MAD",
-    "MC": "EUR",
-    "MD": "MDL",
-    "MN": "MNT",
-    "PS": "ILS",
-    "SA": "SAR",
-    "SJ": "NOK",
-    "SM": "EUR",
-    "SY": "SYP",
-    "TJ": "TJS",
-    "TM": "TMT",
-    "TN": "TND",
-    "UA": "UAH",
-    "UZ": "UZS",
+    iso2: _DEFAULT_CURRENCY_REG.territory_currencies[iso2]
+    for iso2 in sorted(EUROPEAN_TERRITORY_ISO2S)
 }
 
 ALL_TERRITORY_CURRENCIES: Final[dict[str, str]] = dict(
-    sorted({**TERRITORY_CURRENCIES, **_PROMODS_EXTENDED_TERRITORY_CURRENCIES}.items())
+    sorted(_DEFAULT_CURRENCY_REG.territory_currencies.items())
 )
 
-# D-07 tiered FX divergence classes for the 16 required Core European non-EUR currencies:
-# - Major / ECB pairs: warn at >2% divergence, reject at >10%
-# - Volatile / non-ECB pairs: warn at >5% divergence, reject at >10%
+# D-07 tiered FX divergence classes for the 16 required Core European non-EUR currencies.
 MAJOR_ECB_CURRENCIES: Final[frozenset[str]] = frozenset(
-    {"GBP", "CHF", "CZK", "DKK", "HUF", "ISK", "NOK", "PLN", "RON", "SEK"}
+    code
+    for code, meta in _DEFAULT_CURRENCY_REG.currencies.items()
+    if meta.tier == "core" and meta.major_ecb
 )
 VOLATILE_NON_ECB_CURRENCIES: Final[frozenset[str]] = frozenset(
-    {"TRY", "RUB", "ALL", "BAM", "MKD", "RSD"}
+    code
+    for code, meta in _DEFAULT_CURRENCY_REG.currencies.items()
+    if meta.tier == "core" and not meta.major_ecb
 )
-ECB_COVERED_CURRENCIES: Final[frozenset[str]] = MAJOR_ECB_CURRENCIES | frozenset({"TRY"})
+ECB_COVERED_CURRENCIES: Final[frozenset[str]] = frozenset(
+    code
+    for code, meta in _DEFAULT_CURRENCY_REG.currencies.items()
+    if meta.tier == "core" and meta.ecb_covered
+)
 
-# 24 extended ProMods EU+ME+MA+TGS currencies (isolated from required Core European CI gate).
-EXTENDED_ECB_CURRENCIES: Final[frozenset[str]] = frozenset({"CNY", "ILS"})
+# 18 ECB-covered extended global currencies (AUD..ZAR) + ProMods 24 + full global extended set.
+EXTENDED_ECB_CURRENCIES: Final[frozenset[str]] = frozenset(
+    code
+    for code, meta in _DEFAULT_CURRENCY_REG.currencies.items()
+    if meta.tier == "extended" and meta.ecb_covered
+)
 EXTENDED_PROMODS_CURRENCIES: Final[frozenset[str]] = frozenset(
     {
         "AMD",
@@ -223,56 +319,38 @@ EXTENDED_PROMODS_CURRENCIES: Final[frozenset[str]] = frozenset(
         "UZS",
     }
 )
+EXTENDED_GLOBAL_CURRENCIES: Final[frozenset[str]] = frozenset(
+    code for code, meta in _DEFAULT_CURRENCY_REG.currencies.items() if meta.tier == "extended"
+)
+
+
+def _extract_bam_peg(registry: CurrencyRegistry) -> float:
+    peg = registry.currencies["BAM"].fixed_peg_per_eur
+    if peg is None:
+        raise ValueError("BAM entry in currencies.json must define fixed_peg_per_eur")
+    return peg
+
+
+def _extract_sanity_band(meta: CurrencyMetadataEntry) -> tuple[float, float]:
+    if meta.sanity_min is None or meta.sanity_max is None:
+        raise ValueError("Non-pinned currency entry is missing sanity bounds")
+    return (meta.sanity_min, meta.sanity_max)
+
 
 # Central Bank of Bosnia and Herzegovina (CBBH) legal currency-board peg: 1 EUR = 1.95583 BAM.
-BAM_FIXED_PEG_PER_EUR: Final[float] = 1.95583
+BAM_FIXED_PEG_PER_EUR: Final[float] = _extract_bam_peg(_DEFAULT_CURRENCY_REG)
 
 # Sanity magnitude envelopes (1 EUR = X <CURRENCY>) guarding against inverted X/EUR or 100x bugs.
 CURRENCY_SANITY_BANDS: Final[dict[str, tuple[float, float]]] = {
-    "ALL": (70.0, 160.0),
-    "BAM": (1.90, 2.01),
-    "CHF": (0.70, 1.40),
-    "CZK": (18.0, 35.0),
-    "DKK": (7.00, 7.90),
-    "GBP": (0.60, 1.25),
-    "HUF": (250.0, 550.0),
-    "ISK": (100.0, 250.0),
-    "MKD": (55.0, 70.0),
-    "NOK": (7.5, 16.0),
-    "PLN": (3.2, 6.0),
-    "RON": (3.8, 6.5),
-    "RSD": (95.0, 145.0),
-    "RUB": (40.0, 250.0),
-    "SEK": (8.0, 15.0),
-    "TRY": (15.0, 120.0),
+    code: _extract_sanity_band(meta)
+    for code, meta in sorted(_DEFAULT_CURRENCY_REG.currencies.items())
+    if meta.tier == "core"
 }
 
-# Post-2026-01-01 redenominated SYP (1 new SYP = 100 old SYP) rejects old ~14,000 quotes (T-04-03).
 EXTENDED_CURRENCY_SANITY_BANDS: Final[dict[str, tuple[float, float]]] = {
-    "AMD": (250.0, 700.0),
-    "AZN": (1.2, 2.8),
-    "BYN": (2.0, 6.0),
-    "CNY": (5.0, 12.0),
-    "DZD": (100.0, 220.0),
-    "EGP": (25.0, 100.0),
-    "GEL": (2.0, 4.5),
-    "ILS": (2.5, 6.0),
-    "IQD": (900.0, 2200.0),
-    "JOD": (0.55, 1.10),
-    "KGS": (65.0, 140.0),
-    "KZT": (350.0, 800.0),
-    "LBP": (60000.0, 150000.0),
-    "LYD": (3.5, 8.0),
-    "MAD": (8.5, 13.5),
-    "MDL": (14.0, 26.0),
-    "MNT": (2500.0, 5500.0),
-    "SAR": (3.0, 5.2),
-    "SYP": (80.0, 250.0),
-    "TJS": (8.0, 18.0),
-    "TMT": (2.5, 6.0),
-    "TND": (2.5, 4.5),
-    "UAH": (30.0, 75.0),
-    "UZS": (9000.0, 22000.0),
+    code: _extract_sanity_band(meta)
+    for code, meta in sorted(_DEFAULT_CURRENCY_REG.currencies.items())
+    if meta.tier == "extended"
 }
 
 ALL_CURRENCY_SANITY_BANDS: Final[dict[str, tuple[float, float]]] = dict(
@@ -281,93 +359,23 @@ ALL_CURRENCY_SANITY_BANDS: Final[dict[str, tuple[float, float]]] = dict(
 
 # Deterministic reference FX rates (1 EUR = X <CURRENCY>) for offline seed & exotic fallback.
 CORE_REFERENCE_FX_RATES: Final[dict[str, float]] = {
-    "ALL": 98.5,
-    "BAM": BAM_FIXED_PEG_PER_EUR,
-    "CHF": 0.94,
-    "CZK": 25.2,
-    "DKK": 7.46,
-    "EUR": 1.0,
-    "GBP": 0.84,
-    "HUF": 400.0,
-    "ISK": 148.0,
-    "MKD": 61.5,
-    "NOK": 11.7,
-    "PLN": 4.30,
-    "RON": 4.97,
-    "RSD": 117.1,
-    "RUB": 95.0,
-    "SEK": 11.4,
-    "TRY": 36.5,
+    code: meta.reference_rate_per_eur
+    for code, meta in sorted(_DEFAULT_CURRENCY_REG.currencies.items())
+    if meta.tier in {"pinned", "core"}
 }
 
 EXTENDED_REFERENCE_FX_RATES: Final[dict[str, float]] = {
-    "AMD": 420.0,
-    "AZN": 1.85,
-    "BYN": 3.55,
-    "CNY": 7.85,
-    "DZD": 146.0,
-    "EGP": 53.0,
-    "GEL": 2.95,
-    "ILS": 4.00,
-    "IQD": 1420.0,
-    "JOD": 0.77,
-    "KGS": 94.0,
-    "KZT": 535.0,
-    "LBP": 97000.0,
-    "LYD": 5.25,
-    "MAD": 10.80,
-    "MDL": 19.40,
-    "MNT": 3700.0,
-    "SAR": 4.08,
-    "SYP": 140.0,
-    "TJS": 11.60,
-    "TMT": 3.80,
-    "TND": 3.38,
-    "UAH": 45.0,
-    "UZS": 13900.0,
+    code: meta.reference_rate_per_eur
+    for code, meta in sorted(_DEFAULT_CURRENCY_REG.currencies.items())
+    if meta.tier == "extended"
 }
 
 ALL_REFERENCE_FX_RATES: Final[dict[str, float]] = dict(
     sorted({**CORE_REFERENCE_FX_RATES, **EXTENDED_REFERENCE_FX_RATES}.items())
 )
 
-# Curated EUR/L diesel seed anchors for the 37 additional ProMods EU+ME+MA+TGS territories (D-01).
+# Curated EUR/L diesel seed anchors for the 37 additional ProMods EU+ME+MA+TGS territories.
 PROMODS_SEED_EUR_PRICES: Final[dict[str, float]] = {
-    "AD": 1.490,
-    "AM": 1.380,
-    "AX": 1.880,
-    "AZ": 0.590,
-    "BY": 0.760,
-    "CN": 1.020,
-    "DZ": 0.201,
-    "EG": 0.348,
-    "FO": 1.950,
-    "GE": 1.120,
-    "GG": 1.850,
-    "GI": 1.560,
-    "GL": 0.810,
-    "IL": 1.920,
-    "IM": 1.850,
-    "IQ": 0.239,
-    "JE": 1.850,
-    "JO": 1.151,
-    "KG": 0.850,
-    "KZ": 0.650,
-    "LB": 1.257,
-    "LI": 1.940,
-    "LY": 0.028,
-    "MA": 1.280,
-    "MC": 1.850,
-    "MD": 1.280,
-    "MN": 0.980,
-    "PS": 1.920,
-    "SA": 0.433,
-    "SJ": 1.650,
-    "SM": 1.780,
-    "SY": 1.094,
-    "TJ": 1.100,
-    "TM": 0.259,
-    "TN": 0.661,
-    "UA": 1.320,
-    "UZ": 1.050,
+    iso2: _DEFAULT_TIER3_REG.baselines[iso2].diesel_eur_per_liter
+    for iso2 in sorted(PROMODS_EXTENDED_ISO2S)
 }

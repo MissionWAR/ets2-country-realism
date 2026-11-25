@@ -36,6 +36,7 @@ from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
     MAX_WOW_JUMP_RATIO,
     MIN_EUR_PER_LITER,
+    SEEDED_LOCKFILE_SOURCES,
     compute_secondary_grade_prices,
     normalize_country_fuel_prices,
     normalize_iso2_alias,
@@ -45,7 +46,6 @@ from ets2v2.normalize.fx import FxProviderQuote, cross_validate_fx_rates, round_
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_LICENSE,
     BASELINE_SEEDED_SOURCE,
-    PROMODS_CURATED_SEED_SOURCE,
     evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
@@ -121,7 +121,7 @@ def _validate_supplemental_grade(
     rounded_val = round_local_price(local_val)
     if (
         previous_entry is not None
-        and previous_entry.source not in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
+        and previous_entry.source not in SEEDED_LOCKFILE_SOURCES
         and iso2 not in normalized_allow
     ):
         prev_local = previous_entry.local_prices.get(grade)
@@ -513,9 +513,9 @@ def run_price_fetch(
                 countries_fallback += 1
             continue
 
-        # No valid live feed covered this territory -> retain lockfile or seed baseline/ProMods.
+        # No valid live feed covered this territory -> retain lockfile or seed baseline/Tier 3.
         if previous_entry is not None:
-            if previous_entry.source in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}:
+            if previous_entry.source in SEEDED_LOCKFILE_SOURCES:
                 countries[iso2] = _build_baseline_entry(
                     iso2,
                     diesel_eur=previous_entry.eur_per_liter,

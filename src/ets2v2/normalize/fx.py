@@ -17,6 +17,7 @@ from ets2v2.normalize.currencies import (
     CURRENCY_SANITY_BANDS,
     ECB_COVERED_CURRENCIES,
     EXTENDED_ECB_CURRENCIES,
+    EXTENDED_GLOBAL_CURRENCIES,
     EXTENDED_PROMODS_CURRENCIES,
     MAJOR_ECB_CURRENCIES,
     TERRITORY_CURRENCIES,
@@ -34,7 +35,7 @@ CBR_FX_PROVIDER: Final[str] = "cbr_xml"
 
 _THREE_DP: Final[Decimal] = Decimal("0.001")
 _REQUIRED_NON_EUR_CURRENCIES: Final[tuple[str, ...]] = tuple(sorted(CURRENCY_SANITY_BANDS))
-_OPTIONAL_EXTENDED_CURRENCIES: Final[tuple[str, ...]] = tuple(sorted(EXTENDED_PROMODS_CURRENCIES))
+_OPTIONAL_EXTENDED_CURRENCIES: Final[tuple[str, ...]] = tuple(sorted(EXTENDED_GLOBAL_CURRENCIES))
 _ALL_ECB_COVERED: Final[frozenset[str]] = ECB_COVERED_CURRENCIES | EXTENDED_ECB_CURRENCIES
 _ALL_MAJOR_ECB: Final[frozenset[str]] = MAJOR_ECB_CURRENCIES | EXTENDED_ECB_CURRENCIES
 
@@ -196,10 +197,15 @@ def _resolve_fallback_or_missing(
 
     if is_extended:
         ref_rate = ALL_REFERENCE_FX_RATES[currency]
+        provider_name = (
+            "promods_reference_fx"
+            if currency in EXTENDED_PROMODS_CURRENCIES
+            else "global_reference_fx"
+        )
         resolved[currency] = FxRateLockEntry(
             currency=currency,
             rate_per_eur=ref_rate,
-            provider="promods_reference_fx",
+            provider=provider_name,
             validator_provider=None,
             validator_rate_per_eur=None,
             divergence_pct=0.0,

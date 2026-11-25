@@ -92,8 +92,11 @@ _RELEVANT_COUNTRY_PROBE_RE: Final[re.Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 _COMBO_SCOPED_PATH_RE: Final[re.Pattern[str]] = re.compile(
-    r"^(?:(?:base|dlc_[^/]+)/)?(?:def/country(?:\.[^/]+)?\.sii$|def/country/[^/]+\.(?:sui|sii)$|"
-    r"def/country/[^/]+/speed_limits\.sii$|def/sign/board/|locale/)",
+    r"^(?:(?:base|dlc_[^/]+)/)?(?:"
+    r"def/[^/]+\.(?:sii|sui)$|"
+    r"def/country/.*\.(?:sii|sui)$|"
+    r"def/sign/board/|"
+    r"locale/)",
     re.IGNORECASE,
 )
 _WINDOWS_DRIVE_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z]:")
@@ -400,9 +403,18 @@ def _entry_from_package_token(
     display_name: str | None = None,
     raw_spec: str | None = None,
     source_hint: str | None = None,
+    allow_explicit_path: bool = False,
 ) -> LoadOrderEntry:
     token = raw_token.strip()
     spec = raw_spec if raw_spec is not None else token
+
+    if (
+        "\x00" in token
+        or "\x00" in spec
+        or token.startswith(("\\\\", "//"))
+        or Path(token).drive.startswith("\\\\")
+    ):
+        raise ValueError(f"Unsafe or UNC mod path rejected: {token!r}")
 
     ws_match = _WORKSHOP_PKG_RE.fullmatch(token)
     if ws_match is not None:
@@ -453,7 +465,9 @@ def _entry_from_package_token(
             workshop_id=token,
         )
 
-    if "/" in token or "\\" in token or _WINDOWS_DRIVE_RE.match(token) is not None:
+    if allow_explicit_path and (
+        "/" in token or "\\" in token or _WINDOWS_DRIVE_RE.match(token) is not None
+    ):
         posix_name = token.replace("\\", "/").rstrip("/")
         leaf = posix_name.rsplit("/", 1)[-1]
         stem = _strip_archive_suffix(leaf) or leaf
@@ -551,11 +565,8 @@ def parse_game_log(log_path: Path) -> list[LoadOrderEntry]:
                 display_name=display,
                 raw_spec=package_token,
                 source_hint=source_hint,
+                allow_explicit_path=False,
             )
-            # In game.log.txt, package_name from [mod_package_manager] is a local stem or
-            # workshop token; preserve local stem even if an odd path separator appears.
-            if entry.source == "explicit_path" and source_hint is not None:
-                entry = entry.model_copy(update={"source": "local"})
             current_session.append(entry)
             continue
 
@@ -582,7 +593,13 @@ def parse_modlist(
         stripped = raw_line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-        entries.append(_entry_from_package_token(stripped, raw_spec=stripped))
+        entries.append(
+            _entry_from_package_token(
+                stripped,
+                raw_spec=stripped,
+                allow_explicit_path=True,
+            )
+        )
 
     if order == "top-to-bottom":
         entries.reverse()
@@ -653,6 +670,8 @@ def resolve_workshop_package_path(
 
     versions_sii = item_dir / "versions.sii"
     if versions_sii.is_file():
+        if not versions_sii.resolve().is_relative_to(item_dir):
+            raise ValueError(f"Workshop versions.sii escapes item directory: {versions_sii}")
         raw = _read_bounded_bytes(versions_sii)
         doc = SiiDocument.parse(_decode_text_permissive(raw))
         matching_packages: list[str] = []
@@ -772,13 +791,19 @@ def _resolve_local_mod_path(entry: LoadOrderEntry, mod_dir: Path | None) -> Path
         return entry.resolved_path
 
     if entry.source == "explicit_path":
+        if "\x00" in entry.raw_spec or entry.raw_spec.startswith(("\\\\", "//")):
+            raise ValueError(f"Unsafe or UNC mod path rejected: {entry.raw_spec!r}")
         raw_path = Path(entry.raw_spec)
-        if raw_path.exists():
-            return raw_path
+        if raw_path.is_absolute():
+            if raw_path.drive.startswith("\\\\"):
+                raise ValueError(f"UNC network path rejected: {entry.raw_spec!r}")
+            return raw_path if raw_path.exists() else None
         if mod_dir is not None:
-            candidate = mod_dir / raw_path
-            if candidate.exists():
-                return candidate
+            mod_root = mod_dir.resolve()
+            candidate = (mod_dir / raw_path).resolve()
+            if not candidate.is_relative_to(mod_root):
+                raise ValueError(f"Relative mod path escapes --mod-dir: {entry.raw_spec!r}")
+            return candidate if candidate.exists() else None
         return None
 
     if mod_dir is None or not mod_dir.is_dir():
@@ -792,7 +817,7 @@ def _resolve_local_mod_path(entry: LoadOrderEntry, mod_dir: Path | None) -> Path
         entry.package_name,
     )
     for name in raw_names:
-        if "/" in name or "\\" in name or ".." in Path(name).parts:
+        if "\x00" in name or "/" in name or "\\" in name or ".." in Path(name).parts:
             continue
         candidate = mod_dir / name
         if candidate.exists():

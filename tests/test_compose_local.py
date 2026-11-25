@@ -819,6 +819,68 @@ def test_compose_local_dry_run_report_json_and_tracked_out_dir_guard(
             )
 
 
+def test_compose_local_nested_wrapper_include_end_to_end(tmp_path: Path) -> None:
+    """HI-02 regression: nested def/ wrapper @include resolves cleanly in compose_local()."""
+    mod_dir = tmp_path / "mods"
+    mod_dir.mkdir()
+    with ZipFile(mod_dir / "nested_wrap_map.scs", "w") as zf:
+        zf.writestr(
+            "def/country.wrap.sii",
+            'SiiNunit\n{\n@include "country_wrap_list.sui"\n}\n',
+        )
+        zf.writestr(
+            "def/country_wrap_list.sui",
+            '@include "country/nested_dir/list.sii"\n',
+        )
+        zf.writestr(
+            "def/country/nested_dir/list.sii",
+            '@include "/def/country/wrap_germany.sui"\n',
+        )
+        zf.writestr(
+            "def/country/wrap_germany.sui",
+            (
+                "country_data : country.data.wrap_germany\n"
+                "{\n"
+                "\tcountry_id: 612\n"
+                '\tname: "Wrap Germany"\n'
+                '\tcountry_code: "D"\n'
+                "\tiso_country_code: deu\n"
+                "\tfuel_price: 1.40\n"
+                "\tlights_mandatory: true\n"
+                "\tdriving_tired_offence: true\n"
+                "\timperial_units: false\n"
+                "\ttime_zone: 60\n"
+                '\ttime_zone_name: "@@tz_cet@@"\n'
+                "\tmass_limit_per_axle_count[]: 18000\n"
+                "\tmass_limit_per_axle_count[]: 26000\n"
+                "\tmass_limit_per_axle_count[]: 40000\n"
+                "}\n"
+            ),
+        )
+
+    modlist = tmp_path / "mods.txt"
+    modlist.write_text("nested_wrap_map.scs\n", encoding="utf-8", newline="\n")
+    snap_path = tmp_path / "snap.json"
+    write_realism_snapshot(load_or_build_snapshot("summer"), snap_path)
+    out_dir = tmp_path / "out_wrap"
+
+    report = compose_local(
+        "summer",
+        out_dir=out_dir,
+        modlist=modlist,
+        mod_dir=mod_dir,
+        snapshot_path=snap_path,
+        no_totems=True,
+    )
+    assert report.ok is True
+    scs_path = out_dir / COMBO_SCS_FILENAMES["summer"]
+    with ZipFile(scs_path, "r") as zf:
+        assert "def/country/wrap_germany.sui" in zf.namelist()
+        parsed = parse_country_data(zf.read("def/country/wrap_germany.sui"))
+        assert parsed.time_zone == 120
+        assert parsed.time_zone_name == "@@tz_cest@@"
+
+
 def _find_local_combo_inputs() -> tuple[Path, Path, Path] | None:
     mod_dir = _LOCAL_ETS2_DATA_DIR / "mod"
     if not mod_dir.is_dir():

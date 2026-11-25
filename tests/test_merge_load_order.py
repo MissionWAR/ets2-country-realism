@@ -467,3 +467,180 @@ def test_encrypted_zip_overridden_by_higher_layer_flag(tmp_path: pathlib.Path) -
     with build_combo_vfs_stack(entries, mod_dir=mod_dir) as res:
         assert len(res.protected_archives) == 1
         assert res.protected_archives[0].overridden_by_higher_layer is True
+
+
+def test_hi01_profile_and_game_log_cannot_escape_mod_dir(tmp_path: pathlib.Path) -> None:
+    outside_dir = tmp_path / "outside_secret"
+    outside_dir.mkdir()
+    _write_zip(
+        outside_dir / "escaped.scs",
+        {"def/country/escaped.sui": b"country_data : country.data.escaped { }\n"},
+    )
+    mod_dir = tmp_path / "mod"
+    mod_dir.mkdir()
+
+    # 1. profile.sii with traversal token (no |Display) must remain source="local" and not mount
+    profile = tmp_path / "profile.sii"
+    profile.write_text(
+        "SiiNunit\n{\nuser_profile : _nameless.1\n{\n"
+        ' active_mods[0]: "../outside_secret/escaped.scs"\n'
+        "}\n}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    prof_entries = parse_profile_sii(profile)
+    assert len(prof_entries) == 1
+    assert prof_entries[0].source == "local"
+    with build_combo_vfs_stack(prof_entries, mod_dir=mod_dir) as res:
+        assert res.resolved_entries == []
+        assert len(res.missing_entries) == 1
+        assert not res.stack.exists("def/country/escaped.sui")
+
+    # 2. game.log.txt mount line omitting ", source: ..." must remain source="local" and not mount
+    log_file = tmp_path / "game.log.txt"
+    log_file.write_text(
+        '00:00:12.000 : [mod_package_manager] Mod "Escape" has been mounted. '
+        "(package_name: ../outside_secret/escaped.scs)\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    log_entries = parse_game_log(log_file)
+    assert len(log_entries) == 1
+    assert log_entries[0].source == "local"
+    with build_combo_vfs_stack(log_entries, mod_dir=mod_dir) as res:
+        assert res.resolved_entries == []
+        assert len(res.missing_entries) == 1
+        assert not res.stack.exists("def/country/escaped.sui")
+
+
+def test_hi01_unc_nul_and_modlist_relative_traversal_rejected(tmp_path: pathlib.Path) -> None:
+    mod_dir = tmp_path / "mod"
+    (mod_dir / "sub").mkdir(parents=True)
+    sub_mod = _write_zip(
+        mod_dir / "sub" / "nested.scs",
+        {"def/country/nested.sui": b"country_data : country.data.nested { }\n"},
+    )
+    abs_mod = _write_zip(
+        tmp_path / "abs_pack" / "direct.scs",
+        {"def/country/direct.sui": b"country_data : country.data.direct { }\n"},
+    )
+    _write_zip(
+        tmp_path / "outside.scs",
+        {"def/country/outside.sui": b"country_data : country.data.outside { }\n"},
+    )
+
+    # UNC paths and NUL bytes rejected in parse_modlist / parse_profile_sii / parse_game_log
+    for bad_spec in (
+        r"\\attacker-host\share\mod.scs",
+        "//attacker-host/share/mod.scs",
+        "bad\x00mod.scs",
+    ):
+        ml_bad = tmp_path / "bad_modlist.txt"
+        ml_bad.write_text(f"{bad_spec}\n", encoding="utf-8", newline="\n")
+        with pytest.raises(ValueError, match="Unsafe or UNC"):
+            parse_modlist(ml_bad)
+
+        gl_bad = tmp_path / "bad_game.log.txt"
+        gl_bad.write_text(
+            f'00:00:01.000 : [mod_package_manager] Mod "Bad" has been mounted. '
+            f"(package_name: {bad_spec})\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        with pytest.raises(ValueError, match="Unsafe or UNC"):
+            parse_game_log(gl_bad)
+
+    # Relative escape in --modlist rejected by build_combo_vfs_stack
+    ml_escape = tmp_path / "escape_modlist.txt"
+    ml_escape.write_text("../outside.scs\n", encoding="utf-8", newline="\n")
+    escape_entries = parse_modlist(ml_escape)
+    assert escape_entries[0].source == "explicit_path"
+    with pytest.raises(ValueError, match="escapes --mod-dir"):
+        build_combo_vfs_stack(escape_entries, mod_dir=mod_dir)
+
+    # Direct LoadOrderEntry UNC explicit_path rejected in resolver
+    unc_entry = LoadOrderEntry(
+        package_name="mod",
+        source="explicit_path",
+        raw_spec=r"\\attacker-host\share\mod.scs",
+    )
+    with pytest.raises(ValueError, match="Unsafe or UNC"):
+        build_combo_vfs_stack([unc_entry], mod_dir=mod_dir)
+
+    # Contained relative path inside mod_dir AND explicit local absolute path both succeed
+    ml_ok = tmp_path / "ok_modlist.txt"
+    ml_ok.write_text(
+        f"sub/nested.scs\n{abs_mod}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    ok_entries = parse_modlist(ml_ok)
+    with build_combo_vfs_stack(ok_entries, mod_dir=mod_dir) as res:
+        assert {e.resolved_path for e in res.resolved_entries} == {sub_mod.resolve(), abs_mod}
+        assert res.stack.exists("def/country/nested.sui")
+        assert res.stack.exists("def/country/direct.sui")
+
+
+def test_hi02_combo_scoped_archive_exposes_nested_wrapper_includes(tmp_path: pathlib.Path) -> None:
+    from ets2v2.merge.scanner import scan_active_countries
+
+    mod_dir = tmp_path / "mod"
+    mod_dir.mkdir()
+    wrapper_zip = _write_zip(
+        mod_dir / "nested_wrapper.scs",
+        {
+            "def/country.wrap.sii": b'SiiNunit\n{\n@include "country_wrap_list.sui"\n}\n',
+            "def/country_wrap_list.sui": b'@include "country/subdir/sublist.sii"\n',
+            "def/country/subdir/sublist.sii": b'@include "/def/country/mytest.sui"\n',
+            "def/country/mytest.sui": (
+                b"country_data : country.data.mytest\n"
+                b"{\n"
+                b"\tcountry_id: 777\n"
+                b'\tname: "MyTest"\n'
+                b'\tcountry_code: "D"\n'
+                b"\tiso_country_code: deu\n"
+                b"\tfuel_price: 1.50\n"
+                b"}\n"
+            ),
+        },
+    )
+    entries = [
+        LoadOrderEntry(package_name="nested_wrapper", source="local", raw_spec=wrapper_zip.name)
+    ]
+    with build_combo_vfs_stack(entries, mod_dir=mod_dir) as res:
+        scan = scan_active_countries(res.stack)
+        assert "mytest" in {c.slug for c in scan.countries}
+        assert not [d for d in scan.diagnostics if d.kind == "missing_include_target"]
+
+
+def test_md07_resolve_workshop_rejects_versions_sii_symlink_escape(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workshop_dir = tmp_path / "227300"
+    item_dir = workshop_dir / "88888"
+    item_dir.mkdir(parents=True)
+    outside_versions = tmp_path / "outside_versions.sii"
+    outside_versions.write_text(
+        'SiiNunit\n{\npackage_version_info : .u\n{\n\tpackage_name: "universal"\n}\n}\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    versions_path = item_dir / "versions.sii"
+
+    try:
+        versions_path.symlink_to(outside_versions)
+    except OSError:
+        # Windows without symlink privilege: simulate symlink resolution escape cleanly
+        versions_path.write_text(outside_versions.read_text("utf-8"), encoding="utf-8")
+        orig_resolve = pathlib.Path.resolve
+
+        def fake_resolve(self: pathlib.Path, strict: bool = False) -> pathlib.Path:
+            if self.name == "versions.sii" and self.parent == item_dir.resolve():
+                return outside_versions.resolve()
+            return orig_resolve(self, strict=strict)
+
+        monkeypatch.setattr(pathlib.Path, "resolve", fake_resolve)
+
+    with pytest.raises(ValueError, match=r"versions\.sii escapes item directory"):
+        resolve_workshop_package_path("88888", workshop_dir)

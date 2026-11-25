@@ -56,6 +56,7 @@ class EditionReleaseResult(BaseModel):
 
     edition: Season
     changed: bool
+    snapshot_changed: bool = False
     package_version: str = Field(min_length=1)
     previous_package_version: str | None
     payload_sha256: str = Field(pattern=_SHA256_PATTERN)
@@ -75,6 +76,7 @@ class PhaseAReleaseSummary(BaseModel):
     build_date: str = Field(pattern=_ISO_DATE_PATTERN)
     force_run: bool
     any_changed: bool
+    snapshots_changed: bool = False
     summer_changed: bool
     winter_changed: bool
     changed_editions: list[Season]
@@ -86,6 +88,7 @@ class _StagedEdition:
     edition: Season
     snapshot: RealismSnapshot
     snapshot_sha256: str
+    snapshot_changed: bool
     built: BuiltEditionPaths
     canonical_sha256: str
     package_version: str
@@ -235,10 +238,12 @@ def run_phase_a_release(
         if not local_report.ok:
             validation_errors.extend(_format_validation_failures(edition, "local", local_report))
 
+        snapshot_changed = prev_state is None or prev_state.snapshot_sha256 != snapshot_sha256
         staged_editions[edition] = _StagedEdition(
             edition=edition,
             snapshot=snapshot,
             snapshot_sha256=snapshot_sha256,
+            snapshot_changed=snapshot_changed,
             built=built,
             canonical_sha256=canonical_sha256,
             package_version=final_version,
@@ -291,11 +296,19 @@ def run_phase_a_release(
                 snapshot_sha256=staged.snapshot_sha256,
             )
         elif staged.previous_state is not None:
-            new_ledger_editions[edition] = staged.previous_state
+            if staged.snapshot_changed:
+                # Non-Core ProMods snapshot data changed without changing 36-country Core payload:
+                # advance snapshot_sha256 without bumping Core package_version (MD-06).
+                new_ledger_editions[edition] = staged.previous_state.model_copy(
+                    update={"snapshot_sha256": staged.snapshot_sha256}
+                )
+            else:
+                new_ledger_editions[edition] = staged.previous_state
 
         edition_results[edition] = EditionReleaseResult(
             edition=edition,
             changed=staged.changed,
+            snapshot_changed=staged.snapshot_changed,
             package_version=staged.package_version,
             previous_package_version=(
                 staged.previous_state.package_version if staged.previous_state is not None else None
@@ -328,13 +341,15 @@ def run_phase_a_release(
             raise ValueError(f"Emitted {edition} realism snapshot failed verification: {joined}")
 
     any_changed = bool(changed_editions)
-    if write_state and any_changed:
+    snapshots_changed = any(res.snapshot_changed for res in edition_results.values())
+    if write_state and (any_changed or snapshots_changed):
         write_published_ledger(PublishedLedger(editions=new_ledger_editions), state_path)
 
     summary = PhaseAReleaseSummary(
         build_date=effective_build_date.isoformat(),
         force_run=force_run,
         any_changed=any_changed,
+        snapshots_changed=snapshots_changed,
         summer_changed=edition_results["summer"].changed,
         winter_changed=edition_results["winter"].changed,
         changed_editions=changed_editions,

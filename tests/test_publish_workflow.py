@@ -235,22 +235,32 @@ def test_phase_a_workflow_verifies_and_publishes_rolling_snapshots_latest_releas
     assert verify_summer in text
     assert verify_winter in text
 
-    # Rolling public snapshots-latest GitHub Release publishing step (D-03, T-04-02)
+    # Rolling public snapshots-latest GitHub Release publishing step (D-03, T-04-02, MD-06, LO-02)
     required_release_fragments = (
         'TAG="snapshots-latest"',
         "dist/snapshots/realism-snapshot-summer.json",
         "dist/snapshots/realism-snapshot-winter.json",
         "dist/snapshots/SHA256SUMS.txt",
-        'gh release view "$TAG"',
+        'gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --silent',
+        'elif grep -q "HTTP 404" "$API_ERR"; then',
         'gh release upload "$TAG" "${ASSETS[@]}" --clobber',
         'gh release create "$TAG" "${ASSETS[@]}"',
         "GH_TOKEN: ${{ github.token }}",
-        "(steps.release.outputs.any_changed == 'true' || env.FORCE_RUN == 'true' "
+        "snapshots_changed={str(summary['snapshots_changed']).lower()}",
+        "(steps.release.outputs.any_changed == 'true' "
+        "|| steps.release.outputs.snapshots_changed == 'true' "
+        "|| env.FORCE_RUN == 'true' "
         "|| steps.release.outputs.force_run == 'true') && "
+        "(github.event_name == 'schedule' || github.ref == 'refs/heads/master')",
+        "(steps.release.outputs.any_changed == 'true' "
+        "|| steps.release.outputs.snapshots_changed == 'true') && "
         "(github.event_name == 'schedule' || github.ref == 'refs/heads/master')",
     )
     for fragment in required_release_fragments:
         assert fragment in text, f"Missing rolling snapshots-latest fragment: {fragment!r}"
+
+    # LO-02: must NOT mask 401/403/5xx API errors via bare `if gh release view`
+    assert 'if gh release view "$TAG"' not in text
 
     # Verify snapshot-verify runs BEFORE snapshots-latest GitHub Release upload
     assert text.index(verify_summer) < text.index('TAG="snapshots-latest"')

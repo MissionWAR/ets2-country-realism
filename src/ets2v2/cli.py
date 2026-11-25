@@ -619,6 +619,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
     print(
         f"Phase A release complete ({summary.build_date}): "
         f"any_changed={str(summary.any_changed).lower()}, "
+        f"snapshots_changed={str(summary.snapshots_changed).lower()}, "
         f"changed_editions=[{changed_label}], "
         f"force_run={str(summary.force_run).lower()}"
     )

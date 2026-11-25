@@ -704,3 +704,90 @@ def test_phase_a_release_prices_lock_mutation_bumps_both_editions_and_cli_flag(
     assert res_2.winter_changed is True
     assert res_2.editions["summer"].package_version == "1.62-2026.48"
     assert res_2.editions["winter"].package_version == "1.62-2026.48"
+
+
+def test_md06_non_core_promods_snapshot_change_sets_snapshots_changed_without_bumping_core(
+    tmp_path: Path,
+) -> None:
+    """MD-06 regression: non-Core ProMods price change sets snapshots_changed without Core bump."""
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    lock_path = tmp_path / "state" / "prices.lock.json"
+    write_prices_lockfile(base_lock, lock_path)
+
+    state_path = tmp_path / "state" / "published.json"
+    out_dir = tmp_path / "dist"
+    changelogs_dir = tmp_path / "changelogs"
+    write_published_ledger(PublishedLedger(), state_path)
+
+    # Run 1: initial baseline publish
+    res_1 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 11, 20),
+        write_state=True,
+    )
+    assert res_1.any_changed is True
+    assert res_1.snapshots_changed is True
+    prev_summer_snap_sha = res_1.editions["summer"].snapshot_sha256
+
+    # Run 2: mutate ONLY Ukraine (UA — non-Core ProMods territory)
+    ua_old = base_lock.countries["UA"]
+    ua_new = ua_old.model_copy(
+        update={
+            "eur_per_liter": round(ua_old.eur_per_liter + 0.08, 3),
+            "local_prices": {
+                **ua_old.local_prices,
+                "diesel": round(ua_old.local_prices["diesel"] + 3.5, 4),
+            },
+        }
+    )
+    updated_lock = base_lock.model_copy(update={"countries": {**base_lock.countries, "UA": ua_new}})
+    write_prices_lockfile(updated_lock, lock_path)
+
+    res_2 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 11, 27),
+        write_state=True,
+    )
+    assert res_2.any_changed is False
+    assert res_2.snapshots_changed is True
+    assert res_2.editions["summer"].changed is False
+    assert res_2.editions["summer"].snapshot_changed is True
+    assert res_2.editions["summer"].package_version == "1.62-2026.47"
+    assert res_2.editions["winter"].package_version == "1.62-2026.47"
+    assert res_2.editions["summer"].snapshot_sha256 != prev_summer_snap_sha
+
+    ledger_after_2 = load_published_ledger(state_path)
+    assert ledger_after_2.editions["summer"].package_version == "1.62-2026.47"
+    assert ledger_after_2.editions["summer"].snapshot_sha256 == (
+        res_2.editions["summer"].snapshot_sha256
+    )
+
+    # Run 3: identical lockfile again -> both any_changed and snapshots_changed are False
+    res_3 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 12, 4),
+        write_state=True,
+    )
+    assert res_3.any_changed is False
+    assert res_3.snapshots_changed is False

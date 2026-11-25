@@ -1,0 +1,169 @@
+{
+  "currency": "AWG",
+  "driving_tired_offence": true,
+  "ets2_slug": "aruba",
+  "iana_timezone": "America/Aruba",
+  "iso2": "AW",
+  "iso3": "abw",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    36000,
+    40000
+  ],
+  "sources": [
+    "https://www.government.aw/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Aruba Landsverordening Wegverkeer: 40 urban, 60-80 Watty Vos Boulevard."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": 60,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "currency": "USD",
+  "driving_tired_offence": true,
+  "ets2_slug": "palau",
+  "iana_timezone": "Pacific/Palau",
+  "iso2": "PW",
+  "iso3": "plw",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://www.palaugov.pw/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Palau National Code Title 42: 40 Koror urban, 65 Compact Road."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ]
+    }
+  }
+}

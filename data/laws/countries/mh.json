@@ -1,0 +1,169 @@
+{
+  "currency": "USD",
+  "driving_tired_offence": true,
+  "ets2_slug": "marshall_islands",
+  "iana_timezone": "Pacific/Majuro",
+  "iso2": "MH",
+  "iso3": "mhl",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://www.rmigovernment.org/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Marshall Islands Motor Vehicle Safety Act: 40 urban, 55 atoll main road."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ]
+    }
+  }
+}

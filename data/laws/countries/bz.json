@@ -1,0 +1,169 @@
+{
+  "currency": "BZD",
+  "driving_tired_offence": true,
+  "ets2_slug": "belize",
+  "iana_timezone": "America/Belize",
+  "iso2": "BZ",
+  "iso3": "blz",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://www.gob.bz/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Belize Motor Vehicles and Road Traffic Act: metricated km/h equivalent limits (40 urban / 88 highway)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 88
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 72
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 80
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 88,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 88
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 72,
+          "max_limit": 72,
+          "uncommon": null,
+          "urban_limit": 72
+        }
+      ]
+    }
+  }
+}

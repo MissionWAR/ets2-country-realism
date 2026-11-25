@@ -1,0 +1,170 @@
+{
+  "currency": "USD",
+  "driving_tired_offence": true,
+  "ets2_slug": "turks_caicos",
+  "iana_timezone": "America/Grand_Turk",
+  "iso2": "TC",
+  "iso3": "tca",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.tc/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Turks and Caicos Islands Road Traffic Ordinance: imperial mph limits."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "currency": "XCD",
+  "driving_tired_offence": true,
+  "ets2_slug": "saint_lucia",
+  "iana_timezone": "America/St_Lucia",
+  "iso2": "LC",
+  "iso3": "lca",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.govt.lc/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Saint Lucia Motor Vehicles and Road Traffic Act: imperial mph limits."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  }
+}

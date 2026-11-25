@@ -9,7 +9,7 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.baseline.models import CountriesBaseline
+from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
 from ets2v2.normalize.currencies import (
     ALL_CURRENCY_SANITY_BANDS,
     ALL_LOCKFILE_TERRITORY_ISO2S,
@@ -59,6 +59,7 @@ from ets2v2.normalize.fx import (
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
     PROMODS_CURATED_SEED_SOURCE,
+    load_prices_lockfile,
     seed_initial_lockfile,
 )
 from ets2v2.normalize.totem_format import (
@@ -66,9 +67,25 @@ from ets2v2.normalize.totem_format import (
     THREE_DEC_NATIONAL_ISO2S,
     format_national_pump_price,
 )
+from ets2v2.package.builder import build_core_edition
+from ets2v2.registry.loader import (
+    load_country_aliases,
+    load_law_registry,
+    validate_law_registry,
+)
+from ets2v2.registry.snapshot import build_realism_snapshot
+from ets2v2.registry.timezone import (
+    IANA_NUMERIC_ABBR_OVERRIDES,
+    resolve_ets2_timezone,
+    resolve_season_anchor_date,
+)
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
+LAWS_DIR = REPO_ROOT / "data" / "laws"
+MAPPINGS_PATH = REPO_ROOT / "data" / "mappings" / "ets2_countries.json"
+ALIASES_PATH = REPO_ROOT / "data" / "mappings" / "country_aliases.json"
+PRICES_LOCK_PATH = REPO_ROOT / "state" / "prices.lock.json"
 
 _FORBIDDEN_TAINT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("CC BY-SA", re.compile(r"cc[\s-]*by[\s-]*sa", re.IGNORECASE)),
@@ -475,3 +492,162 @@ def test_global_totem_formatting_integer_and_three_decimal_markets(
     else:
         assert iso2 in THREE_DEC_NATIONAL_ISO2S
     assert format_national_pump_price(iso2, local_price) == expected
+
+
+def test_global_225_territory_law_registry_and_alias_completeness() -> None:
+    issues = validate_law_registry(LAWS_DIR, MAPPINGS_PATH, BASELINE_DIR)
+    assert issues == []
+
+    bundle = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    assert len(bundle.laws_by_iso2) == 225
+    assert len(bundle.mappings.countries) == 225
+    assert set(bundle.laws_by_iso2) == ALL_LOCKFILE_TERRITORY_ISO2S
+
+    vanilla_entries = [e for e in bundle.mappings.countries if e.vanilla_1_62]
+    non_vanilla_entries = [e for e in bundle.mappings.countries if not e.vanilla_1_62]
+    assert len(vanilla_entries) == 36
+    assert len(non_vanilla_entries) == 189
+    assert all(e.country_id is not None for e in vanilla_entries)
+    assert all(e.country_id is None for e in non_vanilla_entries)
+
+    # Every law record currency matches data/mappings/currencies.json
+    for iso2, law in bundle.laws_by_iso2.items():
+        assert law.currency == ALL_TERRITORY_CURRENCIES[iso2], iso2
+
+    # 100% coverage of all country_aliases.json ISO-2 targets (closing all 13 Phase 4 gaps)
+    aliases = load_country_aliases(ALIASES_PATH)
+    alias_iso2s = {entry.iso2 for entry in aliases.aliases.values()}
+    assert alias_iso2s <= set(bundle.laws_by_iso2)
+    for previously_missing in (
+        "AE",
+        "BR",
+        "EC",
+        "GQ",
+        "GY",
+        "ID",
+        "JP",
+        "PG",
+        "PY",
+        "SD",
+        "TL",
+        "UY",
+        "ZA",
+    ):
+        assert previously_missing in bundle.laws_by_iso2
+
+    # Verify exact mph vs kmh speed_unit assignments
+    expected_mph = {
+        "AG",
+        "BM",
+        "BS",
+        "DM",
+        "FK",
+        "GB",
+        "GD",
+        "GG",
+        "IM",
+        "JE",
+        "KN",
+        "KY",
+        "LC",
+        "LR",
+        "PR",
+        "TC",
+        "US",
+        "VC",
+        "VG",
+    }
+    actual_mph = {iso2 for iso2, law in bundle.laws_by_iso2.items() if law.speed_unit == "mph"}
+    assert actual_mph == expected_mph
+    for kmh_iso2 in ("BZ", "MM", "WS", "CA", "AU", "NZ", "JP", "ID", "ZA"):
+        assert bundle.laws_by_iso2[kmh_iso2].speed_unit == "kmh"
+
+    # Zero forbidden taint markers across all 225 law JSONs and ets2_countries.json
+    for json_path in [MAPPINGS_PATH, *sorted((LAWS_DIR / "countries").glob("*.json"))]:
+        text = json_path.read_text("utf-8")
+        for label, pattern in _FORBIDDEN_TAINT_PATTERNS:
+            assert pattern.search(text) is None, f"Taint marker {label!r} in {json_path}"
+
+
+def test_global_225_territory_non_numeric_timezones() -> None:
+    assert len(IANA_NUMERIC_ABBR_OVERRIDES) == 75
+    assert list(IANA_NUMERIC_ABBR_OVERRIDES) == sorted(IANA_NUMERIC_ABBR_OVERRIDES)
+    assert IANA_NUMERIC_ABBR_OVERRIDES["America/Santiago"] == ("CLT", "CLST")
+    assert IANA_NUMERIC_ABBR_OVERRIDES["America/Miquelon"] == ("PMST", "PMDT")
+
+    bundle = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    loc_bl = LocalesBaseline.model_validate_json((BASELINE_DIR / "locales.json").read_text("utf-8"))
+    supported_tz = set(loc_bl.tz_keys)
+    numeric_re = re.compile(r"^[+-]\d|^UTC[+-]")
+
+    for season in ("summer", "winter"):
+        ref_date = resolve_season_anchor_date(season)
+        for iso2, law in sorted(bundle.laws_by_iso2.items()):
+            resolved = resolve_ets2_timezone(law.iana_timezone, ref_date, supported_tz)
+            assert numeric_re.match(resolved.abbreviation) is None, (
+                f"{iso2} ({law.iana_timezone}) {season} emitted fallback/numeric abbr "
+                f"{resolved.abbreviation!r}"
+            )
+            assert numeric_re.match(resolved.ets2_time_zone_name) is None
+
+    # Spot-check Southern Hemisphere DST (CL), Northern Hemisphere DST (PM), and permanent PY
+    jan = resolve_season_anchor_date("winter")
+    jul = resolve_season_anchor_date("summer")
+    cl_jan = resolve_ets2_timezone("America/Santiago", jan, supported_tz)
+    cl_jul = resolve_ets2_timezone("America/Santiago", jul, supported_tz)
+    assert (cl_jan.abbreviation, cl_jan.offset_minutes, cl_jan.is_dst) == ("CLST", -180, True)
+    assert (cl_jul.abbreviation, cl_jul.offset_minutes, cl_jul.is_dst) == ("CLT", -240, False)
+
+    pm_jan = resolve_ets2_timezone("America/Miquelon", jan, supported_tz)
+    pm_jul = resolve_ets2_timezone("America/Miquelon", jul, supported_tz)
+    assert (pm_jan.abbreviation, pm_jan.offset_minutes, pm_jan.is_dst) == ("PMST", -180, False)
+    assert (pm_jul.abbreviation, pm_jul.offset_minutes, pm_jul.is_dst) == ("PMDT", -120, True)
+
+    py_jan = resolve_ets2_timezone("America/Asuncion", jan, supported_tz)
+    py_jul = resolve_ets2_timezone("America/Asuncion", jul, supported_tz)
+    assert (py_jan.abbreviation, py_jan.offset_minutes, py_jan.observes_dst) == ("PYT", -180, False)
+    assert (py_jul.abbreviation, py_jul.offset_minutes, py_jul.observes_dst) == ("PYT", -180, False)
+
+
+def test_committed_lockfile_snapshot_225_and_core_36_boundary(tmp_path: pathlib.Path) -> None:
+    lock = load_prices_lockfile(PRICES_LOCK_PATH)
+    assert lock.schema_version == 1
+    assert len(lock.countries) == 225
+    assert len(lock.fx_rates) == len(ALL_REFERENCE_FX_RATES)
+    assert lock.countries["IR"].eur_per_liter == pytest.approx(0.01)
+    assert lock.countries["VE"].eur_per_liter == pytest.approx(0.01)
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    snapshot = build_realism_snapshot(
+        registry,
+        bl_countries,
+        bl_locales,
+        "summer",
+        prices_lock=lock,
+    )
+    assert snapshot.schema_version == 1
+    assert len(snapshot.countries) == 225
+    assert snapshot.countries["US"].imperial_units is True
+    assert snapshot.countries["JP"].imperial_units is False
+    assert snapshot.countries["IR"].fuel.eur_per_liter == pytest.approx(0.01)
+
+    # Core Vanilla+DLC Workshop build stays strictly scoped to 36 countries / 579 files!
+    core_report = build_core_edition(
+        "summer",
+        tmp_path / "core_out",
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        prices_lock=lock,
+    )
+    country_suis = sorted(
+        (core_report.workshop_dir / "universal" / "def" / "country").glob("*.sui")
+    )
+    assert len(country_suis) == 36
+    assert core_report.workshop_file_count == 579

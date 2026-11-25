@@ -1,0 +1,169 @@
+{
+  "currency": "USD",
+  "driving_tired_offence": true,
+  "ets2_slug": "united_states",
+  "iana_timezone": "America/New_York",
+  "iso2": "US",
+  "iso3": "usa",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://highways.dot.gov/safety/speed-management"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "U.S. FHWA / state highway statutory defaults in mph (35 urban, 55 rural, 65-70 interstate; 80,000 lb federal gross)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 70
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 35
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": 65,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ]
+    }
+  }
+}

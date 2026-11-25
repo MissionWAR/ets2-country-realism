@@ -1,0 +1,170 @@
+{
+  "currency": "XCD",
+  "driving_tired_offence": true,
+  "ets2_slug": "antigua_barbuda",
+  "iana_timezone": "America/Antigua",
+  "iso2": "AG",
+  "iso3": "atg",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://laws.gov.ag/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Antigua and Barbuda Vehicles and Road Traffic Act: imperial mph limits (20 urban / 40 rural)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  }
+}

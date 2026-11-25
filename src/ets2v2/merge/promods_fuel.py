@@ -10,7 +10,6 @@ from typing import Final, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ets2v2.baseline.models import LocalesBaseline
-from ets2v2.package.synthesize import format_sii_string
 from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 from ets2v2.sii.hygiene import (
     serialize_sii_text,
@@ -19,7 +18,7 @@ from ets2v2.sii.hygiene import (
 )
 from ets2v2.sii.localization import parse_localization_db
 from ets2v2.vfs.stack import VfsStack
-from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError
+from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError, detect_3nk
 
 ProModsFuelModuleName = Literal["pm_fuel", "pm_me_fuel", "pm_tgs_fuel"]
 PmFormatRegime = Literal["decimal", "midrange", "integer"]
@@ -76,6 +75,7 @@ _PM_EU_DIRECT_ISO2S: Final[tuple[str, ...]] = (
     "is",
     "it",
     "je",
+    "li",
     "lt",
     "lu",
     "lv",
@@ -92,6 +92,7 @@ _PM_EU_DIRECT_ISO2S: Final[tuple[str, ...]] = (
     "se",
     "sj",
     "sk",
+    "sm",
     "tr",
     "ua",
 )
@@ -331,6 +332,30 @@ def _resolve_grade_price(
     return None
 
 
+def _decode_third_party_loc_sii(raw: bytes) -> str:
+    """Decode third-party ProMods localization SII bytes (UTF-8 first, cp1252 fallback)."""
+    payload = raw[3:] if raw.startswith(b"\xef\xbb\xbf") else raw
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        text = payload.decode("cp1252", errors="replace")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _format_loc_sii_string(value: str) -> str:
+    """Format an SII localization string literal, escaping backslashes and rejecting NUL bytes."""
+    if "\x00" in value:
+        raise ValueError(f"Disallowed NUL byte in SII localization string literal: {value!r}")
+    escaped = (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\r", "\\r")
+        .replace("\n", "\\n")
+        .replace("\t", "\\t")
+    )
+    return f'"{escaped}"'
+
+
 def _render_promods_localization_db(unit_name: str, entries: dict[str, str]) -> bytes:
     seg_diags = validate_unit_name_segments(unit_name)
     if seg_diags:
@@ -345,8 +370,8 @@ def _render_promods_localization_db(unit_name: str, entries: dict[str, str]) -> 
     ]
     for key in sorted(entries):
         val = entries[key]
-        lines.append(f"\tkey[]: {format_sii_string(key)}")
-        lines.append(f"\tval[]: {format_sii_string(val)}")
+        lines.append(f"\tkey[]: {_format_loc_sii_string(key)}")
+        lines.append(f"\tval[]: {_format_loc_sii_string(val)}")
     lines.append("}")
     lines.append("}")
     raw = serialize_sii_text("\n".join(lines) + "\n")
@@ -367,13 +392,22 @@ def compile_promods_fuel_module(
     source_path: str,
 ) -> ProModsFuelModuleResult:
     """Compile one ProMods ``local_module.pm*_fuel.sii`` preserving unrecognized keys verbatim."""
-    raw_entries = parse_localization_db(source_bytes)
+    if detect_3nk(source_bytes):
+        raise ValueError(
+            f"3nK-obfuscated ProMods fuel module skipped (decryption disabled): {source_path}"
+        )
+    decoded_source = _decode_third_party_loc_sii(source_bytes)
+    raw_entries = parse_localization_db(decoded_source)
+    if not raw_entries:
+        raise ValueError(f"ProMods fuel module {module_name!r} at {source_path!r} has zero entries")
     prefix_map = PM_MODULE_PREFIX_MAPS[module_name]
     unit_name = f".{module_name}"
 
     # Deduplicate deterministically (last wins) while tracking updated vs verbatim keys
     deduped_source: dict[str, str] = {}
     for item in raw_entries:
+        if not item.key.strip():
+            continue
         deduped_source[item.key] = item.val
 
     compiled_entries: dict[str, str] = {}
@@ -384,8 +418,9 @@ def compile_promods_fuel_module(
         original_val = deduped_source[key]
         match = PM_FUEL_KEY_RE.fullmatch(key)
         if match is None:
-            compiled_entries[key] = original_val
-            preserved_names.append(key)
+            if original_val:
+                compiled_entries[key] = original_val
+                preserved_names.append(key)
             continue
 
         prefix = match.group("prefix")
@@ -393,25 +428,34 @@ def compile_promods_fuel_module(
         variant = match.group("variant")
         iso2 = prefix_map.get(prefix)
         if iso2 is None:
-            compiled_entries[key] = original_val
-            preserved_names.append(key)
+            if original_val:
+                compiled_entries[key] = original_val
+                preserved_names.append(key)
             continue
 
         country = snapshot.countries.get(iso2)
         if country is None:
-            compiled_entries[key] = original_val
-            preserved_names.append(key)
+            if original_val:
+                compiled_entries[key] = original_val
+                preserved_names.append(key)
             continue
 
         price = _resolve_grade_price(country, pm_grade, prefix=prefix)
         if price is None:
-            compiled_entries[key] = original_val
-            preserved_names.append(key)
+            if original_val:
+                compiled_entries[key] = original_val
+                preserved_names.append(key)
             continue
 
         regime = classify_pm_format_regime(iso2, country.fuel.currency)
         compiled_entries[key] = format_pm_fuel_value(price, variant, regime)
         updated_count += 1
+
+    if not compiled_entries:
+        raise ValueError(
+            f"ProMods fuel module {module_name!r} at {source_path!r} "
+            "produced zero non-empty entries"
+        )
 
     rendered_bytes = _render_promods_localization_db(unit_name, compiled_entries)
     return ProModsFuelModuleResult(
@@ -441,7 +485,21 @@ def _find_module_source_in_stack(
             continue
         try:
             raw = stack.read_bytes(candidate)
-        except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError):
+        except (
+            FileNotFoundError,
+            ProtectedPayloadError,
+            UnsupportedCompressionError,
+            OSError,
+            ValueError,
+        ):
+            continue
+        if detect_3nk(raw):
+            continue
+        try:
+            parsed = parse_localization_db(_decode_third_party_loc_sii(raw))
+        except ValueError:
+            continue
+        if not parsed:
             continue
         return candidate, raw
     return None

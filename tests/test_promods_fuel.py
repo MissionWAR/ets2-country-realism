@@ -80,7 +80,7 @@ def test_format_national_pump_price_extended_promods_territories(
 
 def test_module_scoped_prefix_tables_prevent_mn_collision() -> None:
     assert PM_FUEL_MODULES == ("pm_fuel", "pm_me_fuel", "pm_tgs_fuel")
-    assert len(PM_EU_PREFIX_TO_ISO2) == 56
+    assert len(PM_EU_PREFIX_TO_ISO2) == 58
     assert len(PM_ME_PREFIX_TO_ISO2) == 8
     assert len(PM_TGS_PREFIX_TO_ISO2) == 7
 
@@ -88,6 +88,9 @@ def test_module_scoped_prefix_tables_prevent_mn_collision() -> None:
     assert PM_EU_PREFIX_TO_ISO2["mn"] == "ME"
     assert PM_TGS_PREFIX_TO_ISO2["mn"] == "MN"
     assert PM_EU_PREFIX_TO_ISO2["cni"] == "ES"
+    # IN-01: proactive microstate prefixes for Liechtenstein & San Marino
+    assert PM_EU_PREFIX_TO_ISO2["li"] == "LI"
+    assert PM_EU_PREFIX_TO_ISO2["sm"] == "SM"
 
 
 def test_format_pm_fuel_value_all_regimes_and_variants() -> None:
@@ -250,3 +253,61 @@ def test_compile_promods_fuel_locales_emits_exact_43_active_locales_excluding_fr
     assert len(unique_payloads) == 1
     payload = next(iter(unique_payloads))
     assert validate_sii_hygiene(payload, require_siinunit=True) == []
+
+
+def test_md01_in01_3nk_cp1252_backslashes_empty_values_and_li_sm_prefixes(
+    tmp_path: pathlib.Path,
+) -> None:
+    """MD-01 + IN-01 regressions: 3nK guard, cp1252, verbatim backslash, empty vals, li/sm."""
+    snapshot = load_or_build_snapshot("summer")
+    locales = _load_locales()
+
+    # 1. Direct 3nK bytes rejected by compile_promods_fuel_module()
+    with pytest.raises(ValueError, match="3nK"):
+        compile_promods_fuel_module(
+            "pm_fuel",
+            b"3nK\x01" + b"\x00" * 32,
+            snapshot,
+            source_path="locale/en_gb/local_module.pm_fuel.sii",
+        )
+
+    # 2. Direct empty localization_db rejected
+    with pytest.raises(ValueError, match="zero entries"):
+        compile_promods_fuel_module(
+            "pm_fuel",
+            b"SiiNunit\n{\nlocalization_db : .pm_fuel\n{\n}\n}\n",
+            snapshot,
+            source_path="locale/en_gb/local_module.pm_fuel.sii",
+        )
+
+    # 3. 3nK in en_gb skipped in VfsStack so fallback locale (de_de) or clean skip works
+    obf_zip = tmp_path / "obf_assets.scs"
+    with zipfile.ZipFile(obf_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("locale/en_gb/local_module.pm_fuel.sii", b"3nK\x01" + b"\x00" * 32)
+    with open_archive(obf_zip) as arch:
+        stack = VfsStack([VfsLayer(name="obf", priority=10, archive=arch)])
+        compiled_empty = compile_promods_fuel_locales(stack, locales, snapshot)
+    assert compiled_empty.modules == {}
+    assert compiled_empty.locale_files == {}
+
+    # 4. cp1252 comment byte (0xe9), verbatim backslash string, empty placeholder, and li/sm keys
+    cp1252_and_bs = (
+        b"SiiNunit\n{\n# Caf\xe9 legacy cp1252 comment\n"
+        b"localization_db : .pm_fuel\n{\n"
+        b'\tkey[]: "fp_li_diesel"\n\tval[]: "1.00"\n'
+        b'\tkey[]: "fp_sm_diesel"\n\tval[]: "1.00"\n'
+        b'\tkey[]: "pm_path_note"\n\tval[]: "A\\\\B"\n'
+        b'\tkey[]: "pm_empty_placeholder"\n\tval[]: ""\n'
+        b"}\n}\n"
+    )
+    res = compile_promods_fuel_module("pm_fuel", cp1252_and_bs, snapshot, source_path="en_gb")
+    assert res.updated_keys == 2
+    assert res.preserved_keys == 1
+    assert res.entries["pm_path_note"] == r"A\B"
+    assert "pm_empty_placeholder" not in res.entries
+    assert float(res.entries["fp_li_diesel"]) > 0.0
+    assert float(res.entries["fp_sm_diesel"]) > 0.0
+    assert validate_sii_hygiene(res.rendered_bytes, require_siinunit=True) == []
+    roundtripped = {e.key: e.val for e in parse_localization_db(res.rendered_bytes)}
+    assert roundtripped["pm_path_note"] == r"A\B"
+    assert "pm_empty_placeholder" not in roundtripped

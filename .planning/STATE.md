@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 4 complete, verified & code-reviewed (`04-VERIFICATION.md` `PASSED` `19/19`, `04-REVIEW.md` `resolved` `19/19`) — merged into `master` (`phase-04`), ready to start Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
+**Current focus:** Phase 5 planned & verified (`05-01`..`05-04`, `05-VALIDATION.md` — `gsd-plan-checker` `PASSED`, 0 blockers/0 warnings) — ready to execute Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Complete, Verified & Reviewed
-Plan: 4 of 4 in current phase (4/4 complete across 3 waves)
-Status: Phase 4 merged into `master` and tagged `phase-04` (`04-01`..`04-04` complete, `04-VERIFICATION.md` `PASSED` `19/19` must-haves, `5/5` requirements `MAP-01`..`MAP-05`, `04-REVIEW.md` `resolved` `19/19` findings, **505 tests passing**, 0 ruff/basedpyright errors)
-Last activity: 2026-11-25 — Resolved all 19 Phase 4 review findings and merged Phase 4 into `master` (`phase-04`)
+Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — Planned & Verified
+Plan: 0 of 4 executed in current phase (4 plans across 4 waves verified)
+Status: Phase 5 plans verified (`05-RESEARCH.md`, `05-PATTERNS.md`, `05-01-PLAN.md`..`05-04-PLAN.md`, `05-VALIDATION.md` passed `gsd-plan-checker` with 0 blockers/0 warnings; `GLB-01`..`GLB-04` and `D-01`..`D-16` 100% covered)
+Last activity: 2026-11-25 — Completed Phase 5 research, pattern mapping, planning (`05-01`..`05-04`), and plan-checker verification
 
 Progress: [████████░░] 80%
 
@@ -69,6 +69,6 @@ None blocking Phase 4 closeout or Phase 5 planning.
 ## Session Continuity
 
 Last session: 2026-11-25
-Stopped at: Phase 4 executed, verified, code-reviewed, merged into `master`, and tagged `phase-04`
-Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-REVIEW.md
-Next action: Run `/gsd-discuss-phase 5` to start Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
+Stopped at: Phase 5 plans (`05-01`..`05-04`) and `05-VALIDATION.md` verified (`gsd-plan-checker` PASSED)
+Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-01-PLAN.md
+Next action: Run `/gsd-execute-phase 5` to execute Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)

@@ -97,11 +97,12 @@ Plans:
   2. Tier 2 guarded portal parsers apply per-country isolated circuit breakers so HTTP `403`/`429`, encoding errors, or HTML selector drift retain `prices.lock.json` last-known-good rates with staleness alerts rather than failing CI builds or corrupting snapshots.
   3. Combined Tier 1, Tier 2, and curated Tier 3 baselines bring `realism-snapshot-{summer|winter}.json` coverage to `200+` global countries and territories across Africa, Latin America, MENA, and Central/East/Southeast Asia for `compose-local`.
   4. An internal CI OSM Overpass/Taginfo (`CC BY-SA`) speed-limit drift audit generates maintainer review reports highlighting mismatches against `data/laws/`, while automated provenance checks verify zero `CC BY-SA` data enters any `CC BY 4.0` mod or snapshot artifact.
-**Plans**: TBD
-  - [ ] `05-01`: Non-EU Tier 1 open government fuel collectors (`US`, `BR`, `AR`, `CO`, `CL`, `MY`, `JP`, `KR`) (`GLB-01`)
-  - [ ] `05-02`: Tier 2 guarded national portal scrapers with isolated per-country circuit breakers & `prices.lock.json` fallback (`GLB-02`)
-  - [ ] `05-03`: Tier 3 curated global baseline expansion to `200+` territories & snapshot coverage tests (`GLB-03`)
-  - [ ] `05-04`: Internal CI OSM (`CC BY-SA`) speed-limit drift audit report & `CC BY 4.0` output isolation check (`GLB-04`)
+**Plans**: 4 plans
+Plans:
+- [ ] `05-01-PLAN.md` — Global `225`-territory & `~156`-currency foundation (`currencies.json`, `tier3_fuel_baselines.json`, `225` canonical laws/mappings/lockfile, `58` global TZ overrides, `18` ECB + `~139` isolated FX, `0.010 EUR/L` floor clamping, frozen v1 snapshot, 11 updated Phase 2-4 tests) (`GLB-03`)
+- [ ] `05-02-PLAN.md` — Non-EU Tier 1 open government fuel collectors (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`/CREG, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), `code=` secret redaction, shared OOXML safety, EU Core vs Global Tier 1 outage gate separation, `--no-global`, and optional Friday CI secrets (`GLB-01`)
+- [ ] `05-03-PLAN.md` — Research-gated Tier 2 national portal scrapers (`IS`, `CH`, `MD`, `MK`, `RU`, `IL`, `AE`, `ZA`, `SA`, `NG`; `KE`/`ID`/`JO`/`EG` in Tier 3), stdlib `fetch/_html.py`, per-country circuit breakers, `--no-tier2`, 5-tier staleness (`14d`/`45d`/`105d`/`30d`/`180d`), noise-controlled Tier 3 rollups & Global Snapshot Coverage changelogs (`GLB-02`)
+- [ ] `05-04-PLAN.md` — Quarantined `src/ets2v2/audit/` subpackage + Phase 5 universal AST DAG quarantine walls, clean-room `speed_audit_allowlist.json`, `ets2v2 audit {osm-speeds,taint}` (`westnordost` + opt-in Overpass/Taginfo), independent `ETS2V2-INV-LICENSE-TAINT` validator gate, full repo/snapshot/package taint gate, and standalone monthly zero-Git-write `.github/workflows/osm-speed-audit.yml` (`GLB-04`)
 
 ## Progress
 

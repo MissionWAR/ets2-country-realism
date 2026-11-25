@@ -5,24 +5,24 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 4 planned & verified — ready to execute Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
+**Current focus:** Phase 4 complete & verified (`04-VERIFICATION.md` `PASSED`, `19/19` must-haves) — ready for optional Phase 4 code review/merge into `master` or planning Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Planned & Verified
-Plan: 0 of 4 in current phase (4 plans verified across 3 waves)
-Status: Phase 4 planned (`04-RESEARCH.md`, `04-PATTERNS.md`, `04-01-PLAN.md`..`04-04-PLAN.md`, `VERIFICATION PASSED` with 0 blockers/0 warnings); Phase 3 complete, verified (`03-VERIFICATION.md` `PASSED`, `16/16` must-haves), merged into `master` & tagged `phase-03` (**390 tests passing**)
-Last activity: 2026-11-24 — Researched, pattern-mapped, planned, and verified Phase 4 (`04-01`..`04-04`)
+Phase: 4 of 5 (ProMods Companion Builder & Local Map Combo Composer) — Complete & Verified
+Plan: 4 of 4 in current phase (4/4 complete across 3 waves)
+Status: Phase 4 executed & verified (`04-01`..`04-04` complete on `gsd/phase-04-promods-companion-builder-local-map-combo-composer`, `04-VERIFICATION.md` `PASSED`, `19/19` must-haves, `5/5` requirements `MAP-01`..`MAP-05`, **482 offline tests + 2 `@pytest.mark.local_promods` tests passing**, 0 ruff/basedpyright errors)
+Last activity: 2026-11-25 — Executed and verified Phase 4 (`04-01`..`04-04`, `04-VERIFICATION.md` `PASSED`)
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: ~21 min
-- Total execution time: ~4.6 hours
+- Total plans completed: 17
+- Average duration: ~28 min
+- Total execution time: ~8.0 hours
 
 **By Phase:**
 
@@ -31,7 +31,7 @@ Progress: [██████░░░░] 60%
 | 1. VFS, 1.62 Baseline & SII Engine | 4/4 | ~69 min | ~17 min |
 | 2. Realism Registry, Core & Validator | 5/5 | ~68 min | ~14 min |
 | 3. European Fuel/FX & Totems | 4/4 | ~116 min | ~29 min |
-| 4. ProMods Companion & Combo Composer | 0/4 | - | - |
+| 4. ProMods Companion & Combo Composer | 4/4 | ~227 min | ~57 min |
 | 5. Global Tier 1/2/3 & OSM Audit | 0/4 | - | - |
 
 ## Accumulated Context
@@ -64,11 +64,11 @@ None yet.
 
 ### Blockers/Concerns
 
-None blocking Phase 4 research or planning.
+None blocking Phase 4 closeout or Phase 5 planning.
 
 ## Session Continuity
 
-Last session: 2026-11-24
-Stopped at: Phase 4 planned and verified (`04-01`..`04-04`, `VERIFICATION PASSED`)
-Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-01-PLAN.md
-Next action: Run `/gsd-execute-phase 4` to execute Phase 4 (ProMods Companion Builder & Local Map Combo Composer)
+Last session: 2026-11-25
+Stopped at: Phase 4 executed & verified (`04-01`..`04-04`, `04-VERIFICATION.md` `PASSED`, `19/19` must-haves on `gsd/phase-04-promods-companion-builder-local-map-combo-composer`)
+Resume file: .planning/phases/04-promods-companion-builder-local-map-combo-composer/04-VERIFICATION.md
+Next action: Run `/gsd-code-review 4` (optional deep review before merging `gsd/phase-04-promods-companion-builder-local-map-combo-composer` into `master` & tagging `phase-04`), or proceed to `/gsd-discuss-phase 5`

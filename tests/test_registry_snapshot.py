@@ -599,3 +599,69 @@ def test_load_or_build_snapshot_and_cli_snapshot_verify(
     report_bad = cast(dict[str, object], json.loads(out_bad.out))
     assert report_bad["ok"] is False
     assert report_bad["checksum_verified"] is False
+
+
+def test_md04_calendar_anchor_date_bounded_reads_and_single_read_toctou_guard(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MD-04: invalid calendar anchor_date, bounded reads, and single-read TOCTOU guard."""
+    import ets2v2.registry.snapshot as snap_mod
+
+    assert snap_mod.MAX_SNAPSHOT_BYTES == 64 * 1024 * 1024
+    assert snap_mod.MAX_CHECKSUMS_BYTES == 1 * 1024 * 1024
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries, bl_locales = _load_inputs()
+    summer = build_realism_snapshot(registry, bl_countries, bl_locales, "summer")
+    snap_dir = tmp_path / "md04"
+    snap_path = snap_dir / "realism-snapshot-summer.json"
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    good_bytes = write_realism_snapshot(summer, snap_path)
+    snap_mod.write_sha256sums([snap_path], sums_path)
+
+    # 1. Invalid calendar dates rejected by both RealismSnapshot and verify_snapshot_file()
+    for bad_date in ("2026-99-99", "2026-02-30"):
+        bad_snap = tmp_path / f"bad_{bad_date}.json"
+        bad_snap.write_bytes(good_bytes.replace(b'"2026-07-15"', f'"{bad_date}"'.encode()))
+        with pytest.raises(ValidationError, match="anchor_date"):
+            RealismSnapshot.model_validate_json(bad_snap.read_text("utf-8"))
+        ver = snap_mod.verify_snapshot_file(bad_snap)
+        assert ver.ok is False
+        assert any("anchor_date" in issue for issue in ver.issues)
+
+    # 2. Single-read TOCTOU guarantee in load_or_build_snapshot()
+    opened_paths: list[pathlib.Path] = []
+    orig_open = pathlib.Path.open
+
+    def _counting_open(self: pathlib.Path, mode: str = "r") -> object:
+        opened_paths.append(self)
+        return orig_open(self, mode)
+
+    def _forbid_second_load(_path: pathlib.Path) -> RealismSnapshot:
+        raise AssertionError("load_or_build_snapshot must not re-read via load_realism_snapshot")
+
+    monkeypatch.setattr(pathlib.Path, "open", _counting_open)
+    monkeypatch.setattr(snap_mod, "load_realism_snapshot", _forbid_second_load)
+    loaded = snap_mod.load_or_build_snapshot(
+        "summer",
+        snapshot_path=snap_path,
+        checksums_path=sums_path,
+    )
+    assert loaded == summer
+    assert opened_paths.count(snap_path) == 1
+    assert opened_paths.count(sums_path) == 1
+    monkeypatch.undo()
+
+    # 3. Bounded reads enforce MAX_SNAPSHOT_BYTES & MAX_CHECKSUMS_BYTES
+    monkeypatch.setattr(snap_mod, "MAX_SNAPSHOT_BYTES", 64)
+    with pytest.raises(ValueError, match="exceeds maximum allowed size"):
+        snap_mod.load_realism_snapshot(snap_path)
+    ver_big = snap_mod.verify_snapshot_file(snap_path)
+    assert ver_big.ok is False
+    assert any("exceeds maximum allowed size" in issue for issue in ver_big.issues)
+    monkeypatch.undo()
+
+    monkeypatch.setattr(snap_mod, "MAX_CHECKSUMS_BYTES", 16)
+    with pytest.raises(ValueError, match="exceeds maximum allowed size"):
+        snap_mod.parse_sha256sums(sums_path)

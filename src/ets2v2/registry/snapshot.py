@@ -10,7 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from ets2v2.baseline.models import BaselineManifest, CountriesBaseline, LocalesBaseline
 from ets2v2.normalize.fx import round_eur_per_liter
@@ -32,6 +32,8 @@ from ets2v2.registry.timezone import (
 _ROAD_VEHICLE_CLASSES: Final[tuple[RoadVehicleClass, ...]] = ("car", "truck", "bus")
 _BASELINE_FUEL_SOURCE: Final[str] = "baseline_1.62"
 _SHA256SUM_LINE_RE: Final[re.Pattern[str]] = re.compile(r"^([0-9a-f]{64})  ([^\r\n/\\]+)$")
+MAX_SNAPSHOT_BYTES: Final[int] = 64 * 1024 * 1024
+MAX_CHECKSUMS_BYTES: Final[int] = 1 * 1024 * 1024
 
 
 class RealismSnapshotFuel(BaseModel):
@@ -75,6 +77,15 @@ class RealismSnapshot(BaseModel):
     anchor_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     baseline_game_version: str = Field(min_length=1)
     countries: dict[str, RealismSnapshotCountry]
+
+    @field_validator("anchor_date")
+    @classmethod
+    def _validate_calendar_anchor_date(cls, value: str) -> str:
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid ISO calendar anchor_date {value!r}: {exc}") from exc
+        return value
 
 
 class SnapshotVerificationResult(BaseModel):
@@ -208,11 +219,25 @@ def write_realism_snapshot(snapshot: RealismSnapshot, path: Path) -> bytes:
     return raw
 
 
+def _read_bounded_bytes(path: Path, *, max_bytes: int, label: str) -> bytes:
+    """Read file bytes up to ``max_bytes`` to guard against unbounded untrusted reads."""
+    if not path.is_file():
+        raise FileNotFoundError(f"{label} does not exist: {path}")
+    size = path.stat().st_size
+    if size > max_bytes:
+        raise ValueError(
+            f"{label} {path} exceeds maximum allowed size ({size} > {max_bytes} bytes)"
+        )
+    with path.open("rb") as fh:
+        data = fh.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise ValueError(f"{label} {path} exceeded maximum allowed size ({max_bytes} bytes)")
+    return data
+
+
 def load_realism_snapshot(path: Path) -> RealismSnapshot:
     """Strictly load and validate a UTF-8 no-BOM LF ``schema_version=1`` realism snapshot."""
-    if not path.is_file():
-        raise FileNotFoundError(f"Realism snapshot does not exist: {path}")
-    raw = path.read_bytes()
+    raw = _read_bounded_bytes(path, max_bytes=MAX_SNAPSHOT_BYTES, label="Realism snapshot")
     if raw.startswith(b"\xef\xbb\xbf"):
         raise ValueError(f"Realism snapshot must not contain a UTF-8 BOM: {path}")
     if b"\r" in raw:
@@ -250,9 +275,7 @@ def write_sha256sums(paths: Sequence[Path], out_path: Path) -> bytes:
 
 def parse_sha256sums(path: Path) -> dict[str, str]:
     """Strictly parse a UTF-8 no-BOM LF ``SHA256SUMS.txt`` manifest into filename -> hex sha256."""
-    if not path.is_file():
-        raise FileNotFoundError(f"SHA256SUMS manifest does not exist: {path}")
-    raw = path.read_bytes()
+    raw = _read_bounded_bytes(path, max_bytes=MAX_CHECKSUMS_BYTES, label="SHA256SUMS manifest")
     if raw.startswith(b"\xef\xbb\xbf"):
         raise ValueError(f"SHA256SUMS manifest must not contain a UTF-8 BOM: {path}")
     if b"\r" in raw:
@@ -276,28 +299,37 @@ def parse_sha256sums(path: Path) -> dict[str, str]:
     return entries
 
 
-def verify_snapshot_file(
+def _verify_and_parse_snapshot(
     snapshot_path: Path,
     *,
     checksums_path: Path | None = None,
     expected_edition: Season | None = None,
-) -> SnapshotVerificationResult:
-    """Verify a v1 realism snapshot offline (hygiene, schema, edition, constant-time SHA-256)."""
+) -> tuple[SnapshotVerificationResult, RealismSnapshot | None]:
+    """Verify & parse a v1 snapshot from a single bounded read (eliminates TOCTOU double-read)."""
     issues: list[str] = []
-    if not snapshot_path.is_file():
-        return SnapshotVerificationResult(
-            ok=False,
-            snapshot_path=str(snapshot_path),
-            issues=[f"Realism snapshot does not exist: {snapshot_path}"],
-        )
-
     try:
-        raw = snapshot_path.read_bytes()
-    except OSError as exc:
-        return SnapshotVerificationResult(
-            ok=False,
-            snapshot_path=str(snapshot_path),
-            issues=[f"Unable to read realism snapshot {snapshot_path}: {exc}"],
+        raw = _read_bounded_bytes(
+            snapshot_path,
+            max_bytes=MAX_SNAPSHOT_BYTES,
+            label="Realism snapshot",
+        )
+    except FileNotFoundError as exc:
+        return (
+            SnapshotVerificationResult(
+                ok=False,
+                snapshot_path=str(snapshot_path),
+                issues=[str(exc)],
+            ),
+            None,
+        )
+    except (OSError, ValueError) as exc:
+        return (
+            SnapshotVerificationResult(
+                ok=False,
+                snapshot_path=str(snapshot_path),
+                issues=[f"Unable to read realism snapshot {snapshot_path}: {exc}"],
+            ),
+            None,
         )
 
     digest = hashlib.sha256(raw).hexdigest()
@@ -357,7 +389,7 @@ def verify_snapshot_file(
             else:
                 checksum_verified = True
 
-    return SnapshotVerificationResult(
+    result = SnapshotVerificationResult(
         ok=not issues,
         snapshot_path=str(snapshot_path),
         schema_version=snapshot.schema_version if snapshot is not None else None,
@@ -368,6 +400,22 @@ def verify_snapshot_file(
         checksum_verified=checksum_verified,
         issues=issues,
     )
+    return result, (snapshot if result.ok else None)
+
+
+def verify_snapshot_file(
+    snapshot_path: Path,
+    *,
+    checksums_path: Path | None = None,
+    expected_edition: Season | None = None,
+) -> SnapshotVerificationResult:
+    """Verify a v1 realism snapshot offline (hygiene, schema, edition, constant-time SHA-256)."""
+    result, _ = _verify_and_parse_snapshot(
+        snapshot_path,
+        checksums_path=checksums_path,
+        expected_edition=expected_edition,
+    )
+    return result
 
 
 def load_or_build_snapshot(
@@ -383,15 +431,15 @@ def load_or_build_snapshot(
 ) -> RealismSnapshot:
     """Load & verify an explicit v1 snapshot (incl. sibling SHA256SUMS.txt) or build offline."""
     if snapshot_path is not None:
-        verification = verify_snapshot_file(
+        verification, parsed_snapshot = _verify_and_parse_snapshot(
             snapshot_path,
             checksums_path=checksums_path,
             expected_edition=edition,
         )
-        if not verification.ok:
+        if not verification.ok or parsed_snapshot is None:
             joined = "; ".join(verification.issues)
             raise ValueError(f"Snapshot verification failed for {snapshot_path}: {joined}")
-        return load_realism_snapshot(snapshot_path)
+        return parsed_snapshot
 
     registry = load_law_registry(laws_dir, mappings_path)
     bl_countries = CountriesBaseline.model_validate_json(

@@ -114,7 +114,7 @@ def test_all_36_countries_summer_matches_1_62_baseline_and_kaliningrad_preserved
     baseline_locales = _load_baseline_locales()
 
     assert frozenset(baseline_locales.tz_keys) == EXPECTED_TWELVE_TZ_KEYS
-    assert len(registry.laws_by_iso2) == 76
+    assert len(registry.laws_by_iso2) == 225
     vanilla_iso2s = {e.iso2 for e in registry.mappings.countries if e.vanilla_1_62}
     assert len(vanilla_iso2s) == 36
 
@@ -258,9 +258,9 @@ def test_permanent_utc_plus_3_numeric_tzname_overrides(
 @pytest.mark.parametrize(
     ("iana_tz", "expected_offset", "expected_abbr"),
     [
-        ("Asia/Dubai", 240, "UTC+4"),
-        ("Asia/Tehran", 210, "UTC+3:30"),
-        ("America/Sao_Paulo", -180, "UTC-3"),
+        ("Asia/Srednekolymsk", 660, "UTC+11"),
+        ("Pacific/Marquesas", -570, "UTC-9:30"),
+        ("America/Punta_Arenas", -180, "UTC-3"),
     ],
 )
 def test_unmapped_numeric_tzname_deterministic_utc_fallback(

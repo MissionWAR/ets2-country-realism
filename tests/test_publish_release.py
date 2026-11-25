@@ -169,14 +169,14 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
     )
     assert summer_verify.ok is True
     assert summer_verify.checksum_verified is True
-    assert summer_verify.country_count == 76
+    assert summer_verify.country_count == 225
     assert winter_verify.ok is True
     assert winter_verify.checksum_verified is True
-    assert winter_verify.country_count == 76
+    assert winter_verify.country_count == 225
 
     summer_snap = RealismSnapshot.model_validate_json(summer_snap_path.read_text("utf-8"))
     assert summer_snap.schema_version == 1
-    assert len(summer_snap.countries) == 76
+    assert len(summer_snap.countries) == 225
 
     state_bytes_after_run1 = state_path.read_bytes()
     ledger_after_run1 = load_published_ledger(state_path)
@@ -548,7 +548,7 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ).decode("utf-8")
 
     assert "## 36-Country Fuel Price Summary" in clean_md
-    assert "- **Countries Covered:** `36` (Core) / `76` (Snapshot)" in clean_md
+    assert "- **Countries Covered:** `36` (Core) / `225` (Snapshot)" in clean_md
     assert "| `KZ` |" not in clean_md
     assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
         clean_md

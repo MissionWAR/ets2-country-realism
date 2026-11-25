@@ -642,19 +642,21 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
         ALL_TERRITORY_CURRENCIES,
         EXTENDED_CURRENCY_SANITY_BANDS,
         EXTENDED_ECB_CURRENCIES,
+        EXTENDED_GLOBAL_CURRENCIES,
         EXTENDED_PROMODS_CURRENCIES,
         PROMODS_CURATED_SEED_SOURCE,
         PROMODS_EXTENDED_ISO2S,
     )
 
     assert len(PROMODS_EXTENDED_ISO2S) == 37
-    assert len(ALL_LOCKFILE_TERRITORY_ISO2S) == 76
-    assert len(ALL_TERRITORY_CURRENCIES) == 76
+    assert len(ALL_LOCKFILE_TERRITORY_ISO2S) == 225
+    assert len(ALL_TERRITORY_CURRENCIES) == 225
     assert len(EXTENDED_PROMODS_CURRENCIES) == 24
-    assert frozenset({"CNY", "ILS"}) == EXTENDED_ECB_CURRENCIES
-    assert set(EXTENDED_CURRENCY_SANITY_BANDS) == EXTENDED_PROMODS_CURRENCIES
-    assert len(ALL_CURRENCY_SANITY_BANDS) == 40
-    assert len(ALL_REFERENCE_FX_RATES) == 41
+    assert len(EXTENDED_ECB_CURRENCIES) == 18
+    assert {"CNY", "ILS"} < EXTENDED_ECB_CURRENCIES
+    assert set(EXTENDED_CURRENCY_SANITY_BANDS) == EXTENDED_GLOBAL_CURRENCIES
+    assert len(ALL_CURRENCY_SANITY_BANDS) == len(ALL_REFERENCE_FX_RATES) - 1
+    assert len(ALL_REFERENCE_FX_RATES) == len(EXTENDED_GLOBAL_CURRENCIES) + 17
     assert PROMODS_CURATED_SEED_SOURCE == "promods_curated_seed"
 
     # Exotic outage (SYP, TMT, LBP omitted from all live providers) -> ok=True with warning fallback
@@ -695,7 +697,7 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
     )
     assert res.ok is True
     assert res.missing_currencies == []
-    assert len(res.rates) == 41
+    assert len(res.rates) == len(ALL_REFERENCE_FX_RATES)
     assert res.rates["CNY"].validator_provider == "ecb_xml"
     assert res.rates["ILS"].validator_provider == "ecb_xml"
     assert res.rates["KZT"].rate_per_eur == pytest.approx(540.0)

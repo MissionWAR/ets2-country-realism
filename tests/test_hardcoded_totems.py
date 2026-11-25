@@ -168,15 +168,32 @@ def test_jrr_numeric_boards_rewrite_when_id_in_snapshot_and_skip_when_absent(
         assert parsed.text_slots[0].font_face == "/font/sign/dot_matrix.font"
         assert parsed.text_slots[0].localization_key == f"fp_id_{grade}_ets2v2"
 
-    # 2. Against Phase 4 76-territory snapshot (no ID) -> all 8 skipped_not_in_snapshot
-    snap_phase4 = load_or_build_snapshot("summer")
-    assert "ID" not in snap_phase4.countries
+    # 2. Against Phase 5 225-territory snapshot (where ID is now canonical!) -> all 8 patched
+    snap_global = load_or_build_snapshot("summer")
+    assert len(snap_global.countries) == 225
+    assert "ID" in snap_global.countries
     stack2 = VfsStack()
     try:
         stack2.mount(open_archive(mod_zip), name="jrr", priority=10)
-        res_absent = patch_hardcoded_numeric_totems(stack2, snap_phase4, bl_boards)
+        res_global = patch_hardcoded_numeric_totems(stack2, snap_global, bl_boards)
     finally:
         stack2.close()
+
+    assert len(res_global.board_files) == 8
+    assert len(res_global.actions) == 8
+    assert all(a.status == "patched" for a in res_global.actions)
+
+    # 3. Against synthetic snapshot lacking ID -> all 8 skipped_not_in_snapshot preserved
+    snap_without_id = snap_global.model_copy(
+        update={"countries": {iso2: c for iso2, c in snap_global.countries.items() if iso2 != "ID"}}
+    )
+    assert "ID" not in snap_without_id.countries
+    stack3 = VfsStack()
+    try:
+        stack3.mount(open_archive(mod_zip), name="jrr", priority=10)
+        res_absent = patch_hardcoded_numeric_totems(stack3, snap_without_id, bl_boards)
+    finally:
+        stack3.close()
 
     assert res_absent.board_files == {}
     assert res_absent.extra_locale_tokens == {}

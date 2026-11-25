@@ -280,7 +280,7 @@ def test_cli_registry_snapshot_winter_date_override_and_invalid_date(
     assert not bad_out.exists()
 
 
-def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preserves_v1(
+def test_build_realism_snapshot_with_prices_lock_emits_225_territories_and_preserves_v1(
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -290,8 +290,10 @@ def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preser
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries, bl_locales = _load_inputs()
     lock = seed_initial_lockfile(bl_countries)
-    assert len(lock.countries) == 76
-    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL"} <= set(lock.countries.keys())
+    assert len(lock.countries) == 225
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL", "US", "BR", "JP", "ID"} <= set(
+        lock.countries.keys()
+    )
 
     # Override DE with an exact 3-decimal EUR/L and live national source to verify injection
     de_live = lock.countries["DE"].model_copy(
@@ -318,15 +320,35 @@ def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preser
         prices_lock=custom_lock,
     )
     assert snap.schema_version == 1
-    assert len(snap.countries) == 76
-    assert len(snap_winter.countries) == 76
-    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "GL", "GG", "GI", "IM", "JE"} <= set(
+    assert len(snap.countries) == 225
+    assert len(snap_winter.countries) == 225
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "GL", "GG", "GI", "IM", "JE", "US"} <= set(
         snap.countries.keys()
     )
 
-    # imperial_units derived strictly for non-vanilla territories (D-02)
+    # imperial_units derived strictly from speed_unit == "mph" for non-vanilla territories (D-02)
     imperial_iso2s = {iso2 for iso2, c in snap.countries.items() if c.imperial_units}
-    assert imperial_iso2s == {"GB", "GG", "IM", "JE"}
+    assert imperial_iso2s == {
+        "AG",
+        "BM",
+        "BS",
+        "DM",
+        "FK",
+        "GB",
+        "GD",
+        "GG",
+        "IM",
+        "JE",
+        "KN",
+        "KY",
+        "LC",
+        "LR",
+        "PR",
+        "TC",
+        "US",
+        "VC",
+        "VG",
+    }
     assert snap.countries["GI"].imperial_units is False
 
     # ProMods seasonal timezones resolved accurately via zoneinfo + overrides
@@ -350,7 +372,7 @@ def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preser
     raw_obj = cast(dict[str, object], json.loads(serialize_snapshot_bytes(snap).decode("utf-8")))
     assert set(raw_obj.keys()) == EXPECTED_TOP_LEVEL_KEYS
     raw_countries = cast(dict[str, dict[str, object]], raw_obj["countries"])
-    assert len(raw_countries) == 76
+    assert len(raw_countries) == 225
     assert set(raw_countries["DE"].keys()) == EXPECTED_COUNTRY_KEYS
     assert set(raw_countries["KZ"].keys()) == EXPECTED_COUNTRY_KEYS
     assert set(cast(dict[str, object], raw_countries["DE"]["fuel"]).keys()) == EXPECTED_FUEL_KEYS

@@ -36,6 +36,7 @@ from ets2v2.fetch.national import (
 from ets2v2.fetch.pipeline import run_price_fetch
 from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_REFERENCE_FX_RATES,
     ALL_TERRITORY_CURRENCIES,
     ECB_COVERED_CURRENCIES,
 )
@@ -372,9 +373,9 @@ def test_run_price_fetch_full_39_territory_merge_precedence_and_keyless_vs_keyed
     assert report.tier1_feeds_failed == 0
 
     loaded = load_prices_lockfile(lock_path)
-    assert len(loaded.countries) == 76
+    assert len(loaded.countries) == 225
     assert set(loaded.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
-    assert len(loaded.fx_rates) == 41
+    assert len(loaded.fx_rates) == len(ALL_REFERENCE_FX_RATES)
 
     # National multi-grade overrides EC WOB
     assert loaded.countries["FR"].source == "fr_economie_ods"
@@ -549,9 +550,9 @@ def test_committed_state_prices_lockfile_contract() -> None:
 
     lock = load_prices_lockfile(COMMITTED_LOCK_PATH)
     assert lock.schema_version == 1
-    assert len(lock.countries) == 76
+    assert len(lock.countries) == 225
     assert set(lock.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
-    assert len(lock.fx_rates) == 41
+    assert len(lock.fx_rates) == len(ALL_REFERENCE_FX_RATES)
     assert lock.countries["BG"].currency == "EUR"
     assert lock.fx_rates["EUR"].rate_per_eur == 1.0
     for iso2, entry in lock.countries.items():
@@ -738,10 +739,10 @@ def test_run_price_fetch_preserves_76_territories_and_reprices_promods_with_live
         sleep_fn=lambda _: None,
     )
     assert report.ok is True
-    assert report.fx_currencies_validated == 41
+    assert report.fx_currencies_validated == len(ALL_REFERENCE_FX_RATES)
 
     loaded = load_prices_lockfile(lock_path)
-    assert len(loaded.countries) == 76
+    assert len(loaded.countries) == 225
     assert set(loaded.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
 
     # Live fuel-prices.eu AD quote accepted cleanly and NOT marked fallback (IN-02)

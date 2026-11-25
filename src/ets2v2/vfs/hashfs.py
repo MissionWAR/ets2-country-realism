@@ -329,18 +329,28 @@ class _BaseHashFsArchive:
         except (UnsupportedCompressionError, ValueError):
             return []
         files: list[str] = []
+        seen: set[str] = set()
         for child_name, is_sub in self._parse_dir_listing(raw_listing, norm):
             if (
-                is_sub
-                or child_name in ("", ".", "..")
+                child_name in ("", ".", "..")
                 or "/" in child_name
                 or "\\" in child_name
                 or "\x00" in child_name
             ):
+                self._diag.add(
+                    "path_traversal",
+                    norm or "/",
+                    f"Rejected unsafe directory entry name {child_name!r}",
+                )
+                continue
+            if is_sub:
                 continue
             child_path = f"{norm}/{child_name}" if norm else child_name
+            if child_path in seen:
+                continue
             child_rec = self._records.get(hash_vfs_path(child_path, salt=self._salt))
             if child_rec is not None and not child_rec.is_dir:
+                seen.add(child_path)
                 files.append(child_path)
         files.sort()
         return files

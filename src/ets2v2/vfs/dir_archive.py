@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Self
+from typing import Final, Self
 
 from ets2v2.vfs.types import (
     ArchiveDiagnostic,
@@ -16,6 +16,8 @@ from ets2v2.vfs.types import (
     normalize_vfs_path,
     record_3nk_if_present,
 )
+
+MAX_DIR_ENTRY_BYTES: Final[int] = 128 * 1024 * 1024
 
 
 def _is_dir_junction(path: Path) -> bool:
@@ -188,7 +190,19 @@ class DirectoryArchive:
             )
             raise ValueError(f"Path {norm!r} escapes archive root {self._path}")
 
-        data = resolved.read_bytes()
+        size = resolved.stat().st_size
+        if size > MAX_DIR_ENTRY_BYTES:
+            raise ValueError(
+                f"Entry {norm!r} exceeds maximum directory entry size "
+                f"({size} > {MAX_DIR_ENTRY_BYTES} bytes)"
+            )
+        with resolved.open("rb") as fh:
+            data = fh.read(MAX_DIR_ENTRY_BYTES + 1)
+        if len(data) > MAX_DIR_ENTRY_BYTES:
+            raise ValueError(
+                f"Entry {norm!r} exceeded maximum directory entry size "
+                f"({MAX_DIR_ENTRY_BYTES} bytes)"
+            )
         record_3nk_if_present(data, norm, self._three_nk_paths, self._diag)
         return data
 

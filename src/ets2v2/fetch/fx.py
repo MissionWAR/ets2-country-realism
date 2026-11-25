@@ -355,6 +355,7 @@ def run_fx_only_fetch(
         provider_quotes,
         previous_fx=previous_fx,
         fetched_at=now_iso,
+        include_extended=True,
     )
 
     alerts: list[LockAlert] = []

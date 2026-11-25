@@ -27,7 +27,11 @@ from ets2v2.fetch.models import (
     RawFuelFeedResult,
 )
 from ets2v2.fetch.national import fetch_all_national_feeds
-from ets2v2.normalize.currencies import ALL_LOCKFILE_TERRITORY_ISO2S, ALL_TERRITORY_CURRENCIES
+from ets2v2.normalize.currencies import (
+    ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_TERRITORY_CURRENCIES,
+    PROMODS_EXTENDED_ISO2S,
+)
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
     MAX_WOW_JUMP_RATIO,
@@ -58,6 +62,7 @@ from ets2v2.normalize.models import (
 _NON_EU_VANILLA_ISO2S: Final[frozenset[str]] = frozenset(
     {"AL", "BA", "CH", "IS", "ME", "MK", "RS", "RU", "TR", "XK"}
 )
+_NON_EU_PRIMARY_LIVE_ISO2S: Final[frozenset[str]] = _NON_EU_VANILLA_ISO2S | PROMODS_EXTENDED_ISO2S
 _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "fuel_prices_eu": 10,
     "fionnhughes_ec_wob": 20,
@@ -435,7 +440,9 @@ def run_price_fetch(
         winning_idx: int | None = None
         winning_entry: CountryFuelLockEntry | None = None
         for idx, cand in enumerate(candidates):
-            is_fallback_entry = cand.feed_tier == "fallback" and iso2 not in _NON_EU_VANILLA_ISO2S
+            is_fallback_entry = cand.feed_tier == "fallback" and not (
+                cand.source == "fuel_prices_eu" and iso2 in _NON_EU_PRIMARY_LIVE_ISO2S
+            )
             try:
                 norm = normalize_country_fuel_prices(
                     iso2,

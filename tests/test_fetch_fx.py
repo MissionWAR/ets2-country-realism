@@ -443,9 +443,9 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert report.ok is True
     assert report.fx_only is True
     assert report.dry_run is False
-    assert report.fx_currencies_validated == 17
+    assert report.fx_currencies_validated == 41
     loaded = load_prices_lockfile(lock_path)
-    assert len(loaded.fx_rates) == 17
+    assert len(loaded.fx_rates) == 41
     assert loaded.fx_rates["EUR"].rate_per_eur == 1.0
 
     # End-to-end CLI tracer: ets2v2 fetch --fx-only --dry-run --json
@@ -478,7 +478,7 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert payload["ok"] is True
     assert payload["fx_only"] is True
     assert payload["dry_run"] is True
-    assert payload["fx_currencies_validated"] == 17
+    assert payload["fx_currencies_validated"] == 41
 
     # Total FX outage with no prior lockfile exits non-zero
     def _patched_outage_create(
@@ -594,3 +594,32 @@ def test_http_port_guard_decoding_error_redaction_bom_xml_and_timeout_bounds(
     assert err_code == 1
     assert "cli_secret_999" not in err_cap.err
     assert "apikey=***" in err_cap.err
+
+
+def test_hi03_fx_only_fetch_preserves_all_41_extended_promods_currencies(tmp_path: Path) -> None:
+    """HI-03 regression: ets2v2 fetch --fx-only must preserve all 41 FX currencies in lockfile."""
+    from ets2v2.normalize.currencies import ALL_REFERENCE_FX_RATES, EXTENDED_PROMODS_CURRENCIES
+
+    repo_lock = Path(__file__).resolve().parent.parent / "state" / "prices.lock.json"
+    lock_copy = tmp_path / "prices.lock.json"
+    lock_copy.write_bytes(repo_lock.read_bytes())
+
+    before = load_prices_lockfile(lock_copy)
+    assert len(before.fx_rates) == 41
+
+    report = run_fx_only_fetch(
+        lock_path=lock_copy,
+        write_lock=True,
+        transport=_all_providers_transport(),
+        fetched_at="2026-11-25T06:00:00Z",
+        sleep_fn=lambda _: None,
+    )
+    assert report.ok is True
+    assert report.fx_currencies_validated == 41
+
+    after = load_prices_lockfile(lock_copy)
+    assert set(after.fx_rates.keys()) == set(ALL_REFERENCE_FX_RATES.keys())
+    assert len(after.fx_rates) == 41
+    for ext_ccy in EXTENDED_PROMODS_CURRENCIES:
+        assert ext_ccy in after.fx_rates
+        assert after.fx_rates[ext_ccy].rate_per_eur > 0.0

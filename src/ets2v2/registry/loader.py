@@ -16,6 +16,7 @@ from ets2v2.baseline.models import (
     SpeedLimitsBaseline,
 )
 from ets2v2.registry.models import (
+    CountryAliasRegistry,
     CountryLawRecord,
     CountryMappingEntry,
     CountryMappingRegistry,
@@ -381,13 +382,14 @@ def validate_law_registry(
         else:
             map_by_slug[entry.ets2_slug] = entry
 
-        if entry.country_id in seen_ids:
-            issues.append(
-                f"Duplicate country_id {entry.country_id} in {mappings_file.name} "
-                f"({seen_ids[entry.country_id]} and {entry.ets2_slug})"
-            )
-        else:
-            seen_ids[entry.country_id] = entry.ets2_slug
+        if entry.country_id is not None:
+            if entry.country_id in seen_ids:
+                issues.append(
+                    f"Duplicate country_id {entry.country_id} in {mappings_file.name} "
+                    f"({seen_ids[entry.country_id]} and {entry.ets2_slug})"
+                )
+            else:
+                seen_ids[entry.country_id] = entry.ets2_slug
 
         if entry.iso3 in seen_map_iso3:
             issues.append(
@@ -420,15 +422,24 @@ def validate_law_registry(
     bl_countries_by_slug = {c.slug: c for c in countries_bl.countries}
     bl_speeds_by_slug = {s.slug: s for s in speeds_bl.speed_limits}
 
-    missing_slugs = sorted(set(bl_countries_by_slug) - set(map_by_slug))
-    extra_slugs = sorted(set(map_by_slug) - set(bl_countries_by_slug))
-    for slug in missing_slugs:
-        issues.append(f"Baseline country slug {slug!r} missing from {mappings_file.name}")
-    for slug in extra_slugs:
-        issues.append(f"Non-baseline country slug {slug!r} present in {mappings_file.name}")
+    vanilla_by_slug = {e.ets2_slug: e for e in mappings.countries if e.vanilla_1_62}
+    non_vanilla_by_slug = {e.ets2_slug: e for e in mappings.countries if not e.vanilla_1_62}
 
-    for slug in sorted(set(bl_countries_by_slug) & set(map_by_slug)):
-        entry = map_by_slug[slug]
+    for slug in sorted(set(bl_countries_by_slug) - set(vanilla_by_slug)):
+        issues.append(
+            f"Baseline country slug {slug!r} missing from {mappings_file.name} (vanilla_1_62=true)"
+        )
+    for slug in sorted(set(vanilla_by_slug) - set(bl_countries_by_slug)):
+        issues.append(
+            f"Non-baseline country slug {slug!r} marked vanilla_1_62=true in {mappings_file.name}"
+        )
+    for slug in sorted(set(non_vanilla_by_slug) & set(bl_countries_by_slug)):
+        issues.append(
+            f"Baseline country slug {slug!r} must have vanilla_1_62=true in {mappings_file.name}"
+        )
+
+    for slug in sorted(set(bl_countries_by_slug) & set(vanilla_by_slug)):
+        entry = vanilla_by_slug[slug]
         record = laws_by_iso2.get(entry.iso2)
         if record is None:
             continue
@@ -440,4 +451,51 @@ def validate_law_registry(
             issues=issues,
         )
 
+    return issues
+
+
+def load_country_aliases(path: Path | str) -> CountryAliasRegistry:
+    """Strictly load a UTF-8 no-BOM LF ``country_aliases.json`` registry (D-02, D-13)."""
+    alias_file = Path(path)
+    if not alias_file.is_file():
+        raise FileNotFoundError(f"Missing country aliases file: {alias_file}")
+    raw = alias_file.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise ValueError(f"UTF-8 BOM detected in {alias_file}")
+    if b"\r" in raw:
+        raise ValueError(f"Non-LF line endings detected in {alias_file}")
+    text = raw.decode("utf-8")
+    return CountryAliasRegistry.model_validate_json(text)
+
+
+def validate_country_aliases(path: Path | str) -> list[str]:
+    """Validate formatting, hygiene, and schema of a ``country_aliases.json`` file."""
+    alias_file = Path(path)
+    issues: list[str] = []
+    if not alias_file.is_file():
+        issues.append(f"Missing country aliases file: {alias_file}")
+        return issues
+
+    try:
+        raw = alias_file.read_bytes()
+    except OSError as exc:
+        issues.append(f"Unable to read {alias_file.name}: {exc}")
+        return issues
+
+    text = _check_raw_hygiene(raw, alias_file.name, issues)
+    if text is None:
+        return issues
+
+    try:
+        registry = CountryAliasRegistry.model_validate_json(text)
+    except ValidationError as exc:
+        issues.append(f"Invalid country aliases schema in {alias_file.name}: {exc}")
+        return issues
+
+    expected = serialize_registry_json_bytes(registry)
+    if raw != expected:
+        issues.append(
+            f"Non-canonical JSON formatting in {alias_file.name} "
+            f"(must match sorted UTF-8 no-BOM LF)"
+        )
     return issues

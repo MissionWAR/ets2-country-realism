@@ -9,7 +9,7 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ets2v2.normalize.currencies import TERRITORY_CURRENCIES
+from ets2v2.normalize.currencies import ALL_TERRITORY_CURRENCIES
 from ets2v2.normalize.fx import round_eur_per_liter
 from ets2v2.normalize.models import (
     CANONICAL_FUEL_GRADES,
@@ -41,6 +41,10 @@ _ISO2_ALIASES: Final[dict[str, str]] = {
 _FOUR_DP: Final[Decimal] = Decimal("0.0001")
 _DEFAULT_PETROL_TO_DIESEL_RATIO: Final[Decimal] = Decimal("1.03")
 _BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
+_PROMODS_CURATED_SEED_SOURCE: Final[str] = "promods_curated_seed"
+_SEEDED_SOURCES: Final[frozenset[str]] = frozenset(
+    {_BASELINE_SEEDED_SOURCE, _PROMODS_CURATED_SEED_SOURCE}
+)
 
 
 class FuelNormalizationResult(BaseModel):
@@ -154,9 +158,9 @@ def normalize_country_fuel_prices(
 ) -> FuelNormalizationResult:
     """Enforce D-06 hard bounds (0.01-5.00 EUR/L), +/-25% WoW circuit breaker, and D-02 spreads."""
     canonical_iso2 = normalize_iso2_alias(iso2)
-    expected_currency = TERRITORY_CURRENCIES.get(canonical_iso2)
+    expected_currency = ALL_TERRITORY_CURRENCIES.get(canonical_iso2)
     if expected_currency is None:
-        raise ValueError(f"Unknown European territory ISO-2 code: {iso2!r}")
+        raise ValueError(f"Unknown territory ISO-2 code: {iso2!r}")
     if fx_entry.currency != expected_currency:
         raise ValueError(
             f"FX currency mismatch for {canonical_iso2}: expected {expected_currency!r}, "
@@ -267,7 +271,7 @@ def normalize_country_fuel_prices(
     # Initial baseline_1.62_seeded entries are bootstrap placeholders (still hard-bounds protected
     # above) and transition cleanly to the first live feed without false WoW rejections.
     normalized_allow = {normalize_iso2_alias(code) for code in allow_jump_iso2}
-    if previous_entry is not None and previous_entry.source != _BASELINE_SEEDED_SOURCE:
+    if previous_entry is not None and previous_entry.source not in _SEEDED_SOURCES:
         jump_violations: list[str] = []
         prev_eur = previous_entry.eur_per_liter
         eur_exceeds, eur_delta_ratio = _exceeds_wow_jump(prev_eur, diesel_eur)

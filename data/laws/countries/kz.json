@@ -1,0 +1,171 @@
+{
+  "currency": "KZT",
+  "driving_tired_offence": true,
+  "ets2_slug": "kazakhstan",
+  "iana_timezone": "Asia/Almaty",
+  "iso2": "KZ",
+  "iso3": "kaz",
+  "mass_limit_per_axle_count": [
+    18000,
+    25000,
+    36000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://adilet.zan.kz/",
+    "https://www.iana.org/time-zones"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Kazakhstan Traffic Rules: year-round DRL, 140 km/h motorway cars, 70/90 km/h trucks; unified UTC+5 AQTT nationwide since 2024-03-01."
+  ],
+  "summer": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 140,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": true,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 110,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 140,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  }
+}

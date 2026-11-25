@@ -280,7 +280,7 @@ def test_cli_registry_snapshot_winter_date_override_and_invalid_date(
     assert not bad_out.exists()
 
 
-def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra_eu(
+def test_build_realism_snapshot_with_prices_lock_emits_76_territories_and_preserves_v1(
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -290,7 +290,8 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries, bl_locales = _load_inputs()
     lock = seed_initial_lockfile(bl_countries)
-    assert {"IE", "CY", "MT"} <= set(lock.countries.keys())
+    assert len(lock.countries) == 76
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL"} <= set(lock.countries.keys())
 
     # Override DE with an exact 3-decimal EUR/L and live national source to verify injection
     de_live = lock.countries["DE"].model_copy(
@@ -309,23 +310,49 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
         "summer",
         prices_lock=custom_lock,
     )
+    snap_winter = build_realism_snapshot(
+        registry,
+        bl_countries,
+        bl_locales,
+        "winter",
+        prices_lock=custom_lock,
+    )
     assert snap.schema_version == 1
-    # Core snapshot MUST remain strictly 36 Vanilla+DLC countries (IE/CY/MT excluded per D-04!)
-    assert len(snap.countries) == 36
-    assert "IE" not in snap.countries
-    assert "CY" not in snap.countries
-    assert "MT" not in snap.countries
+    assert len(snap.countries) == 76
+    assert len(snap_winter.countries) == 76
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "GL", "GG", "GI", "IM", "JE"} <= set(
+        snap.countries.keys()
+    )
+
+    # imperial_units derived strictly for non-vanilla territories (D-02)
+    imperial_iso2s = {iso2 for iso2, c in snap.countries.items() if c.imperial_units}
+    assert imperial_iso2s == {"GB", "GG", "IM", "JE"}
+    assert snap.countries["GI"].imperial_units is False
+
+    # ProMods seasonal timezones resolved accurately via zoneinfo + overrides
+    assert snap.countries["GL"].time_zone_name == "WGST"
+    assert snap_winter.countries["GL"].time_zone_name == "WGT"
+    assert snap.countries["UZ"].time_zone == 300
+    assert snap.countries["UZ"].time_zone_name == "UZT"
+    assert snap.countries["KZ"].time_zone == 300
+    assert snap.countries["KZ"].time_zone_name == "AQTT"
+    assert snap.countries["JO"].time_zone == 180
+    assert snap.countries["JO"].time_zone_name == "AST"
+    assert snap.countries["SY"].time_zone == 180
+    assert snap.countries["SY"].time_zone_name == "AST"
 
     assert snap.countries["DE"].fuel.eur_per_liter == 1.659
     assert snap.countries["DE"].fuel.source == "de_tankerkoenig"
     assert snap.countries["DE"].fuel.currency == "EUR"
     assert set(snap.countries["DE"].fuel.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
 
-    # Verify locked schema_version=1 JSON keys (extra="forbid" D-13)
+    # Verify locked schema_version=1 JSON keys (extra="forbid" D-02)
     raw_obj = cast(dict[str, object], json.loads(serialize_snapshot_bytes(snap).decode("utf-8")))
     assert set(raw_obj.keys()) == EXPECTED_TOP_LEVEL_KEYS
     raw_countries = cast(dict[str, dict[str, object]], raw_obj["countries"])
+    assert len(raw_countries) == 76
     assert set(raw_countries["DE"].keys()) == EXPECTED_COUNTRY_KEYS
+    assert set(raw_countries["KZ"].keys()) == EXPECTED_COUNTRY_KEYS
     assert set(cast(dict[str, object], raw_countries["DE"]["fuel"]).keys()) == EXPECTED_FUEL_KEYS
 
     # CLI: ets2v2 registry snapshot --prices-lock ...
@@ -348,3 +375,293 @@ def test_build_realism_snapshot_with_prices_lock_preserves_v1_and_excludes_extra
     assert exit_code == 0
     restored = RealismSnapshot.model_validate_json(snap_out.read_text("utf-8"))
     assert restored == snap
+
+
+def test_timezone_overrides_cover_promods_numeric_zones_and_seasonal_nuuk() -> None:
+    from ets2v2.registry.timezone import resolve_ets2_timezone
+
+    _, bl_locales = _load_inputs()
+    tz_keys = bl_locales.tz_keys
+
+    nuuk_winter = resolve_ets2_timezone("America/Nuuk", date(2026, 1, 15), tz_keys)
+    nuuk_summer = resolve_ets2_timezone("America/Nuuk", date(2026, 7, 15), tz_keys)
+    assert nuuk_winter.abbreviation == "WGT"
+    assert nuuk_winter.ets2_time_zone_name == "WGT"
+    assert nuuk_winter.offset_minutes == -120
+    assert nuuk_winter.is_dst is False
+    assert nuuk_winter.observes_dst is True
+    assert nuuk_summer.abbreviation == "WGST"
+    assert nuuk_summer.ets2_time_zone_name == "WGST"
+    assert nuuk_summer.offset_minutes == -60
+    assert nuuk_summer.is_dst is True
+
+    uz = resolve_ets2_timezone("Asia/Tashkent", date(2026, 7, 15), tz_keys)
+    assert uz.offset_minutes == 300
+    assert uz.ets2_time_zone_name == "UZT"
+
+    kz = resolve_ets2_timezone("Asia/Almaty", date(2026, 7, 15), tz_keys)
+    assert kz.offset_minutes == 300
+    assert kz.ets2_time_zone_name == "AQTT"
+
+    for zone in ("Asia/Baghdad", "Asia/Riyadh", "Asia/Amman", "Asia/Damascus"):
+        resolved = resolve_ets2_timezone(zone, date(2026, 7, 15), tz_keys)
+        assert resolved.offset_minutes == 180
+        assert resolved.ets2_time_zone_name == "AST"
+
+    ma = resolve_ets2_timezone("Africa/Casablanca", date(2026, 7, 15), tz_keys)
+    assert ma.offset_minutes == 60
+    assert ma.ets2_time_zone_name == "@@tz_west@@"
+
+
+def test_sha256sums_verify_snapshot_file_and_sibling_auto_verification(
+    tmp_path: pathlib.Path,
+) -> None:
+    from ets2v2.registry.snapshot import (
+        load_realism_snapshot,
+        parse_sha256sums,
+        render_sha256sums,
+        verify_snapshot_file,
+        write_sha256sums,
+    )
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries, bl_locales = _load_inputs()
+
+    summer = build_realism_snapshot(registry, bl_countries, bl_locales, "summer")
+    winter = build_realism_snapshot(registry, bl_countries, bl_locales, "winter")
+
+    snap_dir = tmp_path / "snapshots"
+    summer_path = snap_dir / "realism-snapshot-summer.json"
+    winter_path = snap_dir / "realism-snapshot-winter.json"
+    write_realism_snapshot(summer, summer_path)
+    write_realism_snapshot(winter, winter_path)
+
+    assert load_realism_snapshot(summer_path) == summer
+
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    rendered = render_sha256sums([winter_path, summer_path])
+    written = write_sha256sums([winter_path, summer_path], sums_path)
+    assert rendered == written
+    assert not written.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in written
+    lines = written.decode("utf-8").splitlines()
+    assert len(lines) == 2
+    assert lines[0].endswith("  realism-snapshot-summer.json")
+    assert lines[1].endswith("  realism-snapshot-winter.json")
+
+    parsed = parse_sha256sums(sums_path)
+    assert set(parsed.keys()) == {
+        "realism-snapshot-summer.json",
+        "realism-snapshot-winter.json",
+    }
+
+    # Explicit checksums verification succeeds
+    res_explicit = verify_snapshot_file(
+        summer_path,
+        checksums_path=sums_path,
+        expected_edition="summer",
+    )
+    assert res_explicit.ok is True
+    assert res_explicit.checksum_verified is True
+    assert res_explicit.schema_version == 1
+    assert res_explicit.edition == "summer"
+    assert res_explicit.issues == []
+
+    # Sibling SHA256SUMS.txt auto-verification when checksums_path=None (D-04)
+    res_sibling = verify_snapshot_file(summer_path, expected_edition="summer")
+    assert res_sibling.ok is True
+    assert res_sibling.checksum_verified is True
+
+    # Edition mismatch fails loudly
+    res_wrong_ed = verify_snapshot_file(summer_path, expected_edition="winter")
+    assert res_wrong_ed.ok is False
+    assert any("edition" in issue.lower() for issue in res_wrong_ed.issues)
+
+    # Tampered snapshot fails sibling auto-verification loudly
+    original_bytes = summer_path.read_bytes()
+    summer_path.write_bytes(original_bytes.replace(b'"2026-07-15"', b'"2026-07-16"'))
+    res_tampered = verify_snapshot_file(summer_path)
+    assert res_tampered.ok is False
+    assert res_tampered.checksum_verified is False
+    assert any(
+        "sha-256" in issue.lower() or "mismatch" in issue.lower() for issue in res_tampered.issues
+    )
+    summer_path.write_bytes(original_bytes)
+
+    # Missing entry in checksums fails loudly
+    other_sums = tmp_path / "other_sums.txt"
+    write_sha256sums([winter_path], other_sums)
+    res_missing_entry = verify_snapshot_file(summer_path, checksums_path=other_sums)
+    assert res_missing_entry.ok is False
+    assert any("not found" in issue.lower() for issue in res_missing_entry.issues)
+
+    # Reject BOM, CRLF, and schema_version=2
+    no_sibling_dir = tmp_path / "isolated"
+    no_sibling_dir.mkdir()
+    bom_snap = no_sibling_dir / "bom.json"
+    bom_snap.write_bytes(b"\xef\xbb\xbf" + original_bytes)
+    assert verify_snapshot_file(bom_snap).ok is False
+
+    crlf_snap = no_sibling_dir / "crlf.json"
+    crlf_snap.write_bytes(original_bytes.replace(b"\n", b"\r\n"))
+    assert verify_snapshot_file(crlf_snap).ok is False
+
+    v2_snap = no_sibling_dir / "v2.json"
+    v2_snap.write_bytes(original_bytes.replace(b'"schema_version": 1', b'"schema_version": 2'))
+    assert verify_snapshot_file(v2_snap).ok is False
+
+    # parse_sha256sums rejects path separators, BOM, CRLF, and duplicate filenames
+    bad_sep = tmp_path / "bad_sep.txt"
+    bad_sep.write_bytes(f"{'a' * 64}  ../evil.json\n".encode())
+    with pytest.raises(ValueError):
+        parse_sha256sums(bad_sep)
+
+    bad_dup = tmp_path / "bad_dup.txt"
+    bad_dup.write_bytes(f"{'a' * 64}  snap.json\n{'b' * 64}  snap.json\n".encode())
+    with pytest.raises(ValueError, match="Duplicate"):
+        parse_sha256sums(bad_dup)
+
+
+def test_load_or_build_snapshot_and_cli_snapshot_verify(
+    tmp_path: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from ets2v2.registry.snapshot import load_or_build_snapshot, write_sha256sums
+
+    # Offline repo checkout fallback (snapshot_path=None)
+    fallback_snap = load_or_build_snapshot(
+        "summer",
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        prices_lock_path=REPO_ROOT / "state" / "prices.lock.json",
+    )
+    assert fallback_snap.schema_version == 1
+    assert fallback_snap.edition == "summer"
+
+    # Explicit snapshot + sibling SHA256SUMS.txt auto-verification
+    snap_dir = tmp_path / "snaps"
+    snap_path = snap_dir / "realism-snapshot-summer.json"
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    write_realism_snapshot(fallback_snap, snap_path)
+    write_sha256sums([snap_path], sums_path)
+
+    loaded_explicit = load_or_build_snapshot(
+        "summer",
+        snapshot_path=snap_path,
+        checksums_path=sums_path,
+    )
+    assert loaded_explicit == fallback_snap
+
+    loaded_sibling = load_or_build_snapshot("summer", snapshot_path=snap_path)
+    assert loaded_sibling == fallback_snap
+
+    # CLI tracer: ets2v2 registry snapshot-verify -> exit 0 with JSON output
+    exit_ok = main(
+        [
+            "registry",
+            "snapshot-verify",
+            str(snap_path),
+            "--checksums",
+            str(sums_path),
+            "--expected-edition",
+            "summer",
+            "--json",
+        ]
+    )
+    out_ok = capsys.readouterr()
+    assert exit_ok == 0
+    report_ok = cast(dict[str, object], json.loads(out_ok.out))
+    assert report_ok["ok"] is True
+    assert report_ok["checksum_verified"] is True
+    assert report_ok["schema_version"] == 1
+    assert report_ok["edition"] == "summer"
+
+    # Tampered snapshot -> load_or_build_snapshot raises ValueError & CLI exits 1
+    snap_path.write_bytes(snap_path.read_bytes().replace(b'"2026-07-15"', b'"2026-07-16"'))
+    with pytest.raises(ValueError, match="verification failed"):
+        load_or_build_snapshot("summer", snapshot_path=snap_path)
+
+    exit_bad = main(
+        [
+            "registry",
+            "snapshot-verify",
+            str(snap_path),
+            "--checksums",
+            str(sums_path),
+            "--expected-edition",
+            "summer",
+            "--json",
+        ]
+    )
+    out_bad = capsys.readouterr()
+    assert exit_bad == 1
+    report_bad = cast(dict[str, object], json.loads(out_bad.out))
+    assert report_bad["ok"] is False
+    assert report_bad["checksum_verified"] is False
+
+
+def test_md04_calendar_anchor_date_bounded_reads_and_single_read_toctou_guard(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """MD-04: invalid calendar anchor_date, bounded reads, and single-read TOCTOU guard."""
+    import ets2v2.registry.snapshot as snap_mod
+
+    assert snap_mod.MAX_SNAPSHOT_BYTES == 64 * 1024 * 1024
+    assert snap_mod.MAX_CHECKSUMS_BYTES == 1 * 1024 * 1024
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries, bl_locales = _load_inputs()
+    summer = build_realism_snapshot(registry, bl_countries, bl_locales, "summer")
+    snap_dir = tmp_path / "md04"
+    snap_path = snap_dir / "realism-snapshot-summer.json"
+    sums_path = snap_dir / "SHA256SUMS.txt"
+    good_bytes = write_realism_snapshot(summer, snap_path)
+    snap_mod.write_sha256sums([snap_path], sums_path)
+
+    # 1. Invalid calendar dates rejected by both RealismSnapshot and verify_snapshot_file()
+    for bad_date in ("2026-99-99", "2026-02-30"):
+        bad_snap = tmp_path / f"bad_{bad_date}.json"
+        bad_snap.write_bytes(good_bytes.replace(b'"2026-07-15"', f'"{bad_date}"'.encode()))
+        with pytest.raises(ValidationError, match="anchor_date"):
+            RealismSnapshot.model_validate_json(bad_snap.read_text("utf-8"))
+        ver = snap_mod.verify_snapshot_file(bad_snap)
+        assert ver.ok is False
+        assert any("anchor_date" in issue for issue in ver.issues)
+
+    # 2. Single-read TOCTOU guarantee in load_or_build_snapshot()
+    opened_paths: list[pathlib.Path] = []
+    orig_open = pathlib.Path.open
+
+    def _counting_open(self: pathlib.Path, mode: str = "r") -> object:
+        opened_paths.append(self)
+        return orig_open(self, mode)
+
+    def _forbid_second_load(_path: pathlib.Path) -> RealismSnapshot:
+        raise AssertionError("load_or_build_snapshot must not re-read via load_realism_snapshot")
+
+    monkeypatch.setattr(pathlib.Path, "open", _counting_open)
+    monkeypatch.setattr(snap_mod, "load_realism_snapshot", _forbid_second_load)
+    loaded = snap_mod.load_or_build_snapshot(
+        "summer",
+        snapshot_path=snap_path,
+        checksums_path=sums_path,
+    )
+    assert loaded == summer
+    assert opened_paths.count(snap_path) == 1
+    assert opened_paths.count(sums_path) == 1
+    monkeypatch.undo()
+
+    # 3. Bounded reads enforce MAX_SNAPSHOT_BYTES & MAX_CHECKSUMS_BYTES
+    monkeypatch.setattr(snap_mod, "MAX_SNAPSHOT_BYTES", 64)
+    with pytest.raises(ValueError, match="exceeds maximum allowed size"):
+        snap_mod.load_realism_snapshot(snap_path)
+    ver_big = snap_mod.verify_snapshot_file(snap_path)
+    assert ver_big.ok is False
+    assert any("exceeds maximum allowed size" in issue for issue in ver_big.issues)
+    monkeypatch.undo()
+
+    monkeypatch.setattr(snap_mod, "MAX_CHECKSUMS_BYTES", 16)
+    with pytest.raises(ValueError, match="exceeds maximum allowed size"):
+        snap_mod.parse_sha256sums(sums_path)

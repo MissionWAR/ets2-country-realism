@@ -1,0 +1,170 @@
+{
+  "currency": "GBP",
+  "driving_tired_offence": true,
+  "ets2_slug": "guernsey",
+  "iana_timezone": "Europe/Guernsey",
+  "iso2": "GG",
+  "iso3": "ggy",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.gg/traffic"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "States of Guernsey imperial mph limits: 25 mph urban, 35 mph island-wide ceiling."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 25
+        }
+      ]
+    }
+  }
+}

@@ -56,8 +56,19 @@ EUROZONE_TENTH_CENT_ISO2S: Final[frozenset[str]] = frozenset(
 # 3 Eurozone countries displaying plain 3-decimal EUR (matching vanilla 1.62 fuel_price_strings.sui)
 EUROZONE_3DEC_ISO2S: Final[frozenset[str]] = frozenset({"FI", "GR", "SI"})
 
-# 4 high-unit integer currencies (no fractional pump display per D-10)
+# 4 Core high-unit integer currencies (no fractional pump display per D-10)
 INTEGER_CURRENCY_ISO2S: Final[frozenset[str]] = frozenset({"AL", "HU", "IS", "RS"})
+
+# Extended ProMods GBP pence Crown Dependencies (GI uses 2-decimal GBP, not pence)
+GBP_PENCE_ISO2S: Final[frozenset[str]] = frozenset({"GB", "GG", "IM", "JE"})
+
+# Extended ProMods high-unit integer currencies (AMD, DZD, IQD, KZT, LBP, MNT, SYP, UAH, UZS)
+EXTENDED_INTEGER_CURRENCY_ISO2S: Final[frozenset[str]] = frozenset(
+    {"AM", "DZ", "IQ", "KZ", "LB", "MN", "SY", "UA", "UZ"}
+)
+
+# Extended ProMods 3-decimal dinar markets (JOD, LYD, TND)
+THREE_DEC_NATIONAL_ISO2S: Final[frozenset[str]] = frozenset({"JO", "LY", "TN"})
 
 # Worst-case deterministic probe strings for Eurozone width-budget routing (never flaps with prices)
 _PROBE_SUP_TEXT: Final[str] = "1.88<sup>9</sup>"
@@ -238,14 +249,14 @@ def format_national_pump_price(
     code = iso2.strip().upper()
     dec = Decimal(str(local_price))
 
-    if code == "GB":
+    if code in GBP_PENCE_ISO2S:
         pence = (dec * _HUNDRED).quantize(_QUANT_1DEC, rounding=ROUND_HALF_UP)
         return f"{pence:.1f}"
 
     if code == "BG":
         return f"{dec.quantize(_QUANT_2DEC, rounding=ROUND_HALF_UP):.2f}"
 
-    if code in INTEGER_CURRENCY_ISO2S:
+    if code in INTEGER_CURRENCY_ISO2S or code in EXTENDED_INTEGER_CURRENCY_ISO2S:
         return f"{dec.quantize(_QUANT_INT, rounding=ROUND_HALF_UP):.0f}"
 
     if code == "CZ":
@@ -266,7 +277,7 @@ def format_national_pump_price(
             return f"{q2:.2f}"
         return f"{dec.quantize(_QUANT_1DEC, rounding=ROUND_HALF_UP):.1f}"
 
-    if code in EUROZONE_3DEC_ISO2S:
+    if code in EUROZONE_3DEC_ISO2S or code in THREE_DEC_NATIONAL_ISO2S:
         return f"{dec.quantize(_QUANT_3DEC, rounding=ROUND_HALF_UP):.3f}"
 
     if code in EUROZONE_TENTH_CENT_ISO2S:

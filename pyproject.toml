@@ -53,4 +53,5 @@ pythonpath = ["src"]
 addopts = ["-ra", "--strict-markers"]
 markers = [
     "local_ets2: tests requiring local ETS2 1.62.3.3s archives",
+    "local_promods: tests requiring local ProMods or user map-combo archives",
 ]

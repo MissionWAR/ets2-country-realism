@@ -33,11 +33,11 @@ Requirements for the V1 release (Phases 1–5), targeting Phase A Semi-Auto Stea
 
 ### ProMods Companion & Local Map Combo Composer
 
-- [ ] **MAP-01**: Provide a local **ProMods Companion Builder** producing `Summer (ProMods Edition)` and `Winter (ProMods Edition)` from the maintainer's installed ProMods `def` packages (`promods-eu-def-v284.scs`, `promods-me-defmap-v284.scs`, `promods-ma-defmap-v104.scs`, `promods-tgs-defmap-v170.scs`), including `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` totems, without ever storing ProMods files in the public GitHub repository.
-- [ ] **MAP-02**: Define and export versioned `realism-snapshot-{summer|winter}.json` artifacts decoupling online price/law ingestion from offline local patch generation.
-- [ ] **MAP-03**: Implement `ets2v2 compose-local` to scan the user's local `mod/` folder and active load order (*RusMap*, *TST*, *UMCF*, *Beyond*, *JRR*, *SEA*, *RoC*, *Project Japan Relocated*, *EAA Rescaled*, Africa mods) across `.sui`, `.sii` fragments, `base/` paths, and empty `SiiNunit {}` stubs to generate `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs`.
-- [ ] **MAP-04**: Apply `FieldOwnershipPolicy` merge guardrails in `compose-local`: `max_of_map_and_real` axle weights (preserving EAA 80t, Iceland 60t, RusMap/TST 48t, FI 105t) and `patch_if_single_tz` timezone patching (preserving TST 27-TZ Russia, UMCF Kazakhstan `ALMT`/`AQTT`, EAA Brazil).
-- [ ] **MAP-05**: Detect `AEM!`/encrypted ZIP archives (`12` identified locally) with clear user diagnostics and `--unpacked-defs` override support, plus opt-in `--patch-hardcoded-totems` support for JRR/7RM numeric gas signs.
+- [x] **MAP-01**: Provide a local **ProMods Companion Builder** producing `Summer (ProMods Edition)` and `Winter (ProMods Edition)` from the maintainer's installed ProMods `def` packages (`promods-eu-def-v284.scs`, `promods-me-defmap-v284.scs`, `promods-ma-defmap-v104.scs`, `promods-tgs-defmap-v170.scs`), including `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` totems, without ever storing ProMods files in the public GitHub repository.
+- [x] **MAP-02**: Define and export versioned `realism-snapshot-{summer|winter}.json` artifacts decoupling online price/law ingestion from offline local patch generation.
+- [x] **MAP-03**: Implement `ets2v2 compose-local` to scan the user's local `mod/` folder and active load order (*RusMap*, *TST*, *UMCF*, *Beyond*, *JRR*, *SEA*, *RoC*, *Project Japan Relocated*, *EAA Rescaled*, Africa mods) across `.sui`, `.sii` fragments, `base/` paths, and empty `SiiNunit {}` stubs to generate `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs`.
+- [x] **MAP-04**: Apply `FieldOwnershipPolicy` merge guardrails in `compose-local`: `max_of_map_and_real` axle weights (preserving EAA 80t, Iceland 60t, RusMap/TST 48t, FI 105t) and `patch_if_single_tz` timezone patching (preserving TST 27-TZ Russia, UMCF Kazakhstan `ALMT`/`AQTT`, EAA Brazil).
+- [x] **MAP-05**: Detect `AEM!`/encrypted ZIP archives (`12` identified locally) with clear user diagnostics and `--unpacked-defs` override support, plus opt-in `--patch-hardcoded-totems` support for JRR/7RM numeric gas signs.
 
 ### Global Tier 1/2/3 Data Expansion & Internal OSM Audit
 
@@ -85,11 +85,11 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 | DAT-03 | Phase 3 | Complete |
 | TOT-01 | Phase 3 | Complete |
 | TOT-02 | Phase 3 | Complete |
-| MAP-01 | Phase 4 | Pending |
-| MAP-02 | Phase 4 | Pending |
-| MAP-03 | Phase 4 | Pending |
-| MAP-04 | Phase 4 | Pending |
-| MAP-05 | Phase 4 | Pending |
+| MAP-01 | Phase 4 | Complete |
+| MAP-02 | Phase 4 | Complete |
+| MAP-03 | Phase 4 | Complete |
+| MAP-04 | Phase 4 | Complete |
+| MAP-05 | Phase 4 | Complete |
 | GLB-01 | Phase 5 | Pending |
 | GLB-02 | Phase 5 | Pending |
 | GLB-03 | Phase 5 | Pending |
@@ -102,4 +102,4 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 
 ---
 *Requirements defined: 2026-11-16*
-*Last updated: 2026-11-22 after Phase 3 closeout (`DAT-01`..`TOT-02` verified)*
+*Last updated: 2026-11-25 after Phase 4 verification (`MAP-01`..`MAP-05` verified)*

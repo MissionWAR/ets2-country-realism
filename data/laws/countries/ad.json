@@ -1,0 +1,169 @@
+{
+  "currency": "EUR",
+  "driving_tired_offence": true,
+  "ets2_slug": "andorra",
+  "iana_timezone": "Europe/Andorra",
+  "iso2": "AD",
+  "iso3": "and",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    36000,
+    40000
+  ],
+  "sources": [
+    "https://www.mobilitat.ad/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Andorra Codi de la Circulacio: 40 km/h urban, 90 km/h rural cars, 70 km/h heavy vehicles."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  }
+}

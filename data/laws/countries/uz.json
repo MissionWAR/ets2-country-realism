@@ -1,0 +1,171 @@
+{
+  "currency": "UZS",
+  "driving_tired_offence": true,
+  "ets2_slug": "uzbekistan",
+  "iana_timezone": "Asia/Tashkent",
+  "iso2": "UZ",
+  "iso3": "uzb",
+  "mass_limit_per_axle_count": [
+    18000,
+    25000,
+    36000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://lex.uz/",
+    "https://www.iana.org/time-zones"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Uzbekistan Road Traffic Rules: 60 km/h urban, 100 km/h rural cars, 70/80 km/h trucks; Asia/Tashkent UTC+5 (+300) UZT."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 70,
+          "max_limit": 70,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  }
+}

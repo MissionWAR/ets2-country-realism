@@ -35,12 +35,13 @@ from ets2v2.fetch.national import (
 )
 from ets2v2.fetch.pipeline import run_price_fetch
 from ets2v2.normalize.currencies import (
+    ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_TERRITORY_CURRENCIES,
     ECB_COVERED_CURRENCIES,
-    EUROPEAN_TERRITORY_ISO2S,
-    TERRITORY_CURRENCIES,
 )
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
+    PROMODS_CURATED_SEED_SOURCE,
     load_prices_lockfile,
     seed_initial_lockfile,
     write_prices_lockfile,
@@ -371,8 +372,9 @@ def test_run_price_fetch_full_39_territory_merge_precedence_and_keyless_vs_keyed
     assert report.tier1_feeds_failed == 0
 
     loaded = load_prices_lockfile(lock_path)
-    assert len(loaded.countries) == 39
-    assert set(loaded.countries.keys()) == set(EUROPEAN_TERRITORY_ISO2S)
+    assert len(loaded.countries) == 76
+    assert set(loaded.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
+    assert len(loaded.fx_rates) == 41
 
     # National multi-grade overrides EC WOB
     assert loaded.countries["FR"].source == "fr_economie_ods"
@@ -547,12 +549,13 @@ def test_committed_state_prices_lockfile_contract() -> None:
 
     lock = load_prices_lockfile(COMMITTED_LOCK_PATH)
     assert lock.schema_version == 1
-    assert len(lock.countries) == 39
-    assert set(lock.countries.keys()) == set(EUROPEAN_TERRITORY_ISO2S)
+    assert len(lock.countries) == 76
+    assert set(lock.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
+    assert len(lock.fx_rates) == 41
     assert lock.countries["BG"].currency == "EUR"
     assert lock.fx_rates["EUR"].rate_per_eur == 1.0
     for iso2, entry in lock.countries.items():
-        assert entry.currency == TERRITORY_CURRENCIES[iso2]
+        assert entry.currency == ALL_TERRITORY_CURRENCIES[iso2]
         assert set(entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
 
 
@@ -680,3 +683,121 @@ def test_run_price_fetch_anchorless_quote_retains_previous_live_entry(
     assert loaded.countries["IS"].eur_per_liter == pytest.approx(1.840)
     assert loaded.countries["IS"].fallback_used is True
     assert any(a.code == "price_anchor_missing" and a.scope == "IS" for a in res.alerts)
+
+
+def test_run_price_fetch_preserves_76_territories_and_reprices_promods_with_live_fx(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+
+    bl = CountriesBaseline.model_validate_json((BASELINE_DIR / "countries.json").read_text("utf-8"))
+    seeded = seed_initial_lockfile(bl, seed_date="2026-11-15", updated_at="2026-11-15T06:00:00Z")
+    write_prices_lockfile(seeded, lock_path)
+
+    base_transport = _pipeline_transport()
+    live_extended_rates = {**_RATES, "KZT": 560.0, "JOD": 0.80, "UAH": 48.0}
+
+    def _extended_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.startswith("https://api.frankfurter.dev/v2/rates"):
+            return httpx.Response(
+                200,
+                json=[
+                    {"date": "2026-11-20", "base": "EUR", "quote": c, "rate": r}
+                    for c, r in sorted(live_extended_rates.items())
+                ],
+            )
+        if url in {FAWAZ_JSDELIVR_URL, FAWAZ_CLOUDFLARE_URL}:
+            return httpx.Response(
+                200,
+                json={
+                    "date": "2026-11-20",
+                    "eur": {c.lower(): r for c, r in live_extended_rates.items()},
+                },
+            )
+        if url == FUEL_PRICES_EU_URL:
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "ts": 1795154400,
+                    "petrol": {"IS": 1.810, "AD": 1.495},
+                    "diesel": {"IS": 1.840, "AD": 1.460},
+                },
+            )
+        return base_transport.handle_request(request)
+
+    report = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=httpx.MockTransport(_extended_handler),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert report.ok is True
+    assert report.fx_currencies_validated == 41
+
+    loaded = load_prices_lockfile(lock_path)
+    assert len(loaded.countries) == 76
+    assert set(loaded.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
+
+    # Live fuel-prices.eu AD quote accepted cleanly and NOT marked fallback (IN-02)
+    assert loaded.countries["AD"].source == "fuel_prices_eu"
+    assert loaded.countries["AD"].eur_per_liter == pytest.approx(1.460)
+    assert loaded.countries["AD"].fallback_used is False
+
+    # Curated ProMods entries preserved & local_prices dynamically recalculated with live FX
+    for iso2, expected_rate in (("KZ", 560.0), ("JO", 0.80), ("UA", 48.0)):
+        entry = loaded.countries[iso2]
+        assert entry.source == PROMODS_CURATED_SEED_SOURCE
+        assert entry.data_date == "2026-11-15"
+        assert entry.fallback_used is True
+        expected_local_diesel = round(entry.eur_per_liter * expected_rate, 4)
+        assert entry.local_prices["diesel"] == pytest.approx(expected_local_diesel, abs=1e-3)
+
+
+def test_in02_non_eu_promods_live_fuel_prices_eu_not_marked_fallback(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """IN-02 regression: fresh fuel_prices_eu quotes for non-EU ProMods territories are primary."""
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+    bl = CountriesBaseline.model_validate_json((BASELINE_DIR / "countries.json").read_text("utf-8"))
+    seeded = seed_initial_lockfile(bl, seed_date="2026-11-15", updated_at="2026-11-15T06:00:00Z")
+    write_prices_lockfile(seeded, lock_path)
+
+    base_transport = _pipeline_transport(fail_ec_wob=True)
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == FUEL_PRICES_EU_URL:
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "ts": 1795154400,
+                    "petrol": {"IS": 1.810, "UA": 1.350, "MD": 1.310, "AD": 1.495, "CY": 1.450},
+                    "diesel": {"IS": 1.840, "UA": 1.320, "MD": 1.280, "AD": 1.460, "CY": 1.510},
+                },
+            )
+        return base_transport.handle_request(request)
+
+    report = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        transport=httpx.MockTransport(_handler),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert report.ok is True
+    loaded = load_prices_lockfile(lock_path)
+    for non_eu_iso2 in ("IS", "UA", "MD", "AD"):
+        assert loaded.countries[non_eu_iso2].source == "fuel_prices_eu"
+        assert loaded.countries[non_eu_iso2].fallback_used is False
+    # EU-27 member (CY) falling back to fuel_prices_eu when EC WOB is down IS marked fallback
+    assert loaded.countries["CY"].source == "fuel_prices_eu"
+    assert loaded.countries["CY"].fallback_used is True

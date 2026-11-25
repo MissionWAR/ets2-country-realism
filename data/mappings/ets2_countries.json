@@ -2,6 +2,14 @@
   "baseline_game_version": "1.62.3.3",
   "countries": [
     {
+      "country_id": null,
+      "ets2_slug": "aland",
+      "iso2": "AX",
+      "iso3": "ala",
+      "name_english": "Åland Islands",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 14,
       "ets2_slug": "albania",
       "iso2": "AL",
@@ -10,12 +18,52 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "algeria",
+      "iso2": "DZ",
+      "iso3": "dza",
+      "name_english": "Algeria",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "andorra",
+      "iso2": "AD",
+      "iso3": "and",
+      "name_english": "Andorra",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "armenia",
+      "iso2": "AM",
+      "iso3": "arm",
+      "name_english": "Armenia",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 1,
       "ets2_slug": "austria",
       "iso2": "AT",
       "iso3": "aut",
       "name_english": "Austria",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "azerbaijan",
+      "iso2": "AZ",
+      "iso3": "aze",
+      "name_english": "Azerbaijan",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "belarus",
+      "iso2": "BY",
+      "iso3": "blr",
+      "name_english": "Belarus",
+      "vanilla_1_62": false
     },
     {
       "country_id": 2,
@@ -42,12 +90,28 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "china",
+      "iso2": "CN",
+      "iso3": "chn",
+      "name_english": "China",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 19,
       "ets2_slug": "croatia",
       "iso2": "HR",
       "iso3": "hrv",
       "name_english": "Croatia",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "cyprus",
+      "iso2": "CY",
+      "iso3": "cyp",
+      "name_english": "Cyprus",
+      "vanilla_1_62": false
     },
     {
       "country_id": 3,
@@ -66,12 +130,28 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "egypt",
+      "iso2": "EG",
+      "iso3": "egy",
+      "name_english": "Egypt",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 22,
       "ets2_slug": "estonia",
       "iso2": "EE",
       "iso3": "est",
       "name_english": "Estonia",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "faroe",
+      "iso2": "FO",
+      "iso3": "fro",
+      "name_english": "Faroe Islands",
+      "vanilla_1_62": false
     },
     {
       "country_id": 23,
@@ -90,6 +170,14 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "georgia",
+      "iso2": "GE",
+      "iso3": "geo",
+      "name_english": "Georgia",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 5,
       "ets2_slug": "germany",
       "iso2": "DE",
@@ -98,12 +186,36 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "gibraltar",
+      "iso2": "GI",
+      "iso3": "gib",
+      "name_english": "Gibraltar",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 25,
       "ets2_slug": "greece",
       "iso2": "GR",
       "iso3": "grc",
       "name_english": "Greece",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "greenland",
+      "iso2": "GL",
+      "iso3": "grl",
+      "name_english": "Greenland",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "guernsey",
+      "iso2": "GG",
+      "iso3": "ggy",
+      "name_english": "Guernsey",
+      "vanilla_1_62": false
     },
     {
       "country_id": 13,
@@ -122,12 +234,68 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "iom",
+      "iso2": "IM",
+      "iso3": "imn",
+      "name_english": "Isle of Man",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "iraq",
+      "iso2": "IQ",
+      "iso3": "irq",
+      "name_english": "Iraq",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "ireland",
+      "iso2": "IE",
+      "iso3": "irl",
+      "name_english": "Ireland",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "israel",
+      "iso2": "IL",
+      "iso3": "isr",
+      "name_english": "Israel",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 6,
       "ets2_slug": "italy",
       "iso2": "IT",
       "iso3": "ita",
       "name_english": "Italy",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "jersey",
+      "iso2": "JE",
+      "iso3": "jey",
+      "name_english": "Jersey",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "jordan",
+      "iso2": "JO",
+      "iso3": "jor",
+      "name_english": "Jordan",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "kazakhstan",
+      "iso2": "KZ",
+      "iso3": "kaz",
+      "name_english": "Kazakhstan",
+      "vanilla_1_62": false
     },
     {
       "country_id": 204,
@@ -138,12 +306,44 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "kyrgyzstan",
+      "iso2": "KG",
+      "iso3": "kgz",
+      "name_english": "Kyrgyzstan",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 28,
       "ets2_slug": "latvia",
       "iso2": "LV",
       "iso3": "lva",
       "name_english": "Latvia",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "lebanon",
+      "iso2": "LB",
+      "iso3": "lbn",
+      "name_english": "Lebanon",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "libya",
+      "iso2": "LY",
+      "iso3": "lby",
+      "name_english": "Libya",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "liecht",
+      "iso2": "LI",
+      "iso3": "lie",
+      "name_english": "Liechtenstein",
+      "vanilla_1_62": false
     },
     {
       "country_id": 30,
@@ -170,12 +370,52 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "malta",
+      "iso2": "MT",
+      "iso3": "mlt",
+      "name_english": "Malta",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "moldova",
+      "iso2": "MD",
+      "iso3": "mda",
+      "name_english": "Moldova",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "monaco",
+      "iso2": "MC",
+      "iso3": "mco",
+      "name_english": "Monaco",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "mongolia",
+      "iso2": "MN",
+      "iso3": "mng",
+      "name_english": "Mongolia",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 34,
       "ets2_slug": "montenegro",
       "iso2": "ME",
       "iso3": "mne",
       "name_english": "Montenegro",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "morocco",
+      "iso2": "MA",
+      "iso3": "mar",
+      "name_english": "Morocco",
+      "vanilla_1_62": false
     },
     {
       "country_id": 7,
@@ -226,6 +466,22 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "sanmarino",
+      "iso2": "SM",
+      "iso3": "smr",
+      "name_english": "San Marino",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "saudia",
+      "iso2": "SA",
+      "iso3": "sau",
+      "name_english": "Saudi Arabia",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 40,
       "ets2_slug": "serbia",
       "iso2": "RS",
@@ -258,6 +514,14 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "svalbard",
+      "iso2": "SJ",
+      "iso3": "sjm",
+      "name_english": "Svalbard",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 43,
       "ets2_slug": "sweden",
       "iso2": "SE",
@@ -274,6 +538,30 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "syria",
+      "iso2": "SY",
+      "iso3": "syr",
+      "name_english": "Syria",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "tajikistan",
+      "iso2": "TJ",
+      "iso3": "tjk",
+      "name_english": "Tajikistan",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "tunisia",
+      "iso2": "TN",
+      "iso3": "tun",
+      "name_english": "Tunisia",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 44,
       "ets2_slug": "turkey",
       "iso2": "TR",
@@ -282,12 +570,44 @@
       "vanilla_1_62": true
     },
     {
+      "country_id": null,
+      "ets2_slug": "turkmenistan",
+      "iso2": "TM",
+      "iso3": "tkm",
+      "name_english": "Turkmenistan",
+      "vanilla_1_62": false
+    },
+    {
       "country_id": 10,
       "ets2_slug": "uk",
       "iso2": "GB",
       "iso3": "gbr",
       "name_english": "United Kingdom",
       "vanilla_1_62": true
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "ukraine",
+      "iso2": "UA",
+      "iso3": "ukr",
+      "name_english": "Ukraine",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "uzbekistan",
+      "iso2": "UZ",
+      "iso3": "uzb",
+      "name_english": "Uzbekistan",
+      "vanilla_1_62": false
+    },
+    {
+      "country_id": null,
+      "ets2_slug": "westbank",
+      "iso2": "PS",
+      "iso3": "pse",
+      "name_english": "Palestine",
+      "vanilla_1_62": false
     }
   ],
   "schema_version": 1

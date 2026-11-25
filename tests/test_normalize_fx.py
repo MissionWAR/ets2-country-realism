@@ -632,3 +632,102 @@ def test_calendar_date_validation_and_atomic_lockfile_cleanup(
     with pytest.raises(OSError, match="Simulated replace failure"):
         write_prices_lockfile(lockfile, lock_path)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation() -> None:
+    from ets2v2.normalize import (
+        ALL_CURRENCY_SANITY_BANDS,
+        ALL_LOCKFILE_TERRITORY_ISO2S,
+        ALL_REFERENCE_FX_RATES,
+        ALL_TERRITORY_CURRENCIES,
+        EXTENDED_CURRENCY_SANITY_BANDS,
+        EXTENDED_ECB_CURRENCIES,
+        EXTENDED_PROMODS_CURRENCIES,
+        PROMODS_CURATED_SEED_SOURCE,
+        PROMODS_EXTENDED_ISO2S,
+    )
+
+    assert len(PROMODS_EXTENDED_ISO2S) == 37
+    assert len(ALL_LOCKFILE_TERRITORY_ISO2S) == 76
+    assert len(ALL_TERRITORY_CURRENCIES) == 76
+    assert len(EXTENDED_PROMODS_CURRENCIES) == 24
+    assert frozenset({"CNY", "ILS"}) == EXTENDED_ECB_CURRENCIES
+    assert set(EXTENDED_CURRENCY_SANITY_BANDS) == EXTENDED_PROMODS_CURRENCIES
+    assert len(ALL_CURRENCY_SANITY_BANDS) == 40
+    assert len(ALL_REFERENCE_FX_RATES) == 41
+    assert PROMODS_CURATED_SEED_SOURCE == "promods_curated_seed"
+
+    # Exotic outage (SYP, TMT, LBP omitted from all live providers) -> ok=True with warning fallback
+    quotes = _make_clean_provider_quotes()
+    quotes["frankfurter_v2"] = FxProviderQuote(
+        provider="frankfurter_v2",
+        data_date="2026-11-20",
+        rates={
+            **quotes["frankfurter_v2"].rates,
+            "CNY": 7.85,
+            "ILS": 4.00,
+            "KZT": 540.0,
+            "SYP": 14000.0,  # Un-redenominated old SYP -> MUST be rejected by (80, 250) band!
+        },
+    )
+    quotes["ecb_xml"] = FxProviderQuote(
+        provider="ecb_xml",
+        data_date="2026-11-20",
+        rates={**quotes["ecb_xml"].rates, "CNY": 7.86, "ILS": 4.01},
+    )
+    quotes["fawazahmed0"] = FxProviderQuote(
+        provider="fawazahmed0",
+        data_date="2026-11-20",
+        rates={
+            **quotes["fawazahmed0"].rates,
+            "CNY": 7.85,
+            "ILS": 4.00,
+            "KZT": 541.0,
+            "SYP": 14000.0,  # Both live feeds stale un-redenominated SYP -> fallback safely
+        },
+    )
+
+    res = cross_validate_fx_rates(
+        quotes,
+        previous_fx=None,
+        fetched_at="2026-11-20T06:00:00Z",
+        include_extended=True,
+    )
+    assert res.ok is True
+    assert res.missing_currencies == []
+    assert len(res.rates) == 41
+    assert res.rates["CNY"].validator_provider == "ecb_xml"
+    assert res.rates["ILS"].validator_provider == "ecb_xml"
+    assert res.rates["KZT"].rate_per_eur == pytest.approx(540.0)
+    assert res.rates["KZT"].fallback_used is False
+    # Un-redenominated SYP rejected and isolated via reference fallback without failing CI
+    assert res.rates["SYP"].rate_per_eur == pytest.approx(140.0)
+    assert res.rates["SYP"].fallback_used is True
+    assert any(a.scope == "SYP" and a.code == "fx_sanity_rejected" for a in res.alerts)
+    assert any(a.scope == "SYP" and a.code == "fx_reference_fallback" for a in res.alerts)
+    assert any(a.scope == "TMT" and a.code == "fx_reference_fallback" for a in res.alerts)
+    assert any(a.scope == "LBP" and a.code == "fx_reference_fallback" for a in res.alerts)
+
+    # Valid post-2026 redenominated SYP (140.0) is accepted live
+    quotes_valid_syp = {
+        **quotes,
+        "frankfurter_v2": FxProviderQuote(
+            provider="frankfurter_v2",
+            data_date="2026-11-20",
+            rates={**quotes["frankfurter_v2"].rates, "SYP": 142.0},
+        ),
+        "fawazahmed0": FxProviderQuote(
+            provider="fawazahmed0",
+            data_date="2026-11-20",
+            rates={**quotes["fawazahmed0"].rates, "SYP": 143.0},
+        ),
+    }
+    res_syp = cross_validate_fx_rates(
+        quotes_valid_syp,
+        previous_fx=None,
+        fetched_at="2026-11-20T06:00:00Z",
+        include_extended=True,
+    )
+    assert res_syp.ok is True
+    assert res_syp.rates["SYP"].rate_per_eur == pytest.approx(142.0)
+    assert res_syp.rates["SYP"].fallback_used is False

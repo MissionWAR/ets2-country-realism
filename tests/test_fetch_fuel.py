@@ -191,8 +191,8 @@ def test_fetch_fuel_prices_eu_parses_is_live_eur_and_rejects_ok_false() -> None:
     payload = {
         "ok": True,
         "ts": 1795154400,  # 2026-11-20 UTC
-        "petrol": {"IS": 1.812, "UK": 1.695, "AD": 1.410},
-        "diesel": {"IS": 1.845, "UK": 1.740, "AD": 1.350},
+        "petrol": {"IS": 1.812, "UK": 1.695, "AD": 1.410, "US": 1.050},
+        "diesel": {"IS": 1.845, "UK": 1.740, "AD": 1.350, "US": 1.120},
     }
 
     def _handler(request: httpx.Request) -> httpx.Response:
@@ -208,7 +208,8 @@ def test_fetch_fuel_prices_eu_parses_is_live_eur_and_rejects_ok_false() -> None:
     by_iso2 = {q.iso2: q for q in result.quotes}
     assert "IS" in by_iso2
     assert "GB" in by_iso2
-    assert "AD" not in by_iso2  # Outside 39 European territories
+    assert "AD" in by_iso2  # ProMods EU territory covered by 76-territory lockfile
+    assert "US" not in by_iso2  # Outside 76 Vanilla + ProMods territories
     assert by_iso2["IS"].prices_by_grade["petrol_95"] == pytest.approx(1.812)
     assert by_iso2["IS"].prices_by_grade["diesel"] == pytest.approx(1.845)
     assert by_iso2["IS"].unit_basis == "eur_per_liter"

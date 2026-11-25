@@ -1,0 +1,600 @@
+{
+  "aliases": {
+    "abudhabi": {
+      "iana_timezone_override": null,
+      "iso2": "AE",
+      "note": "GMC Beyond Abu Dhabi (UAE)"
+    },
+    "acre": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "aichi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "akita": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "alagoas": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "aland": {
+      "iana_timezone_override": null,
+      "iso2": "AX",
+      "note": "ProMods EU Aland Islands"
+    },
+    "amapa": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "amazonas": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "andorra": {
+      "iana_timezone_override": null,
+      "iso2": "AD",
+      "note": "ProMods EU Andorra"
+    },
+    "aomori": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "bahia": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "can_islands": {
+      "iana_timezone_override": "Atlantic/Canary",
+      "iso2": "ES",
+      "note": "ProMods EU Canary Islands (WET/WEST)"
+    },
+    "ceara": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "chiba": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "cyprus": {
+      "iana_timezone_override": null,
+      "iso2": "CY",
+      "note": "ProMods EU Cyprus"
+    },
+    "dfederal": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "ehime": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "equador": {
+      "iana_timezone_override": null,
+      "iso2": "EC",
+      "note": "EAA / SemEuropa Ecuador"
+    },
+    "equatorial_g": {
+      "iana_timezone_override": null,
+      "iso2": "GQ",
+      "note": "Africa Equatorial Guinea"
+    },
+    "espsanto": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "faroe": {
+      "iana_timezone_override": null,
+      "iso2": "FO",
+      "note": "ProMods EU Faroe Islands"
+    },
+    "fukui": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "fukuoka": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "fukushima": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "gibraltar": {
+      "iana_timezone_override": null,
+      "iso2": "GI",
+      "note": "ProMods EU Gibraltar"
+    },
+    "gifu": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "goias": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "greenland": {
+      "iana_timezone_override": null,
+      "iso2": "GL",
+      "note": "ProMods EU Greenland"
+    },
+    "guernsey": {
+      "iana_timezone_override": null,
+      "iso2": "GG",
+      "note": "ProMods EU Guernsey"
+    },
+    "guiana": {
+      "iana_timezone_override": null,
+      "iso2": "GY",
+      "note": "EAA / SemEuropa Guyana"
+    },
+    "guianafr": {
+      "iana_timezone_override": "America/Cayenne",
+      "iso2": "FR",
+      "note": "EAA / SemEuropa French Guiana (UTC-3)"
+    },
+    "gunma": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "hiroshima": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "hokkaido": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "hyogo": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "ibaraki": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "indo_b": {
+      "iana_timezone_override": "Asia/Jakarta",
+      "iso2": "ID",
+      "note": "JRR Indonesia WIB (UTC+7)"
+    },
+    "indo_th": {
+      "iana_timezone_override": "Asia/Makassar",
+      "iso2": "ID",
+      "note": "JRR Indonesia WITA (UTC+8)"
+    },
+    "indo_tm": {
+      "iana_timezone_override": "Asia/Jayapura",
+      "iso2": "ID",
+      "note": "JRR Indonesia WIT (UTC+9)"
+    },
+    "iom": {
+      "iana_timezone_override": null,
+      "iso2": "IM",
+      "note": "ProMods EU Isle of Man slug"
+    },
+    "iraq1": {
+      "iana_timezone_override": null,
+      "iso2": "IQ",
+      "note": "GMC Beyond / UMCF Iraq variant"
+    },
+    "ireland": {
+      "iana_timezone_override": null,
+      "iso2": "IE",
+      "note": "ProMods EU Ireland"
+    },
+    "ishikawa": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "isle_of_man": {
+      "iana_timezone_override": null,
+      "iso2": "IM",
+      "note": "Isle of Man full slug"
+    },
+    "iwate": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "jersey": {
+      "iana_timezone_override": null,
+      "iso2": "JE",
+      "note": "ProMods EU Jersey"
+    },
+    "kagawa": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "kagoshima": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "kanagawa": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "kochi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "kumamoto": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "kyoto": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "libya1": {
+      "iana_timezone_override": null,
+      "iso2": "LY",
+      "note": "ProMods MA Libya variant slug"
+    },
+    "liecht": {
+      "iana_timezone_override": null,
+      "iso2": "LI",
+      "note": "ProMods EU Liechtenstein slug"
+    },
+    "liechtenstein": {
+      "iana_timezone_override": null,
+      "iso2": "LI",
+      "note": "Liechtenstein full slug"
+    },
+    "limpopo": {
+      "iana_timezone_override": null,
+      "iso2": "ZA",
+      "note": "RIW / Africa Limpopo (South Africa)"
+    },
+    "malta": {
+      "iana_timezone_override": null,
+      "iso2": "MT",
+      "note": "ProMods EU Malta"
+    },
+    "maranhao": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "matogrosso": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "matogrossos": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "mie": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "minasgerais": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "miyagi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "miyazaki": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "monaco": {
+      "iana_timezone_override": null,
+      "iso2": "MC",
+      "note": "ProMods EU Monaco"
+    },
+    "n_ireland": {
+      "iana_timezone_override": null,
+      "iso2": "GB",
+      "note": "Northern Ireland variant slug"
+    },
+    "nagano": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "nagasaki": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "nara": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "niigata": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "nireland": {
+      "iana_timezone_override": null,
+      "iso2": "GB",
+      "note": "ProMods EU Northern Ireland"
+    },
+    "northern_cyprus": {
+      "iana_timezone_override": null,
+      "iso2": "CY",
+      "note": "Northern Cyprus variant slug"
+    },
+    "northern_ireland": {
+      "iana_timezone_override": null,
+      "iso2": "GB",
+      "note": "Northern Ireland full slug"
+    },
+    "oita": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "okayama": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "okinawa": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "osaka": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "palestine": {
+      "iana_timezone_override": null,
+      "iso2": "PS",
+      "note": "Palestine slug"
+    },
+    "papuang": {
+      "iana_timezone_override": null,
+      "iso2": "PG",
+      "note": "SEA Papua New Guinea"
+    },
+    "para": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "paraguai": {
+      "iana_timezone_override": null,
+      "iso2": "PY",
+      "note": "EAA / SemEuropa Paraguay"
+    },
+    "paraiba": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "parana": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "pernambuco": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "piaui": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "rgnorte": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "rgsul": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "rjaneiro": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "rondonia": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "roraima": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "rta_azerbjn": {
+      "iana_timezone_override": null,
+      "iso2": "AZ",
+      "note": "Road to Asia / UMCF Azerbaijan slug"
+    },
+    "saga": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "saitama": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "san_marino": {
+      "iana_timezone_override": null,
+      "iso2": "SM",
+      "note": "San Marino underscored slug"
+    },
+    "sanmarino": {
+      "iana_timezone_override": null,
+      "iso2": "SM",
+      "note": "ProMods EU San Marino slug"
+    },
+    "saudia": {
+      "iana_timezone_override": null,
+      "iso2": "SA",
+      "note": "ProMods ME Saudi Arabia slug"
+    },
+    "saudia1": {
+      "iana_timezone_override": null,
+      "iso2": "SA",
+      "note": "GMC Beyond / UMCF Saudi Arabia variant"
+    },
+    "scatarina": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "sergipe": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "shiga": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "shimane": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "shizuoka": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "spaulo": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "sudan1": {
+      "iana_timezone_override": null,
+      "iso2": "SD",
+      "note": "GMC Beyond / UMCF Sudan variant"
+    },
+    "svalbard": {
+      "iana_timezone_override": null,
+      "iso2": "SJ",
+      "note": "ProMods EU Svalbard"
+    },
+    "timorleste": {
+      "iana_timezone_override": null,
+      "iso2": "TL",
+      "note": "SEA Timor-Leste"
+    },
+    "tocantins": {
+      "iana_timezone_override": null,
+      "iso2": "BR",
+      "note": "SemEuropa Brazilian state (ISO-2 collision shield)"
+    },
+    "tochigi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "tokushima": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "tokyo": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "tottori": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "toyama": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "transnistria": {
+      "iana_timezone_override": null,
+      "iso2": "MD",
+      "note": "Transnistria variant slug"
+    },
+    "uruguai": {
+      "iana_timezone_override": null,
+      "iso2": "UY",
+      "note": "EAA / SemEuropa Uruguay"
+    },
+    "wakayama": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "westbank": {
+      "iana_timezone_override": null,
+      "iso2": "PS",
+      "note": "ProMods ME West Bank / Palestine"
+    },
+    "yamagata": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "yamaguchi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    },
+    "yamanashi": {
+      "iana_timezone_override": null,
+      "iso2": "JP",
+      "note": "Project Japan prefecture"
+    }
+  },
+  "schema_version": 1
+}

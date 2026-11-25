@@ -255,7 +255,7 @@ def test_exhaustive_460_board_routing_and_width_budget_compliance() -> None:
 
 
 def test_all_460_boards_width_budget_under_elevated_fx_sanity_bands() -> None:
-    from ets2v2.normalize.currencies import CURRENCY_SANITY_BANDS, TERRITORY_CURRENCIES
+    from ets2v2.normalize.currencies import ALL_CURRENCY_SANITY_BANDS, ALL_TERRITORY_CURRENCIES
     from ets2v2.normalize.fuel import compute_secondary_grade_prices
     from ets2v2.normalize.models import CountryFuelLockEntry
 
@@ -268,8 +268,8 @@ def test_all_460_boards_width_budget_under_elevated_fx_sanity_bands() -> None:
     # CZK=35 -> 105+ CZK/L at 3.0 EUR/L, RON=8 -> 16+ RON/L, MKD=90 -> 180+ MKD/L)
     stress_entries: dict[str, CountryFuelLockEntry] = {}
     for iso2, base_entry in prices_lock.countries.items():
-        ccy = TERRITORY_CURRENCIES[iso2]
-        fx_high = 1.0 if ccy == "EUR" else CURRENCY_SANITY_BANDS[ccy][1]
+        ccy = ALL_TERRITORY_CURRENCIES[iso2]
+        fx_high = 1.0 if ccy == "EUR" else ALL_CURRENCY_SANITY_BANDS[ccy][1]
         # Stress at elevated pump price: 2.00 EUR/L diesel / 2.20 EUR/L petrol_95 (and 3.00 EUR/L
         # for CZ so CZK crosses 100.00 CZK/L too)
         diesel_eur = 3.00 if iso2 == "CZ" else 2.00

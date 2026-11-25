@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ValidationSeverity = Literal["error", "warning"]
 ValidationMode = Literal["workshop", "local_zip"]
+PackageProfile = Literal["core", "promods", "combo"]
 
 
 class ValidationIssue(BaseModel):

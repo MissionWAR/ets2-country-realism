@@ -975,3 +975,45 @@ def test_hashfs_walk_skips_dir_records_listed_as_files_and_backwards_meta_ref(
     assert arc_back.read_bytes("b.txt") == payload_a
     assert [d.kind for d in arc_back.diagnostics] == ["unsupported_metadata"]
     assert payload_b != payload_a
+
+
+def test_lo03_hashfs_list_direct_files_records_traversal_diag_and_deduplicates(
+    tmp_path: pathlib.Path,
+) -> None:
+    """LO-03 regression: list_direct_files() logs path_traversal diagnostics and deduplicates."""
+    archive_path = _build_hashfs_v2(
+        tmp_path / "dup_traversal.scs",
+        files={"def/country.sii": (b"SiiNunit\n{\n}\n", 1)},
+        dirs={
+            "": ["/def"],
+            "def": ["country.sii", "country.sii", "..", "../escape.sii", "/sub"],
+            "def/sub": [],
+        },
+        compress_tables=True,
+    )
+    with HashFsV2Archive(archive_path) as arc:
+        direct = arc.list_direct_files("def")
+        assert direct == ["def/country.sii"]
+        traversal_diags = [d for d in arc.diagnostics if d.kind == "path_traversal"]
+        assert len(traversal_diags) >= 2
+
+
+def test_lo04_directory_archive_enforces_max_entry_bytes_cap(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """LO-04 regression: DirectoryArchive.read_bytes() enforces MAX_DIR_ENTRY_BYTES cap."""
+    import ets2v2.vfs.dir_archive as dir_mod
+
+    assert dir_mod.MAX_DIR_ENTRY_BYTES == 128 * 1024 * 1024
+
+    mod_root = tmp_path / "unpacked_mod"
+    (mod_root / "def").mkdir(parents=True)
+    (mod_root / "def" / "small.sii").write_bytes(b"ok-bytes")
+    (mod_root / "def" / "oversized.sii").write_bytes(b"x" * 128)
+
+    monkeypatch.setattr(dir_mod, "MAX_DIR_ENTRY_BYTES", 64)
+    with dir_mod.DirectoryArchive(mod_root) as arc:
+        assert arc.read_bytes("def/small.sii") == b"ok-bytes"
+        with pytest.raises(ValueError, match="exceeds maximum directory entry size"):
+            arc.read_bytes("def/oversized.sii")

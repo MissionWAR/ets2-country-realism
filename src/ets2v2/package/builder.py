@@ -62,7 +62,7 @@ class BuiltEditionPaths(BaseModel):
     local_zip_sha256: str
 
 
-def _validate_rel_path(rel_path: str) -> str:
+def validate_rel_path(rel_path: str) -> str:
     """Validate and normalize a relative POSIX staging/archive path (rejecting \\ and ..)."""
     if "\\" in rel_path or rel_path.startswith("/"):
         raise ValueError(f"Invalid relative package path: {rel_path!r}")
@@ -72,7 +72,7 @@ def _validate_rel_path(rel_path: str) -> str:
     return normalized
 
 
-def _ensure_contained(target: Path, root: Path) -> Path:
+def ensure_contained(target: Path, root: Path) -> Path:
     """Verify ``target`` resolves strictly beneath ``root`` (preventing traversal/unsafe clean)."""
     resolved_root = root.resolve()
     resolved_target = target.resolve()
@@ -81,19 +81,19 @@ def _ensure_contained(target: Path, root: Path) -> Path:
     return resolved_target
 
 
-def _default_package_version(ref_date: date, game_version: str) -> str:
+def default_package_version(ref_date: date, game_version: str) -> str:
     parts = game_version.split(".")
     major_minor = ".".join(parts[:2]) if len(parts) >= 2 else "1.62"
     iso_year, iso_week, _ = ref_date.isocalendar()
     return f"{major_minor}-{iso_year}.{iso_week:02d}"
 
 
-def _write_deterministic_zip(zip_path: Path, entries: Mapping[str, bytes]) -> str:
+def write_deterministic_zip(zip_path: Path, entries: Mapping[str, bytes]) -> str:
     """Write entries into a byte-deterministic ZIP archive and return its SHA-256 hex digest."""
     zip_path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         for rel_path in sorted(entries):
-            clean_path = _validate_rel_path(rel_path)
+            clean_path = validate_rel_path(rel_path)
             zinfo = zipfile.ZipInfo(filename=clean_path, date_time=ZIP_FIXED_TIMESTAMP)
             zinfo.compress_type = zipfile.ZIP_DEFLATED
             zinfo.create_system = ZIP_UNIX_SYSTEM
@@ -105,6 +105,36 @@ def _write_deterministic_zip(zip_path: Path, entries: Mapping[str, bytes]) -> st
                 compresslevel=ZIP_COMPRESS_LEVEL,
             )
     return hashlib.sha256(zip_path.read_bytes()).hexdigest()
+
+
+def write_workshop_tree(
+    workshop_dir: Path,
+    out_dir: Path,
+    workshop_files: Mapping[str, bytes],
+) -> int:
+    """Write a clean unpacked Workshop root strictly contained inside ``out_dir``."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ensure_contained(workshop_dir, out_dir)
+    if workshop_dir.is_symlink() or workshop_dir.is_file():
+        workshop_dir.unlink()
+    elif workshop_dir.exists():
+        shutil.rmtree(workshop_dir)
+    workshop_dir.mkdir(parents=True, exist_ok=True)
+
+    for rel_path in sorted(workshop_files):
+        clean_rel = validate_rel_path(rel_path)
+        dest = workshop_dir / clean_rel
+        ensure_contained(dest, workshop_dir)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(workshop_files[rel_path])
+    return len(workshop_files)
+
+
+# Backwards-compatible private aliases
+_validate_rel_path = validate_rel_path
+_ensure_contained = ensure_contained
+_default_package_version = default_package_version
+_write_deterministic_zip = write_deterministic_zip
 
 
 def build_core_edition(
@@ -210,15 +240,7 @@ def build_core_edition(
         shared_payloads[clean_rel] = payload
 
     # Target A: Workshop unpacked root (<out_dir>/workshop/<edition>/)
-    out_dir.mkdir(parents=True, exist_ok=True)
     workshop_dir = out_dir / "workshop" / edition
-    _ensure_contained(workshop_dir, out_dir)
-    if workshop_dir.is_symlink() or workshop_dir.is_file():
-        workshop_dir.unlink()
-    elif workshop_dir.exists():
-        shutil.rmtree(workshop_dir)
-    workshop_dir.mkdir(parents=True, exist_ok=True)
-
     workshop_files: dict[str, bytes] = {
         "versions.sii": render_versions_sii(),
         "universal/manifest.sii": render_manifest_sii(
@@ -229,14 +251,9 @@ def build_core_edition(
         ),
     }
     for rel_path, payload in shared_payloads.items():
-        workshop_files[_validate_rel_path(f"universal/{rel_path}")] = payload
+        workshop_files[validate_rel_path(f"universal/{rel_path}")] = payload
 
-    for rel_path in sorted(workshop_files):
-        clean_rel = _validate_rel_path(rel_path)
-        dest = workshop_dir / clean_rel
-        _ensure_contained(dest, workshop_dir)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(workshop_files[rel_path])
+    workshop_file_count = write_workshop_tree(workshop_dir, out_dir, workshop_files)
 
     # Target B: Deterministic local ZIP (<out_dir>/local/ETS2V2_Core_{Summer|Winter}.zip)
     local_entries: dict[str, bytes] = {
@@ -249,15 +266,15 @@ def build_core_edition(
         **shared_payloads,
     }
     local_zip_path = out_dir / "local" / LOCAL_ZIP_FILENAMES[edition]
-    _ensure_contained(local_zip_path, out_dir)
-    local_zip_sha256 = _write_deterministic_zip(local_zip_path, local_entries)
+    ensure_contained(local_zip_path, out_dir)
+    local_zip_sha256 = write_deterministic_zip(local_zip_path, local_entries)
 
     return BuiltEditionPaths(
         edition=edition,
         package_version=resolved_version,
         workshop_dir=workshop_dir,
         local_zip_path=local_zip_path,
-        workshop_file_count=len(workshop_files),
+        workshop_file_count=workshop_file_count,
         local_zip_sha256=local_zip_sha256,
     )
 

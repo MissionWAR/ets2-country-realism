@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Self
+from typing import Final, Self
 
 from ets2v2.vfs.types import (
     ArchiveDiagnostic,
@@ -16,6 +16,8 @@ from ets2v2.vfs.types import (
     normalize_vfs_path,
     record_3nk_if_present,
 )
+
+MAX_DIR_ENTRY_BYTES: Final[int] = 128 * 1024 * 1024
 
 
 def _is_dir_junction(path: Path) -> bool:
@@ -28,13 +30,23 @@ class DirectoryArchive:
 
     format_name = "directory"
 
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        include_top_dirs: frozenset[str] | None = None,
+    ) -> None:
         self._path = Path(path)
         if not self._path.exists():
             raise FileNotFoundError(self._path)
         if not self._path.is_dir():
             raise NotADirectoryError(self._path)
         self._resolved_root = self._path.resolve()
+        self._include_top_dirs = (
+            frozenset(name.lower() for name in include_top_dirs)
+            if include_top_dirs is not None
+            else None
+        )
         self._files: dict[str, Path] = {}
         self._diag = DiagnosticCollector(self._path)
         self._three_nk_paths: set[str] = set()
@@ -77,7 +89,15 @@ class DirectoryArchive:
             visited_dirs.add(cur_resolved)
 
             safe_dirs: list[str] = []
+            is_root = cur_dir == self._path
             for dname in dirnames:
+                if (
+                    is_root
+                    and self._include_top_dirs is not None
+                    and dname.lower() not in self._include_top_dirs
+                    and not dname.lower().startswith("dlc_")
+                ):
+                    continue
                 dpath = cur_dir / dname
                 is_junction = _is_dir_junction(dpath)
                 if dpath.is_symlink() or is_junction:
@@ -170,7 +190,19 @@ class DirectoryArchive:
             )
             raise ValueError(f"Path {norm!r} escapes archive root {self._path}")
 
-        data = resolved.read_bytes()
+        size = resolved.stat().st_size
+        if size > MAX_DIR_ENTRY_BYTES:
+            raise ValueError(
+                f"Entry {norm!r} exceeds maximum directory entry size "
+                f"({size} > {MAX_DIR_ENTRY_BYTES} bytes)"
+            )
+        with resolved.open("rb") as fh:
+            data = fh.read(MAX_DIR_ENTRY_BYTES + 1)
+        if len(data) > MAX_DIR_ENTRY_BYTES:
+            raise ValueError(
+                f"Entry {norm!r} exceeded maximum directory entry size "
+                f"({MAX_DIR_ENTRY_BYTES} bytes)"
+            )
         record_3nk_if_present(data, norm, self._three_nk_paths, self._diag)
         return data
 

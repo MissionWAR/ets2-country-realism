@@ -1,0 +1,170 @@
+{
+  "currency": "MAD",
+  "driving_tired_offence": true,
+  "ets2_slug": "morocco",
+  "iana_timezone": "Africa/Casablanca",
+  "iso2": "MA",
+  "iso3": "mar",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    36000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.narsa.ma/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Morocco Code de la Route (Law 52-05): 60 km/h urban, 100/120 km/h cars, 80/90 km/h heavy trucks."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 120,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 100,
+          "max_limit": 100,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 100,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 120,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 80,
+          "max_limit": 80,
+          "uncommon": null,
+          "urban_limit": 60
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 90,
+          "max_limit": 90,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ]
+    }
+  }
+}

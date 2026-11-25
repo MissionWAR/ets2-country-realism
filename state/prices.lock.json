@@ -1,6 +1,36 @@
 {
   "alerts": [],
   "countries": {
+    "AD": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.49,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AD",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.49,
+        "diesel_plus": 1.5943,
+        "e85": 1.1052,
+        "lpg": 0.7368,
+        "mpo": 1.1175,
+        "petrol_100": 1.7192,
+        "petrol_92": 1.4736,
+        "petrol_95": 1.535,
+        "petrol_98": 1.6271
+      },
+      "source": "promods_curated_seed"
+    },
     "AL": {
       "currency": "ALL",
       "data_date": "2026-11-20",
@@ -31,6 +61,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "AM": {
+      "currency": "AMD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.38,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AM",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 579.6,
+        "diesel_plus": 620.172,
+        "e85": 429.7104,
+        "lpg": 286.4736,
+        "mpo": 434.7,
+        "petrol_100": 668.4384,
+        "petrol_92": 572.9472,
+        "petrol_95": 596.82,
+        "petrol_98": 632.6292
+      },
+      "source": "promods_curated_seed"
+    },
     "AT": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -60,6 +120,66 @@
         "petrol_98": 2.3341
       },
       "source": "baseline_1.62_seeded"
+    },
+    "AX": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.88,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AX",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.88,
+        "diesel_plus": 2.0116,
+        "e85": 1.3939,
+        "lpg": 0.9293,
+        "mpo": 1.41,
+        "petrol_100": 2.1683,
+        "petrol_92": 1.8586,
+        "petrol_95": 1.936,
+        "petrol_98": 2.0522
+      },
+      "source": "promods_curated_seed"
+    },
+    "AZ": {
+      "currency": "AZN",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.59,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "AZ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.0915,
+        "diesel_plus": 1.1679,
+        "e85": 0.8099,
+        "lpg": 0.5399,
+        "mpo": 0.8186,
+        "petrol_100": 1.2598,
+        "petrol_92": 1.0798,
+        "petrol_95": 1.1248,
+        "petrol_98": 1.1923
+      },
+      "source": "promods_curated_seed"
     },
     "BA": {
       "currency": "BAM",
@@ -151,6 +271,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "BY": {
+      "currency": "BYN",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.76,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "BY",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 2.698,
+        "diesel_plus": 2.8869,
+        "e85": 2.0014,
+        "lpg": 1.3343,
+        "mpo": 2.0235,
+        "petrol_100": 3.1133,
+        "petrol_92": 2.6685,
+        "petrol_95": 2.7797,
+        "petrol_98": 2.9465
+      },
+      "source": "promods_curated_seed"
+    },
     "CH": {
       "currency": "CHF",
       "data_date": "2026-11-20",
@@ -180,6 +330,36 @@
         "petrol_98": 2.6982
       },
       "source": "baseline_1.62_seeded"
+    },
+    "CN": {
+      "currency": "CNY",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.02,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "CN",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 8.007,
+        "diesel_plus": 8.5675,
+        "e85": 5.9403,
+        "lpg": 3.9602,
+        "mpo": 6.0053,
+        "petrol_100": 9.2404,
+        "petrol_92": 7.9204,
+        "petrol_95": 8.2504,
+        "petrol_98": 8.7454
+      },
+      "source": "promods_curated_seed"
     },
     "CY": {
       "currency": "EUR",
@@ -301,6 +481,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "DZ": {
+      "currency": "DZD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.201,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "DZ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 29.346,
+        "diesel_plus": 31.4002,
+        "e85": 21.7598,
+        "lpg": 14.5066,
+        "mpo": 22.0095,
+        "petrol_100": 33.8486,
+        "petrol_92": 29.0131,
+        "petrol_95": 30.222,
+        "petrol_98": 32.0353
+      },
+      "source": "promods_curated_seed"
+    },
     "EE": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -330,6 +540,36 @@
         "petrol_98": 2.3331
       },
       "source": "baseline_1.62_seeded"
+    },
+    "EG": {
+      "currency": "EGP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.348,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "EG",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 18.444,
+        "diesel_plus": 19.7351,
+        "e85": 13.6613,
+        "lpg": 9.1075,
+        "mpo": 13.833,
+        "petrol_100": 21.2509,
+        "petrol_92": 18.215,
+        "petrol_95": 18.974,
+        "petrol_98": 20.1124
+      },
+      "source": "promods_curated_seed"
     },
     "ES": {
       "currency": "EUR",
@@ -391,6 +631,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "FO": {
+      "currency": "DKK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.95,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "FO",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 14.547,
+        "diesel_plus": 15.5653,
+        "e85": 10.7907,
+        "lpg": 7.1938,
+        "mpo": 10.9103,
+        "petrol_100": 16.7856,
+        "petrol_92": 14.3876,
+        "petrol_95": 14.9871,
+        "petrol_98": 15.8863
+      },
+      "source": "promods_curated_seed"
+    },
     "FR": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -450,6 +720,126 @@
         "petrol_98": 2.1574
       },
       "source": "baseline_1.62_seeded"
+    },
+    "GE": {
+      "currency": "GEL",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.12,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GE",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 3.304,
+        "diesel_plus": 3.5353,
+        "e85": 2.4511,
+        "lpg": 1.6341,
+        "mpo": 2.478,
+        "petrol_100": 3.8128,
+        "petrol_92": 3.2681,
+        "petrol_95": 3.4043,
+        "petrol_98": 3.6086
+      },
+      "source": "promods_curated_seed"
+    },
+    "GG": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.85,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GG",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.554,
+        "diesel_plus": 1.6628,
+        "e85": 1.1527,
+        "lpg": 0.7685,
+        "mpo": 1.1655,
+        "petrol_100": 1.7931,
+        "petrol_92": 1.537,
+        "petrol_95": 1.601,
+        "petrol_98": 1.6971
+      },
+      "source": "promods_curated_seed"
+    },
+    "GI": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.56,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GI",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.3104,
+        "diesel_plus": 1.4021,
+        "e85": 0.9719,
+        "lpg": 0.648,
+        "mpo": 0.9828,
+        "petrol_100": 1.5119,
+        "petrol_92": 1.2959,
+        "petrol_95": 1.3499,
+        "petrol_98": 1.4309
+      },
+      "source": "promods_curated_seed"
+    },
+    "GL": {
+      "currency": "DKK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.81,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "GL",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 6.0426,
+        "diesel_plus": 6.4656,
+        "e85": 4.4796,
+        "lpg": 2.9864,
+        "mpo": 4.532,
+        "petrol_100": 6.9682,
+        "petrol_92": 5.9727,
+        "petrol_95": 6.2216,
+        "petrol_98": 6.5949
+      },
+      "source": "promods_curated_seed"
     },
     "GR": {
       "currency": "EUR",
@@ -571,6 +961,96 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "IL": {
+      "currency": "ILS",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.92,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IL",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 7.68,
+        "diesel_plus": 8.2176,
+        "e85": 5.6966,
+        "lpg": 3.7978,
+        "mpo": 5.76,
+        "petrol_100": 8.8614,
+        "petrol_92": 7.5955,
+        "petrol_95": 7.912,
+        "petrol_98": 8.3867
+      },
+      "source": "promods_curated_seed"
+    },
+    "IM": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.85,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IM",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.554,
+        "diesel_plus": 1.6628,
+        "e85": 1.1527,
+        "lpg": 0.7685,
+        "mpo": 1.1655,
+        "petrol_100": 1.7931,
+        "petrol_92": 1.537,
+        "petrol_95": 1.601,
+        "petrol_98": 1.6971
+      },
+      "source": "promods_curated_seed"
+    },
+    "IQ": {
+      "currency": "IQD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.239,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "IQ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 339.38,
+        "diesel_plus": 363.1366,
+        "e85": 251.5104,
+        "lpg": 167.6736,
+        "mpo": 254.535,
+        "petrol_100": 391.2384,
+        "petrol_92": 335.3472,
+        "petrol_95": 349.32,
+        "petrol_98": 370.2792
+      },
+      "source": "promods_curated_seed"
+    },
     "IS": {
       "currency": "ISK",
       "data_date": "2026-11-20",
@@ -630,6 +1110,186 @@
         "petrol_98": 2.4327
       },
       "source": "baseline_1.62_seeded"
+    },
+    "JE": {
+      "currency": "GBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.85,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "JE",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.554,
+        "diesel_plus": 1.6628,
+        "e85": 1.1527,
+        "lpg": 0.7685,
+        "mpo": 1.1655,
+        "petrol_100": 1.7931,
+        "petrol_92": 1.537,
+        "petrol_95": 1.601,
+        "petrol_98": 1.6971
+      },
+      "source": "promods_curated_seed"
+    },
+    "JO": {
+      "currency": "JOD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.151,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "JO",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 0.8863,
+        "diesel_plus": 0.9483,
+        "e85": 0.6575,
+        "lpg": 0.4383,
+        "mpo": 0.6647,
+        "petrol_100": 1.0228,
+        "petrol_92": 0.8767,
+        "petrol_95": 0.9132,
+        "petrol_98": 0.968
+      },
+      "source": "promods_curated_seed"
+    },
+    "KG": {
+      "currency": "KGS",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.85,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "KG",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 79.9,
+        "diesel_plus": 85.493,
+        "e85": 59.2877,
+        "lpg": 39.5251,
+        "mpo": 59.925,
+        "petrol_100": 92.2253,
+        "petrol_92": 79.0502,
+        "petrol_95": 82.344,
+        "petrol_98": 87.2846
+      },
+      "source": "promods_curated_seed"
+    },
+    "KZ": {
+      "currency": "KZT",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.65,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "KZ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 347.75,
+        "diesel_plus": 372.0925,
+        "e85": 258.084,
+        "lpg": 172.056,
+        "mpo": 260.8125,
+        "petrol_100": 401.464,
+        "petrol_92": 344.112,
+        "petrol_95": 358.45,
+        "petrol_98": 379.957
+      },
+      "source": "promods_curated_seed"
+    },
+    "LB": {
+      "currency": "LBP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.257,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LB",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 121929.0,
+        "diesel_plus": 130464.03,
+        "e85": 90442.8,
+        "lpg": 60295.2,
+        "mpo": 91446.75,
+        "petrol_100": 140688.8,
+        "petrol_92": 120590.4,
+        "petrol_95": 125615.0,
+        "petrol_98": 133151.9
+      },
+      "source": "promods_curated_seed"
+    },
+    "LI": {
+      "currency": "CHF",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.94,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LI",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.8236,
+        "diesel_plus": 1.9513,
+        "e85": 1.3522,
+        "lpg": 0.9015,
+        "mpo": 1.3677,
+        "petrol_100": 2.1035,
+        "petrol_92": 1.803,
+        "petrol_95": 1.8781,
+        "petrol_98": 1.9908
+      },
+      "source": "promods_curated_seed"
     },
     "LT": {
       "currency": "EUR",
@@ -721,6 +1381,126 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "LY": {
+      "currency": "LYD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.028,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "LY",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 0.147,
+        "diesel_plus": 0.1573,
+        "e85": 0.1097,
+        "lpg": 0.0731,
+        "mpo": 0.1103,
+        "petrol_100": 0.1706,
+        "petrol_92": 0.1462,
+        "petrol_95": 0.1523,
+        "petrol_98": 0.1614
+      },
+      "source": "promods_curated_seed"
+    },
+    "MA": {
+      "currency": "MAD",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.28,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MA",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 13.824,
+        "diesel_plus": 14.7917,
+        "e85": 10.2488,
+        "lpg": 6.8325,
+        "mpo": 10.368,
+        "petrol_100": 15.9425,
+        "petrol_92": 13.665,
+        "petrol_95": 14.2344,
+        "petrol_98": 15.0885
+      },
+      "source": "promods_curated_seed"
+    },
+    "MC": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.85,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MC",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.85,
+        "diesel_plus": 1.9795,
+        "e85": 1.3723,
+        "lpg": 0.9149,
+        "mpo": 1.3875,
+        "petrol_100": 2.1347,
+        "petrol_92": 1.8298,
+        "petrol_95": 1.906,
+        "petrol_98": 2.0204
+      },
+      "source": "promods_curated_seed"
+    },
+    "MD": {
+      "currency": "MDL",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.28,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MD",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 24.832,
+        "diesel_plus": 26.5702,
+        "e85": 18.4098,
+        "lpg": 12.2732,
+        "mpo": 18.624,
+        "petrol_100": 28.6375,
+        "petrol_92": 24.5464,
+        "petrol_95": 25.5692,
+        "petrol_98": 27.1034
+      },
+      "source": "promods_curated_seed"
+    },
     "ME": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -780,6 +1560,36 @@
         "petrol_98": 105.8034
       },
       "source": "baseline_1.62_seeded"
+    },
+    "MN": {
+      "currency": "MNT",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.98,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "MN",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 3626.0,
+        "diesel_plus": 3879.82,
+        "e85": 2687.976,
+        "lpg": 1791.984,
+        "mpo": 2719.5,
+        "petrol_100": 4181.296,
+        "petrol_92": 3583.968,
+        "petrol_95": 3733.3,
+        "petrol_98": 3957.298
+      },
+      "source": "promods_curated_seed"
     },
     "MT": {
       "currency": "EUR",
@@ -901,6 +1711,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "PS": {
+      "currency": "ILS",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.92,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "PS",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 7.68,
+        "diesel_plus": 8.2176,
+        "e85": 5.6966,
+        "lpg": 3.7978,
+        "mpo": 5.76,
+        "petrol_100": 8.8614,
+        "petrol_92": 7.5955,
+        "petrol_95": 7.912,
+        "petrol_98": 8.3867
+      },
+      "source": "promods_curated_seed"
+    },
     "PT": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -1021,6 +1861,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "SA": {
+      "currency": "SAR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.433,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SA",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.7666,
+        "diesel_plus": 1.8903,
+        "e85": 1.3102,
+        "lpg": 0.8735,
+        "mpo": 1.325,
+        "petrol_100": 2.0381,
+        "petrol_92": 1.7469,
+        "petrol_95": 1.8197,
+        "petrol_98": 1.9289
+      },
+      "source": "promods_curated_seed"
+    },
     "SE": {
       "currency": "SEK",
       "data_date": "2026-11-20",
@@ -1081,6 +1951,36 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "SJ": {
+      "currency": "NOK",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.65,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SJ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 19.305,
+        "diesel_plus": 20.6564,
+        "e85": 14.3208,
+        "lpg": 9.5472,
+        "mpo": 14.4788,
+        "petrol_100": 22.2768,
+        "petrol_92": 19.0944,
+        "petrol_95": 19.89,
+        "petrol_98": 21.0834
+      },
+      "source": "promods_curated_seed"
+    },
     "SK": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -1111,6 +2011,156 @@
       },
       "source": "baseline_1.62_seeded"
     },
+    "SM": {
+      "currency": "EUR",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.78,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SM",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 1.78,
+        "diesel_plus": 1.9046,
+        "e85": 1.3198,
+        "lpg": 0.8798,
+        "mpo": 1.335,
+        "petrol_100": 2.053,
+        "petrol_92": 1.7597,
+        "petrol_95": 1.833,
+        "petrol_98": 1.943
+      },
+      "source": "promods_curated_seed"
+    },
+    "SY": {
+      "currency": "SYP",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.094,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "SY",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 153.16,
+        "diesel_plus": 163.8812,
+        "e85": 113.6016,
+        "lpg": 75.7344,
+        "mpo": 114.87,
+        "petrol_100": 176.7136,
+        "petrol_92": 151.4688,
+        "petrol_95": 157.78,
+        "petrol_98": 167.2468
+      },
+      "source": "promods_curated_seed"
+    },
+    "TJ": {
+      "currency": "TJS",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.1,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "TJ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 12.76,
+        "diesel_plus": 13.6532,
+        "e85": 9.4628,
+        "lpg": 6.3085,
+        "mpo": 9.57,
+        "petrol_100": 14.7199,
+        "petrol_92": 12.6171,
+        "petrol_95": 13.1428,
+        "petrol_98": 13.9314
+      },
+      "source": "promods_curated_seed"
+    },
+    "TM": {
+      "currency": "TMT",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.259,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "TM",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 0.9842,
+        "diesel_plus": 1.0531,
+        "e85": 0.7305,
+        "lpg": 0.487,
+        "mpo": 0.7382,
+        "petrol_100": 1.1364,
+        "petrol_92": 0.974,
+        "petrol_95": 1.0146,
+        "petrol_98": 1.0755
+      },
+      "source": "promods_curated_seed"
+    },
+    "TN": {
+      "currency": "TND",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 0.661,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "TN",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 2.2342,
+        "diesel_plus": 2.3906,
+        "e85": 1.6573,
+        "lpg": 1.1049,
+        "mpo": 1.6757,
+        "petrol_100": 2.578,
+        "petrol_92": 2.2097,
+        "petrol_95": 2.3018,
+        "petrol_98": 2.4399
+      },
+      "source": "promods_curated_seed"
+    },
     "TR": {
       "currency": "TRY",
       "data_date": "2026-11-20",
@@ -1140,6 +2190,66 @@
         "petrol_98": 64.8831
       },
       "source": "baseline_1.62_seeded"
+    },
+    "UA": {
+      "currency": "UAH",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.32,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "UA",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 59.4,
+        "diesel_plus": 63.558,
+        "e85": 44.064,
+        "lpg": 29.376,
+        "mpo": 44.55,
+        "petrol_100": 68.544,
+        "petrol_92": 58.752,
+        "petrol_95": 61.2,
+        "petrol_98": 64.872
+      },
+      "source": "promods_curated_seed"
+    },
+    "UZ": {
+      "currency": "UZS",
+      "data_date": "2026-11-20",
+      "derived_grades": [
+        "diesel_plus",
+        "e85",
+        "lpg",
+        "mpo",
+        "petrol_100",
+        "petrol_92",
+        "petrol_98"
+      ],
+      "eur_per_liter": 1.05,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "iso2": "UZ",
+      "license": "ProMods curated reference seed",
+      "local_prices": {
+        "diesel": 14595.0,
+        "diesel_plus": 15616.65,
+        "e85": 10828.656,
+        "lpg": 7219.104,
+        "mpo": 10946.25,
+        "petrol_100": 16844.576,
+        "petrol_92": 14438.208,
+        "petrol_95": 15039.8,
+        "petrol_98": 15942.188
+      },
+      "source": "promods_curated_seed"
     },
     "XK": {
       "currency": "EUR",
@@ -1184,6 +2294,28 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "AMD": {
+      "currency": "AMD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 420.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "AZN": {
+      "currency": "AZN",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 1.85,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "BAM": {
       "currency": "BAM",
       "data_date": "2026-11-20",
@@ -1195,6 +2327,17 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "BYN": {
+      "currency": "BYN",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 3.55,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "CHF": {
       "currency": "CHF",
       "data_date": "2026-11-20",
@@ -1203,6 +2346,17 @@
       "fetched_at": "2026-11-20T06:00:00Z",
       "provider": "baseline_reference_fx",
       "rate_per_eur": 0.94,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "CNY": {
+      "currency": "CNY",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 7.85,
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
@@ -1228,6 +2382,28 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "DZD": {
+      "currency": "DZD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 146.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "EGP": {
+      "currency": "EGP",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 53.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "EUR": {
       "currency": "EUR",
       "data_date": "2026-11-20",
@@ -1250,6 +2426,17 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "GEL": {
+      "currency": "GEL",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 2.95,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "HUF": {
       "currency": "HUF",
       "data_date": "2026-11-20",
@@ -1258,6 +2445,28 @@
       "fetched_at": "2026-11-20T06:00:00Z",
       "provider": "baseline_reference_fx",
       "rate_per_eur": 400.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "ILS": {
+      "currency": "ILS",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 4.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "IQD": {
+      "currency": "IQD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 1420.0,
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
@@ -1272,6 +2481,83 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "JOD": {
+      "currency": "JOD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 0.77,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "KGS": {
+      "currency": "KGS",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 94.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "KZT": {
+      "currency": "KZT",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 535.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "LBP": {
+      "currency": "LBP",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 97000.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "LYD": {
+      "currency": "LYD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 5.25,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "MAD": {
+      "currency": "MAD",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 10.8,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "MDL": {
+      "currency": "MDL",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 19.4,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "MKD": {
       "currency": "MKD",
       "data_date": "2026-11-20",
@@ -1280,6 +2566,17 @@
       "fetched_at": "2026-11-20T06:00:00Z",
       "provider": "baseline_reference_fx",
       "rate_per_eur": 61.5,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "MNT": {
+      "currency": "MNT",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 3700.0,
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
@@ -1338,6 +2635,17 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "SAR": {
+      "currency": "SAR",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 4.08,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "SEK": {
       "currency": "SEK",
       "data_date": "2026-11-20",
@@ -1349,6 +2657,50 @@
       "validator_provider": null,
       "validator_rate_per_eur": null
     },
+    "SYP": {
+      "currency": "SYP",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 140.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "TJS": {
+      "currency": "TJS",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 11.6,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "TMT": {
+      "currency": "TMT",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 3.8,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "TND": {
+      "currency": "TND",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 3.38,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
     "TRY": {
       "currency": "TRY",
       "data_date": "2026-11-20",
@@ -1357,6 +2709,28 @@
       "fetched_at": "2026-11-20T06:00:00Z",
       "provider": "baseline_reference_fx",
       "rate_per_eur": 36.5,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "UAH": {
+      "currency": "UAH",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 45.0,
+      "validator_provider": null,
+      "validator_rate_per_eur": null
+    },
+    "UZS": {
+      "currency": "UZS",
+      "data_date": "2026-11-20",
+      "divergence_pct": 0.0,
+      "fallback_used": true,
+      "fetched_at": "2026-11-20T06:00:00Z",
+      "provider": "promods_reference_fx",
+      "rate_per_eur": 13900.0,
       "validator_provider": null,
       "validator_rate_per_eur": null
     }

@@ -30,7 +30,7 @@ from ets2v2.fetch.http import (
     validate_https_url,
 )
 from ets2v2.fetch.models import RawCountryFuelQuote, RawFuelFeedResult
-from ets2v2.normalize.currencies import EUROPEAN_TERRITORY_ISO2S
+from ets2v2.normalize.currencies import ALL_LOCKFILE_TERRITORY_ISO2S
 from ets2v2.normalize.fuel import normalize_iso2_alias
 from ets2v2.normalize.models import FuelGrade
 
@@ -556,7 +556,7 @@ def fetch_fuel_prices_eu(
                 if not isinstance(raw_code, str):
                     continue
                 iso2 = normalize_iso2_alias(raw_code)
-                if iso2 not in EUROPEAN_TERRITORY_ISO2S:
+                if iso2 not in ALL_LOCKFILE_TERRITORY_ISO2S:
                     continue
                 price = parse_positive_float(raw_val)
                 if price is None:

@@ -66,8 +66,8 @@ def test_active_phase_only_package_layout() -> None:
     assert pkg_root.is_dir()
 
     entries = {entry.name for entry in pkg_root.iterdir() if entry.name != "__pycache__"}
-    deferred_phase_dirs = {"merge"}
-    allowed_phase3_entries = {
+    deferred_phase_dirs: set[str] = set()
+    allowed_phase4_entries = {
         "__init__.py",
         "py.typed",
         "cli.py",
@@ -79,12 +79,13 @@ def test_active_phase_only_package_layout() -> None:
         "fetch",
         "package",
         "validate",
+        "merge",
         "publish",
     }
 
     assert entries.isdisjoint(deferred_phase_dirs)
-    assert entries <= allowed_phase3_entries
-    assert {"__init__.py", "py.typed", "cli.py"} <= entries
+    assert entries <= allowed_phase4_entries
+    assert {"__init__.py", "py.typed", "cli.py", "merge"} <= entries
 
 
 def test_pyproject_metadata_and_quality_gates() -> None:
@@ -267,16 +268,18 @@ def _scan_forbidden_imports(
     return violations
 
 
-def test_phase3_ast_dag_isolation_walls() -> None:
-    """Enforce all 4 AST-scanned offline DAG isolation walls (D-05 & 03-PATTERNS.md)."""
+def test_phase4_ast_dag_isolation_walls() -> None:
+    """Enforce all 6 AST-scanned offline DAG isolation walls (04-PATTERNS.md §1)."""
     src_root = REPO_ROOT / "src" / "ets2v2"
     online_third_party = frozenset({"httpx", "openpyxl"})
 
     wall_specs: dict[str, frozenset[str]] = {
-        "validate": frozenset({"package", "normalize", "fetch"}),
-        "package": frozenset({"fetch"}),
-        "publish": frozenset({"fetch"}),
-        "normalize": frozenset({"fetch", "registry", "package", "validate", "publish"}),
+        "validate": frozenset({"package", "merge", "normalize", "fetch", "publish"}),
+        "merge": frozenset({"fetch", "publish"}),
+        "package": frozenset({"fetch", "merge", "validate", "publish"}),
+        "publish": frozenset({"fetch", "merge"}),
+        "normalize": frozenset({"fetch", "registry", "package", "validate", "merge", "publish"}),
+        "registry": frozenset({"fetch", "package", "validate", "merge", "publish"}),
     }
 
     for subpkg, forbidden_subpkgs in wall_specs.items():

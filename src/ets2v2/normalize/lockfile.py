@@ -13,9 +13,12 @@ from typing import Final
 
 from ets2v2.baseline.models import CountriesBaseline
 from ets2v2.normalize.currencies import (
-    BAM_FIXED_PEG_PER_EUR,
-    EUROPEAN_TERRITORY_ISO2S,
-    TERRITORY_CURRENCIES,
+    ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_REFERENCE_FX_RATES,
+    ALL_TERRITORY_CURRENCIES,
+    CORE_REFERENCE_FX_RATES,
+    EXTENDED_PROMODS_CURRENCIES,
+    PROMODS_SEED_EUR_PRICES,
     VANILLA_SLUG_TO_ISO2,
 )
 from ets2v2.normalize.fuel import compute_secondary_grade_prices, round_local_price
@@ -32,27 +35,11 @@ TIER1_STALE_DAYS: Final[int] = 14
 FALLBACK_STALE_DAYS: Final[int] = 30
 BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
 BASELINE_SEEDED_LICENSE: Final[str] = "ETS2 1.62 baseline seed"
+PROMODS_CURATED_SEED_SOURCE: Final[str] = "promods_curated_seed"
+PROMODS_CURATED_SEED_LICENSE: Final[str] = "ProMods curated reference seed"
 
-# Deterministic reference FX rates (1 EUR = X <CURRENCY>) within D-07 sanity bands for offline seed.
-REFERENCE_FX_RATES: Final[dict[str, float]] = {
-    "ALL": 98.5,
-    "BAM": BAM_FIXED_PEG_PER_EUR,
-    "CHF": 0.94,
-    "CZK": 25.2,
-    "DKK": 7.46,
-    "EUR": 1.0,
-    "GBP": 0.84,
-    "HUF": 400.0,
-    "ISK": 148.0,
-    "MKD": 61.5,
-    "NOK": 11.7,
-    "PLN": 4.30,
-    "RON": 4.97,
-    "RSD": 117.1,
-    "RUB": 95.0,
-    "SEK": 11.4,
-    "TRY": 36.5,
-}
+# Deterministic Core reference FX rates (1 EUR = X <CURRENCY>) for backwards compatibility.
+REFERENCE_FX_RATES: Final[dict[str, float]] = CORE_REFERENCE_FX_RATES
 
 # Reference EU-27 diesel/petrol_95 EUR/L anchors for IE/CY/MT pre-warmed territories (D-04).
 EXTRA_EU_SEED_EUR_PRICES: Final[dict[str, tuple[float, float]]] = {
@@ -61,6 +48,9 @@ EXTRA_EU_SEED_EUR_PRICES: Final[dict[str, tuple[float, float]]] = {
     "MT": (1.210, 1.340),
 }
 _SEED_PETROL_TO_DIESEL_RATIO: Final[float] = 1.03
+_SEEDED_SOURCES: Final[frozenset[str]] = frozenset(
+    {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
+)
 
 
 def serialize_lockfile_bytes(lockfile: PricesLockfile) -> bytes:
@@ -113,7 +103,7 @@ def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> l
         entry = lockfile.countries[iso2]
         entry_date = date.fromisoformat(entry.data_date)
         age_days = (as_of_date - entry_date).days
-        is_fallback = entry.fallback_used or entry.source == BASELINE_SEEDED_SOURCE
+        is_fallback = entry.fallback_used or entry.source in _SEEDED_SOURCES
         if is_fallback:
             if age_days > FALLBACK_STALE_DAYS:
                 alerts.append(
@@ -150,17 +140,20 @@ def seed_initial_lockfile(
     seed_date: str = "2026-11-20",
     updated_at: str = "2026-11-20T06:00:00Z",
 ) -> PricesLockfile:
-    """Deterministically seed a 39-territory v1 lockfile from ETS2 1.62 baseline + reference FX."""
+    """Deterministically seed a 76-territory / 41-FX v1 lockfile from 1.62 baseline + ProMods."""
     mapping: Mapping[str, str] = slug_to_iso2 if slug_to_iso2 is not None else VANILLA_SLUG_TO_ISO2
 
     fx_rates: dict[str, FxRateLockEntry] = {}
-    for currency in sorted(REFERENCE_FX_RATES):
-        rate = REFERENCE_FX_RATES[currency]
+    for currency in sorted(ALL_REFERENCE_FX_RATES):
+        rate = ALL_REFERENCE_FX_RATES[currency]
         if currency == "EUR":
             provider = "pinned_eur"
             fallback_used = False
         elif currency == "BAM":
             provider = "cbbh_peg"
+            fallback_used = True
+        elif currency in EXTENDED_PROMODS_CURRENCIES:
+            provider = "promods_reference_fx"
             fallback_used = True
         else:
             provider = "baseline_reference_fx"
@@ -187,17 +180,26 @@ def seed_initial_lockfile(
         baseline_eur_by_iso2[iso2] = round_eur_per_liter(country.fuel_price)
 
     countries: dict[str, CountryFuelLockEntry] = {}
-    for iso2 in sorted(EUROPEAN_TERRITORY_ISO2S):
-        currency = TERRITORY_CURRENCIES[iso2]
+    for iso2 in sorted(ALL_LOCKFILE_TERRITORY_ISO2S):
+        currency = ALL_TERRITORY_CURRENCIES[iso2]
         rate = fx_rates[currency].rate_per_eur
 
         if iso2 in baseline_eur_by_iso2:
             diesel_eur = baseline_eur_by_iso2[iso2]
             petrol_95_eur = round_eur_per_liter(diesel_eur * _SEED_PETROL_TO_DIESEL_RATIO)
+            source_name = BASELINE_SEEDED_SOURCE
+            license_name = BASELINE_SEEDED_LICENSE
         elif iso2 in EXTRA_EU_SEED_EUR_PRICES:
             diesel_eur, petrol_95_eur = EXTRA_EU_SEED_EUR_PRICES[iso2]
+            source_name = BASELINE_SEEDED_SOURCE
+            license_name = BASELINE_SEEDED_LICENSE
+        elif iso2 in PROMODS_SEED_EUR_PRICES:
+            diesel_eur = round_eur_per_liter(PROMODS_SEED_EUR_PRICES[iso2])
+            petrol_95_eur = round_eur_per_liter(diesel_eur * _SEED_PETROL_TO_DIESEL_RATIO)
+            source_name = PROMODS_CURATED_SEED_SOURCE
+            license_name = PROMODS_CURATED_SEED_LICENSE
         else:
-            raise ValueError(f"Missing baseline fuel_price seed for territory {iso2!r}")
+            raise ValueError(f"Missing fuel_price seed for territory {iso2!r}")
 
         anchor_local: dict[FuelGrade, float] = {
             "diesel": round_local_price(diesel_eur * rate),
@@ -210,8 +212,8 @@ def seed_initial_lockfile(
             eur_per_liter=diesel_eur,
             local_prices=full_local_prices,
             derived_grades=derived_grades,
-            source=BASELINE_SEEDED_SOURCE,
-            license=BASELINE_SEEDED_LICENSE,
+            source=source_name,
+            license=license_name,
             data_date=seed_date,
             fetched_at=updated_at,
             fallback_used=True,

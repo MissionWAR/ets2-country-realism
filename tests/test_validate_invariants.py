@@ -23,8 +23,11 @@ from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
 from ets2v2.validate import (
     ValidationCollector,
     ValidationReport,
+    validate_combo_invariants,
     validate_core_realism_invariants,
     validate_local_zip,
+    validate_promods_locale_modules_consistency,
+    validate_promods_realism_invariants,
     validate_totem_invariants,
     validate_workshop_package,
 )
@@ -560,4 +563,128 @@ def test_d12_totem_boards_fault_injections(
     assert any(
         issue.code == "ETS2V2-INV-TOTEM-BOARDS" and "<sup>" in issue.detail
         for issue in r_sup.issues
+    )
+
+
+def test_promods_locale_modules_consistency_allows_v4_and_rejects_unsorted_or_dup(
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    _, _, bl_locales = baselines
+    expected = frozenset(bl_locales.active_locales)
+
+    ok_entries = [
+        LocalizationEntry(key="custom_station", val="STATION"),
+        LocalizationEntry(key="fp_de_diesel_v4", val="164.<sup>1</sup>"),
+    ]
+    ok_collector = ValidationCollector()
+    validate_promods_locale_modules_consistency(
+        {"pm_fuel": {lang: ok_entries for lang in sorted(expected)}},
+        ok_collector,
+        expected_locales=expected,
+    )
+    assert ok_collector.items == []
+
+    # Unsorted & duplicate keys rejected
+    bad_entries = [
+        LocalizationEntry(key="fp_z", val="1.00"),
+        LocalizationEntry(key="fp_a", val="1.00"),
+        LocalizationEntry(key="fp_a", val="2.00"),
+    ]
+    bad_collector = ValidationCollector()
+    validate_promods_locale_modules_consistency(
+        {"pm_fuel": {lang: bad_entries for lang in sorted(expected)}},
+        bad_collector,
+        expected_locales=expected,
+    )
+    assert any(i.code == "ETS2V2-INV-LOCALE-SYNC" for i in bad_collector.items)
+
+
+def test_promods_realism_and_combo_invariants_direct(
+    built_editions: dict[str, BuiltEditionPaths],
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    bl_countries, bl_speeds, bl_locales = baselines
+    countries, speeds = _load_models_from_workshop(built_editions["summer"].workshop_dir)
+
+    # ProMods UK must have scotland & wales
+    uk_pm = countries["uk"].model_copy(update={"regions": ["scotland", "wales"]})
+    armenia_bad = countries["albania"].model_copy(
+        update={
+            "unit_name": "country.data.armenia",
+            "country_id": 47,
+            "name": "Armenia",
+            "leftside_traffic": True,
+        }
+    )
+    pm_countries = {**countries, "uk": uk_pm, "armenia": armenia_bad}
+    pm_collector = ValidationCollector()
+    validate_promods_realism_invariants(
+        pm_countries,
+        speeds,
+        bl_countries,
+        bl_speeds,
+        bl_locales,
+        pm_collector,
+    )
+    assert any(i.code == "ETS2V2-INV-LEFTSIDE" for i in pm_collector.items)
+
+    # Combo invariants pass cleanly with non-decreasing axles and valid TZ tokens
+    combo_collector = ValidationCollector()
+    validate_combo_invariants(
+        {"uk": uk_pm},
+        {"uk": speeds["uk"]},
+        bl_locales,
+        combo_collector,
+    )
+    assert combo_collector.items == []
+
+
+def test_md03_combo_invariants_reject_dangling_board_tokens_without_locales_and_7seg_sup(
+    baselines: tuple[CountriesBaseline, SpeedLimitsBaseline, LocalesBaseline],
+) -> None:
+    """MD-03 regression: dangling board token without fuel_locales & 7-seg <sup> font check."""
+    from ets2v2.sii.sign_board import parse_sign_board
+
+    _, _, bl_locales = baselines
+    dangling_board = parse_sign_board(
+        b"SiiNunit\n{\n"
+        b"sign_board_template : _nameless.100.a\n{\n"
+        b'\tboard_name: "custom_board"\n'
+        b"\twidth: 1.5\n\theight: 0.6\n"
+        b'\tmodel_name: ""\n\titems: 1\n\titems[0]: _nameless.200.slot0\n'
+        b"}\n"
+        b"sign_template_text : _nameless.200.slot0\n{\n"
+        b'\tfont_face: "/font/sign/gas_segment_7_standard.font"\n'
+        b'\ttext: "@@fp_xx_missing_ets2v2@@"\n'
+        b"}\n}\n"
+    )
+
+    # 1. Missing fuel_locales -> dangling token MUST fail
+    col_missing = ValidationCollector()
+    validate_combo_invariants(
+        {},
+        {},
+        bl_locales,
+        col_missing,
+        sign_boards={"custom_board": dangling_board},
+        fuel_locales={},
+    )
+    assert any(i.code == "ETS2V2-INV-TOTEM-BOARDS" for i in col_missing.items)
+
+    # 2. 7-segment non-sup font referencing a <sup> token -> MUST fail
+    sup_locales = {
+        lang: [LocalizationEntry(key="fp_xx_missing_ets2v2", val="1.59<sup>9</sup>")]
+        for lang in bl_locales.active_locales
+    }
+    col_sup = ValidationCollector()
+    validate_combo_invariants(
+        {},
+        {},
+        bl_locales,
+        col_sup,
+        sign_boards={"custom_board": dangling_board},
+        fuel_locales=sup_locales,
+    )
+    assert any(
+        i.code == "ETS2V2-INV-TOTEM-BOARDS" and "non-<sup>" in i.detail for i in col_sup.items
     )

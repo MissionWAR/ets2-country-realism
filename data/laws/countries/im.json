@@ -1,0 +1,170 @@
+{
+  "currency": "GBP",
+  "driving_tired_offence": true,
+  "ets2_slug": "iom",
+  "iana_timezone": "Europe/Isle_of_Man",
+  "iso2": "IM",
+  "iso3": "imn",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.im/categories/travel-traffic-and-motoring/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Isle of Man Road Traffic Regulation Act: imperial mph, 0 denotes no national rural car limit, 40 mph heavy trucks, 50 mph buses."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 0,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  }
+}

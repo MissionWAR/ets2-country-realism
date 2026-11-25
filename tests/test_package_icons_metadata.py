@@ -13,14 +13,20 @@ from PIL import Image
 from ets2v2.package.icons import (
     ICON_SIZE,
     generate_all_icons,
+    generate_promods_icons,
     render_edition_icon_bytes,
+    render_promods_icon_bytes,
 )
 from ets2v2.package.metadata import (
     DEFAULT_AUTHOR,
+    ETS2V2_MANIFEST_MARKER,
     LOCAL_DISPLAY_NAMES,
+    PROMODS_LOCAL_DISPLAY_NAMES,
     WORKSHOP_CATEGORIES,
     render_description_txt,
     render_manifest_sii,
+    render_promods_description_txt,
+    render_promods_manifest_sii,
     render_versions_sii,
 )
 from ets2v2.registry.models import Season
@@ -200,3 +206,80 @@ def test_render_description_txt_hygiene_attribution_and_no_volatile_tokens(
     # Must NOT embed volatile ISO dates or ISO-week package_version strings (TRAP 4)
     assert re.search(r"\b20\d{2}-\d{2}-\d{2}\b", text) is None
     assert re.search(r"1\.62-\d{4}\.\d{2}", text) is None
+
+
+def test_promods_icons_clean_room_distinct_and_committed(tmp_path: pathlib.Path) -> None:
+    summer_pm = render_promods_icon_bytes("summer")
+    winter_pm = render_promods_icon_bytes("winter")
+
+    _assert_valid_clean_room_jpeg(summer_pm)
+    _assert_valid_clean_room_jpeg(winter_pm)
+    assert summer_pm != winter_pm
+    assert summer_pm != render_edition_icon_bytes("summer")
+    assert winter_pm != render_edition_icon_bytes("winter")
+    assert summer_pm == render_promods_icon_bytes("summer")
+    assert winter_pm == render_promods_icon_bytes("winter")
+
+    written = generate_promods_icons(tmp_path)
+    assert set(written.keys()) == {"summer", "winter"}
+    assert written["summer"] == tmp_path / "promods_summer.jpg"
+    assert written["winter"] == tmp_path / "promods_winter.jpg"
+    assert written["summer"].read_bytes() == summer_pm
+    assert written["winter"].read_bytes() == winter_pm
+
+    # Checked-in assets/icons/promods_{summer,winter}.jpg match deterministic output byte-for-byte
+    assert (ASSETS_ICONS_DIR / "promods_summer.jpg").read_bytes() == summer_pm
+    assert (ASSETS_ICONS_DIR / "promods_winter.jpg").read_bytes() == winter_pm
+
+    # TRAP 4: generate_all_icons() still returns exact {"summer", "winter"}
+    core_written = generate_all_icons(tmp_path / "core_only")
+    assert set(core_written.keys()) == {"summer", "winter"}
+
+
+@pytest.mark.parametrize("edition", ["summer", "winter"])
+def test_manifest_embeds_self_exclusion_comment_and_promods_metadata(edition: Season) -> None:
+    core_ws = render_manifest_sii(edition, "1.62-2026.47", workshop=True)
+    assert f"{ETS2V2_MANIFEST_MARKER} kind=core" in core_ws.decode("utf-8")
+
+    pm_ws = render_promods_manifest_sii(edition, "1.62-2026.47", workshop=True)
+    assert validate_sii_hygiene(pm_ws, require_siinunit=True) == []
+    pm_ws_text = pm_ws.decode("utf-8")
+    assert f"{ETS2V2_MANIFEST_MARKER} kind=promods" in pm_ws_text
+    assert "display_name" not in pm_ws_text
+    assert "compatible_versions" not in pm_ws_text
+
+    pm_local = render_promods_manifest_sii(edition, "1.62-2026.47", workshop=False)
+    assert validate_sii_hygiene(pm_local, require_siinunit=True) == []
+    pm_doc = SiiDocument.parse(pm_local, require_siinunit=True)
+    pm_unit = pm_doc.get_unit(class_name="mod_package")
+    assert pm_unit is not None
+    dn = pm_unit.get_scalar("display_name")
+    assert dn is not None
+    assert unquote_sii_string(dn.raw_value) == (PROMODS_LOCAL_DISPLAY_NAMES[edition], True)
+    # Comment marker does not leak as a mod_package attribute (zero WARN 00002 per TRAP 5)
+    assert all(not attr.key.startswith("#") for attr in pm_unit.attributes)
+
+    # ProMods description.txt includes D-16 attributions and zero volatile dates (TRAP 9)
+    pm_desc = render_promods_description_txt(edition)
+    assert not pm_desc.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in pm_desc
+    pm_desc_text = pm_desc.decode("utf-8")
+    assert "ProMods" in pm_desc_text
+    assert "Zero-DDS" in pm_desc_text
+    for attribution in (
+        "EC Weekly Oil Bulletin CC BY 4.0",
+        "fuel-prices.eu CC BY 4.0",
+        "UK DESNZ OGL v3",
+        "Norway SSB CC BY 4.0",
+        "France Licence Ouverte",
+        "Italy MIMIT IODL 2.0",
+        "Spain MITECO",
+        "Netherlands CBS",
+        "Germany Tankerkönig CC BY 4.0",
+        "Frankfurter v2 MIT",
+        "ECB",
+        "fawazahmed0 CC0",
+    ):
+        assert attribution in pm_desc_text
+    assert re.search(r"\b20\d{2}-\d{2}-\d{2}\b", pm_desc_text) is None
+    assert re.search(r"1\.62-\d{4}\.\d{2}", pm_desc_text) is None

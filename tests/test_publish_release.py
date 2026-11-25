@@ -25,7 +25,11 @@ from ets2v2.publish.release import (
     run_phase_a_release,
 )
 from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.snapshot import RealismSnapshot, build_realism_snapshot
+from ets2v2.registry.snapshot import (
+    RealismSnapshot,
+    build_realism_snapshot,
+    verify_snapshot_file,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LAWS_DIR = REPO_ROOT / "data" / "laws"
@@ -138,17 +142,48 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
     assert (changelogs_dir / "CHANGELOG_WINTER.md").is_file()
     assert (out_dir / "release_summary.json").is_file()
 
-    # Validate v1 snapshot schema cleanly
-    summer_snap = RealismSnapshot.model_validate_json(
-        (out_dir / "snapshots" / "realism-snapshot-summer.json").read_text("utf-8")
+    # Validate v1 snapshot schema (76 territories) and SHA256SUMS.txt integrity cleanly
+    summer_snap_path = out_dir / "snapshots" / "realism-snapshot-summer.json"
+    winter_snap_path = out_dir / "snapshots" / "realism-snapshot-winter.json"
+    checksums_path = out_dir / "snapshots" / "SHA256SUMS.txt"
+    assert checksums_path.is_file()
+
+    sums_raw = checksums_path.read_bytes()
+    assert not sums_raw.startswith(b"\xef\xbb\xbf")
+    assert b"\r" not in sums_raw
+    assert sums_raw.endswith(b"\n")
+    sums_lines = sums_raw.decode("utf-8").splitlines()
+    assert len(sums_lines) == 2
+    assert sums_lines[0].endswith("  realism-snapshot-summer.json")
+    assert sums_lines[1].endswith("  realism-snapshot-winter.json")
+
+    summer_verify = verify_snapshot_file(
+        summer_snap_path,
+        checksums_path=checksums_path,
+        expected_edition="summer",
     )
+    winter_verify = verify_snapshot_file(
+        winter_snap_path,
+        checksums_path=checksums_path,
+        expected_edition="winter",
+    )
+    assert summer_verify.ok is True
+    assert summer_verify.checksum_verified is True
+    assert summer_verify.country_count == 76
+    assert winter_verify.ok is True
+    assert winter_verify.checksum_verified is True
+    assert winter_verify.country_count == 76
+
+    summer_snap = RealismSnapshot.model_validate_json(summer_snap_path.read_text("utf-8"))
     assert summer_snap.schema_version == 1
-    assert len(summer_snap.countries) == 36
+    assert len(summer_snap.countries) == 76
 
     state_bytes_after_run1 = state_path.read_bytes()
     ledger_after_run1 = load_published_ledger(state_path)
     assert ledger_after_run1.editions["summer"].package_version == "1.62-2026.47"
     assert ledger_after_run1.editions["winter"].package_version == "1.62-2026.47"
+    assert ledger_after_run1.editions["summer"].country_count == 36
+    assert ledger_after_run1.editions["winter"].country_count == 36
 
     # Run 2: exact same data on a LATER ISO week (+14 days -> 2026-W49) -> clean NO-OP!
     summary_2 = run_phase_a_release(
@@ -513,6 +548,8 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ).decode("utf-8")
 
     assert "## 36-Country Fuel Price Summary" in clean_md
+    assert "- **Countries Covered:** `36` (Core) / `76` (Snapshot)" in clean_md
+    assert "| `KZ` |" not in clean_md
     assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
         clean_md
     )
@@ -667,3 +704,90 @@ def test_phase_a_release_prices_lock_mutation_bumps_both_editions_and_cli_flag(
     assert res_2.winter_changed is True
     assert res_2.editions["summer"].package_version == "1.62-2026.48"
     assert res_2.editions["winter"].package_version == "1.62-2026.48"
+
+
+def test_md06_non_core_promods_snapshot_change_sets_snapshots_changed_without_bumping_core(
+    tmp_path: Path,
+) -> None:
+    """MD-06 regression: non-Core ProMods price change sets snapshots_changed without Core bump."""
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    lock_path = tmp_path / "state" / "prices.lock.json"
+    write_prices_lockfile(base_lock, lock_path)
+
+    state_path = tmp_path / "state" / "published.json"
+    out_dir = tmp_path / "dist"
+    changelogs_dir = tmp_path / "changelogs"
+    write_published_ledger(PublishedLedger(), state_path)
+
+    # Run 1: initial baseline publish
+    res_1 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 11, 20),
+        write_state=True,
+    )
+    assert res_1.any_changed is True
+    assert res_1.snapshots_changed is True
+    prev_summer_snap_sha = res_1.editions["summer"].snapshot_sha256
+
+    # Run 2: mutate ONLY Ukraine (UA — non-Core ProMods territory)
+    ua_old = base_lock.countries["UA"]
+    ua_new = ua_old.model_copy(
+        update={
+            "eur_per_liter": round(ua_old.eur_per_liter + 0.08, 3),
+            "local_prices": {
+                **ua_old.local_prices,
+                "diesel": round(ua_old.local_prices["diesel"] + 3.5, 4),
+            },
+        }
+    )
+    updated_lock = base_lock.model_copy(update={"countries": {**base_lock.countries, "UA": ua_new}})
+    write_prices_lockfile(updated_lock, lock_path)
+
+    res_2 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 11, 27),
+        write_state=True,
+    )
+    assert res_2.any_changed is False
+    assert res_2.snapshots_changed is True
+    assert res_2.editions["summer"].changed is False
+    assert res_2.editions["summer"].snapshot_changed is True
+    assert res_2.editions["summer"].package_version == "1.62-2026.47"
+    assert res_2.editions["winter"].package_version == "1.62-2026.47"
+    assert res_2.editions["summer"].snapshot_sha256 != prev_summer_snap_sha
+
+    ledger_after_2 = load_published_ledger(state_path)
+    assert ledger_after_2.editions["summer"].package_version == "1.62-2026.47"
+    assert ledger_after_2.editions["summer"].snapshot_sha256 == (
+        res_2.editions["summer"].snapshot_sha256
+    )
+
+    # Run 3: identical lockfile again -> both any_changed and snapshots_changed are False
+    res_3 = run_phase_a_release(
+        state_path=state_path,
+        prices_lock_path=lock_path,
+        out_dir=out_dir,
+        changelogs_dir=changelogs_dir,
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        baseline_dir=BASELINE_DIR,
+        icons_dir=ICONS_DIR,
+        build_date=date(2026, 12, 4),
+        write_state=True,
+    )
+    assert res_3.any_changed is False
+    assert res_3.snapshots_changed is False

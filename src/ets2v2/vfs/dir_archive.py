@@ -28,13 +28,23 @@ class DirectoryArchive:
 
     format_name = "directory"
 
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        include_top_dirs: frozenset[str] | None = None,
+    ) -> None:
         self._path = Path(path)
         if not self._path.exists():
             raise FileNotFoundError(self._path)
         if not self._path.is_dir():
             raise NotADirectoryError(self._path)
         self._resolved_root = self._path.resolve()
+        self._include_top_dirs = (
+            frozenset(name.lower() for name in include_top_dirs)
+            if include_top_dirs is not None
+            else None
+        )
         self._files: dict[str, Path] = {}
         self._diag = DiagnosticCollector(self._path)
         self._three_nk_paths: set[str] = set()
@@ -77,7 +87,15 @@ class DirectoryArchive:
             visited_dirs.add(cur_resolved)
 
             safe_dirs: list[str] = []
+            is_root = cur_dir == self._path
             for dname in dirnames:
+                if (
+                    is_root
+                    and self._include_top_dirs is not None
+                    and dname.lower() not in self._include_top_dirs
+                    and not dname.lower().startswith("dlc_")
+                ):
+                    continue
                 dpath = cur_dir / dname
                 is_junction = _is_dir_junction(dpath)
                 if dpath.is_symlink() or is_junction:

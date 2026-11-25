@@ -316,6 +316,35 @@ class _BaseHashFsArchive:
     def list_paths(self, prefixes: Sequence[str] | None = None) -> list[str]:
         return self.walk(prefixes)
 
+    def list_direct_files(self, dir_path: str) -> list[str]:
+        """List direct child file paths inside ``dir_path`` without recursing into subdirs."""
+        norm = normalize_vfs_path(dir_path, allow_empty=True)
+        dir_hash = hash_vfs_path(norm, salt=self._salt)
+        dir_rec = self._records.get(dir_hash)
+        if dir_rec is None or not dir_rec.is_dir:
+            return []
+        self._diag.replace_entry_path(f"hash:{dir_hash:016x}", norm or "/")
+        try:
+            raw_listing = self._read_record_bytes(dir_rec, norm or "/")
+        except (UnsupportedCompressionError, ValueError):
+            return []
+        files: list[str] = []
+        for child_name, is_sub in self._parse_dir_listing(raw_listing, norm):
+            if (
+                is_sub
+                or child_name in ("", ".", "..")
+                or "/" in child_name
+                or "\\" in child_name
+                or "\x00" in child_name
+            ):
+                continue
+            child_path = f"{norm}/{child_name}" if norm else child_name
+            child_rec = self._records.get(hash_vfs_path(child_path, salt=self._salt))
+            if child_rec is not None and not child_rec.is_dir:
+                files.append(child_path)
+        files.sort()
+        return files
+
 
 class HashFsV1Archive(_BaseHashFsArchive):
     """Clean-room HashFS v1 (``SCS#\\x01``) container reader."""

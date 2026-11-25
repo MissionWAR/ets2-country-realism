@@ -26,7 +26,12 @@ from ets2v2.sii.document import SiiDocument
 from ets2v2.sii.hygiene import serialize_sii_text
 from ets2v2.sii.lexer import parse_sii_bool, unquote_sii_string
 from ets2v2.vfs.dir_archive import DirectoryArchive
-from ets2v2.vfs.hashfs import ProtectedArchiveStub, open_archive
+from ets2v2.vfs.hashfs import (
+    HashFsV1Archive,
+    HashFsV2Archive,
+    ProtectedArchiveStub,
+    open_archive,
+)
 from ets2v2.vfs.stack import VfsStack, classify_mount_path
 from ets2v2.vfs.types import (
     ArchiveDiagnostic,
@@ -82,7 +87,13 @@ _RELEVANT_COUNTRY_OR_BOARD_RE: Final[re.Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 _RELEVANT_COUNTRY_PROBE_RE: Final[re.Pattern[str]] = re.compile(
-    r"^(?:base/)?(?:def/country(?:\.[^/]+)?\.sii|def/country/.+\.(?:sui|sii))$",
+    r"^(?:base/)?(?:def/country(?:\.[^/]+)?\.sii|def/country/[^/]+\.(?:sui|sii)|"
+    r"def/country/[^/]+/speed_limits\.sii)$",
+    re.IGNORECASE,
+)
+_COMBO_SCOPED_PATH_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:(?:base|dlc_[^/]+)/)?(?:def/country(?:\.[^/]+)?\.sii$|def/country/[^/]+\.(?:sui|sii)$|"
+    r"def/country/[^/]+/speed_limits\.sii$|def/sign/board/|locale/)",
     re.IGNORECASE,
 )
 _WINDOWS_DRIVE_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z]:")
@@ -800,6 +811,82 @@ def _resolve_local_mod_path(entry: LoadOrderEntry, mod_dir: Path | None) -> Path
     return None
 
 
+_COMBO_HASHFS_PREFIXES: Final[tuple[str, ...]] = (
+    "def/country",
+    "def/sign/board",
+    "locale",
+    "base/def/country",
+    "base/def/sign/board",
+    "base/locale",
+)
+_COMBO_HASHFS_DIRECT_DIRS: Final[tuple[str, ...]] = ("def", "base/def")
+_PROBE_COUNTRY_PREFIXES: Final[tuple[str, ...]] = ("def/country", "base/def/country")
+
+
+def _list_scoped_combo_paths(archive: VfsArchive, *, include_totems_and_locales: bool) -> list[str]:
+    """List combo-relevant paths quickly using active handles and targeted HashFS seeds."""
+    if isinstance(archive, (HashFsV1Archive, HashFsV2Archive)):
+        prefixes = _COMBO_HASHFS_PREFIXES if include_totems_and_locales else _PROBE_COUNTRY_PREFIXES
+        paths: list[str] = []
+        with archive:
+            for direct_dir in _COMBO_HASHFS_DIRECT_DIRS:
+                paths.extend(archive.list_direct_files(direct_dir))
+            paths.extend(archive.list_paths(prefixes))
+        return sorted(set(paths))
+    if include_totems_and_locales:
+        return archive.list_paths()
+    return archive.list_paths(("def", "base/def"))
+
+
+class _ComboScopedArchive:
+    """Thin VFS adapter exposing only ``def/`` and ``locale/`` subtrees for fast combo indexing."""
+
+    def __init__(self, inner: VfsArchive) -> None:
+        self._inner = inner
+        self._scoped_paths: list[str] | None = None
+
+    @property
+    def path(self) -> Path:
+        return self._inner.path
+
+    @property
+    def format_name(self) -> str:
+        return self._inner.format_name
+
+    @property
+    def diagnostics(self) -> list[ArchiveDiagnostic]:
+        return self._inner.diagnostics
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
+
+    def exists(self, vfs_path: str) -> bool:
+        return self._inner.exists(vfs_path)
+
+    def get_meta(self, vfs_path: str) -> VfsEntryMeta | None:
+        return self._inner.get_meta(vfs_path)
+
+    def list_paths(self, prefixes: Sequence[str] | None = None) -> list[str]:
+        if self._scoped_paths is None:
+            raw_paths = _list_scoped_combo_paths(self._inner, include_totems_and_locales=True)
+            self._scoped_paths = [
+                p for p in raw_paths if _COMBO_SCOPED_PATH_RE.match(p) is not None
+            ]
+        return filter_paths_by_prefixes(self._scoped_paths, prefixes)
+
+    def read_bytes(self, vfs_path: str) -> bytes:
+        return self._inner.read_bytes(vfs_path)
+
+    def read_text(self, vfs_path: str, encoding: str = "utf-8") -> str:
+        return self._inner.read_text(vfs_path, encoding=encoding)
+
+    def close(self) -> None:
+        self._inner.close()
+
+
 def _find_visible_relevant_paths(archive: VfsArchive) -> list[str]:
     relevant: list[str] = []
     for raw_path in archive.list_paths():
@@ -810,22 +897,29 @@ def _find_visible_relevant_paths(archive: VfsArchive) -> list[str]:
 
 def _probe_3nk_country_files(archive: VfsArchive) -> list[str]:
     """Probe small readable ``def/country*`` entries for ``3nK\\x01`` obfuscation headers."""
+    candidates = [
+        raw_path
+        for raw_path in _list_scoped_combo_paths(archive, include_totems_and_locales=False)
+        if _RELEVANT_COUNTRY_PROBE_RE.fullmatch(raw_path) is not None
+    ]
+    if not candidates:
+        return []
+
     found: list[str] = []
-    for raw_path in archive.list_paths():
-        if _RELEVANT_COUNTRY_PROBE_RE.fullmatch(raw_path) is None:
-            continue
-        meta = archive.get_meta(raw_path)
-        if meta is None or meta.encrypted or meta.compression == "unknown":
-            continue
-        if meta.size <= 0 or meta.size > _MAX_3NK_PROBE_BYTES:
-            continue
-        try:
-            archive.read_bytes(raw_path)
-        except (ProtectedPayloadError, UnsupportedCompressionError, OSError, ValueError):
-            continue
-        updated_meta = archive.get_meta(raw_path)
-        if updated_meta is not None and updated_meta.three_nk:
-            found.append(raw_path)
+    with archive:
+        for raw_path in candidates:
+            meta = archive.get_meta(raw_path)
+            if meta is None or meta.encrypted or meta.compression == "unknown":
+                continue
+            if meta.size <= 0 or meta.size > _MAX_3NK_PROBE_BYTES:
+                continue
+            try:
+                archive.read_bytes(raw_path)
+            except (ProtectedPayloadError, UnsupportedCompressionError, OSError, ValueError):
+                continue
+            updated_meta = archive.get_meta(raw_path)
+            if updated_meta is not None and updated_meta.three_nk:
+                found.append(raw_path)
     return sorted(set(found))
 
 
@@ -873,6 +967,16 @@ def _build_protection_hint(
         f"archives. To include its country definitions at exact load-order priority, extract its "
         f"def/ folder into <dir>/{archive_path.stem}/ and pass --unpacked-defs <dir>."
     )
+
+
+_COMBO_DIR_TOP_LEVELS: Final[frozenset[str]] = frozenset({"def", "locale", "base"})
+
+
+def _open_combo_archive(path: Path) -> VfsArchive:
+    """Open a combo mod archive, scoping unpacked dirs to def/locale/base/dlc_* subtrees."""
+    if path.is_dir():
+        return DirectoryArchive(path, include_top_dirs=_COMBO_DIR_TOP_LEVELS)
+    return open_archive(path)
 
 
 def build_combo_vfs_stack(
@@ -934,7 +1038,7 @@ def build_combo_vfs_stack(
                 missing_entries.append(entry)
                 continue
 
-            archive = open_archive(resolved_path)
+            archive = _open_combo_archive(resolved_path)
 
             if exclude_self:
                 is_self, reason = is_ets2v2_self_package(resolved_path, archive)
@@ -958,7 +1062,9 @@ def build_combo_vfs_stack(
                 ) or stem_substitutions.get(entry.package_name.lower())
                 if sub_dir is not None:
                     archive.close()
-                    sub_archive = DirectoryArchive(sub_dir)
+                    sub_archive = _ComboScopedArchive(
+                        DirectoryArchive(sub_dir, include_top_dirs=_COMBO_DIR_TOP_LEVELS)
+                    )
                     stack.mount(
                         sub_archive,
                         name=f"{resolved_path.stem} (unpacked-defs)",
@@ -978,7 +1084,11 @@ def build_combo_vfs_stack(
                     resolved_entries.append(entry.model_copy(update={"resolved_path": sub_dir}))
                     continue
 
-                stack.mount(archive, name=resolved_path.name, priority=priority)
+                stack.mount(
+                    _ComboScopedArchive(archive),
+                    name=resolved_path.name,
+                    priority=priority,
+                )
                 diag_idx = len(protected_archives)
                 protected_archives.append(
                     ProtectedArchiveDiagnostic(
@@ -996,13 +1106,17 @@ def build_combo_vfs_stack(
                 resolved_entries.append(entry.model_copy(update={"resolved_path": resolved_path}))
                 continue
 
-            stack.mount(archive, name=resolved_path.name, priority=priority)
+            stack.mount(
+                _ComboScopedArchive(archive),
+                name=resolved_path.name,
+                priority=priority,
+            )
             resolved_entries.append(entry.model_copy(update={"resolved_path": resolved_path}))
 
         for udir in override_dirs:
             priority += 1
             stack.mount(
-                DirectoryArchive(udir),
+                _ComboScopedArchive(DirectoryArchive(udir, include_top_dirs=_COMBO_DIR_TOP_LEVELS)),
                 name=f"unpacked_defs:{udir.name}",
                 priority=priority,
             )

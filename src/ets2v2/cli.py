@@ -23,7 +23,7 @@ from ets2v2.baseline import (
     write_baseline_bundle,
 )
 from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, redact_url_secrets, run_price_fetch
-from ets2v2.merge import build_promods_editions
+from ets2v2.merge import ModlistOrder, build_promods_editions, compose_local
 from ets2v2.normalize import PricesLockfile, load_prices_lockfile
 from ets2v2.package import (
     DEFAULT_AUTHOR,
@@ -689,6 +689,97 @@ def _handle_fetch(args: argparse.Namespace) -> int:
             f"  {alert.severity.upper()} {alert.code} [{alert.scope}]: {alert.detail}",
             file=sys.stderr if alert.severity == "error" else sys.stdout,
         )
+    return 0 if report.ok else 1
+
+
+def _handle_compose_local(args: argparse.Namespace) -> int:
+    season = cast(Season, args.season)
+    game_log = cast(Path | None, args.game_log)
+    profile = cast(Path | None, args.profile)
+    modlist = cast(Path | None, args.modlist)
+    modlist_order = cast(ModlistOrder, args.modlist_order)
+    mod_dir = cast(Path | None, args.mod_dir)
+    workshop_dir = cast(Path | None, args.workshop_dir)
+    game_dir = cast(Path | None, args.game_dir)
+    out_dir = cast(Path, args.out_dir)
+    snapshot_path = cast(Path | None, args.snapshot)
+    checksums_path = cast(Path | None, args.checksums)
+    user_aliases_path = cast(Path | None, args.aliases)
+    unpacked_defs = cast(list[Path] | None, args.unpacked_defs) or []
+    strict_protected = cast(bool, args.strict_protected)
+    patch_hardcoded_totems = cast(bool, args.patch_hardcoded_totems)
+    no_totems = cast(bool, args.no_totems)
+    no_self_exclude = cast(bool, args.no_self_exclude)
+    dry_run = cast(bool, args.dry_run)
+    report_json_path = cast(Path | None, args.report_json)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    baseline_dir = cast(Path, args.baseline_dir)
+    prices_lock_path = cast(Path, args.prices_lock)
+    package_version = cast(str | None, args.package_version)
+    author = cast(str, args.author)
+    as_json = cast(bool, args.json)
+
+    try:
+        report = compose_local(
+            season,
+            out_dir=out_dir,
+            game_log=game_log,
+            profile=profile,
+            modlist=modlist,
+            modlist_order=modlist_order,
+            mod_dir=mod_dir,
+            workshop_dir=workshop_dir,
+            game_dir=game_dir,
+            snapshot_path=snapshot_path,
+            checksums_path=checksums_path,
+            user_aliases_path=user_aliases_path,
+            unpacked_defs=unpacked_defs,
+            strict_protected=strict_protected,
+            patch_hardcoded_totems=patch_hardcoded_totems,
+            no_totems=no_totems,
+            exclude_self=not no_self_exclude,
+            dry_run=dry_run,
+            report_json_path=report_json_path,
+            laws_dir=laws_dir,
+            mappings_path=mappings_path,
+            baseline_dir=baseline_dir,
+            prices_lock_path=prices_lock_path,
+            package_version=package_version,
+            author=author,
+        )
+    except (
+        FileNotFoundError,
+        NotADirectoryError,
+        OSError,
+        ValueError,
+        ValidationError,
+        ProtectedPayloadError,
+        UnsupportedCompressionError,
+    ) as exc:
+        print(f"error: compose-local failed: {exc}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = report.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0 if report.ok else 1
+
+    mode_label = "DRY-RUN" if report.dry_run else str(report.output_path)
+    status_label = "OK" if report.ok else "FAILED"
+    print(
+        f"compose-local {status_label} ({report.edition}, {report.package_version}, "
+        f"source={report.load_order_source}): "
+        f"{report.countries_patched}/{report.countries_scanned} countries patched "
+        f"({report.countries_unmatched} unmatched), "
+        f"speed_limits={report.speed_limits_patched}, "
+        f"pm_fuel={report.promods_fuel_modules_emitted}, "
+        f"output={mode_label}"
+    )
+    for warning in report.warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+    for error in report.errors:
+        print(f"error: {error}", file=sys.stderr)
     return 0 if report.ok else 1
 
 
@@ -1361,6 +1452,167 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print FetchRunReport as JSON.",
     )
     fetch_parser.set_defaults(handler=_handle_fetch)
+
+    compose_parser = subparsers.add_parser(
+        "compose-local",
+        help="Compose an offline validated zz_ETS2V2_ComboPatch_*.scs for local map combos.",
+    )
+    compose_parser.add_argument(
+        "--season",
+        choices=("summer", "winter"),
+        required=True,
+        help="Seasonal realism edition to compose (summer or winter).",
+    )
+    load_order_group = compose_parser.add_mutually_exclusive_group(required=True)
+    load_order_group.add_argument(
+        "--game-log",
+        type=Path,
+        default=None,
+        help="Path to ETS2 game.log.txt for active mount order discovery.",
+    )
+    load_order_group.add_argument(
+        "--profile",
+        type=Path,
+        default=None,
+        help="Path to plaintext ETS2 profile.sii (ScsC-encrypted profiles are refused).",
+    )
+    load_order_group.add_argument(
+        "--modlist",
+        type=Path,
+        default=None,
+        help="Path to line-delimited mod list text file.",
+    )
+    compose_parser.add_argument(
+        "--modlist-order",
+        choices=("top-to-bottom", "bottom-to-top"),
+        default="top-to-bottom",
+        help="Priority ordering of --modlist lines (default: top-to-bottom Mod Manager UI order).",
+    )
+    compose_parser.add_argument(
+        "--mod-dir",
+        type=Path,
+        default=None,
+        help="ETS2 local mod directory containing .scs/.zip/unpacked mods.",
+    )
+    compose_parser.add_argument(
+        "--workshop-dir",
+        type=Path,
+        default=None,
+        help="Optional Steam Workshop 227300 directory (steamapps/workshop/content/227300).",
+    )
+    compose_parser.add_argument(
+        "--game-dir",
+        type=Path,
+        default=None,
+        help="Optional ETS2 install directory containing def.scs (defaults to clean-room 1.62).",
+    )
+    compose_parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("dist/local"),
+        help="Output directory for zz_ETS2V2_ComboPatch_{Summer|Winter}.scs (default: dist/local).",
+    )
+    compose_parser.add_argument(
+        "--snapshot",
+        type=Path,
+        default=None,
+        help="Optional offline v1 realism-snapshot-{summer,winter}.json path.",
+    )
+    compose_parser.add_argument(
+        "--checksums",
+        type=Path,
+        default=None,
+        help="Optional SHA256SUMS.txt manifest path to verify --snapshot.",
+    )
+    compose_parser.add_argument(
+        "--aliases",
+        type=Path,
+        default=None,
+        help="Optional user country_aliases.json override merged atop bundled aliases.",
+    )
+    compose_parser.add_argument(
+        "--unpacked-defs",
+        action="append",
+        type=Path,
+        default=None,
+        help=(
+            "Repeatable unpacked def directory (stem-matched child dirs substitute protected "
+            "archives in-place; raw def/locale dirs mount as high-priority overrides)."
+        ),
+    )
+    compose_parser.add_argument(
+        "--strict-protected",
+        action="store_true",
+        help="Exit non-zero without writing .scs if any protected archive remains unsubstituted.",
+    )
+    compose_parser.add_argument(
+        "--patch-hardcoded-totems",
+        action="store_true",
+        help="Opt-in surgical rewriting of verified JRR/7RM hardcoded numeric gas boards.",
+    )
+    compose_parser.add_argument(
+        "--no-totems",
+        action="store_true",
+        help="Emit def/country/ realism patches only (skip all sign boards and fuel locales).",
+    )
+    compose_parser.add_argument(
+        "--no-self-exclude",
+        action="store_true",
+        help="Disable automatic D-10 exclusion of previous ETS2V2 packages in the load order.",
+    )
+    compose_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute and audit the full combo merge without writing a .scs file.",
+    )
+    compose_parser.add_argument(
+        "--report-json",
+        type=Path,
+        default=None,
+        help="Optional path to write the deterministic sorted JSON ComposeReport.",
+    )
+    compose_parser.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    compose_parser.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    compose_parser.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    compose_parser.add_argument(
+        "--prices-lock",
+        type=Path,
+        default=Path("state/prices.lock.json"),
+        help="Path to canonical state/prices.lock.json (used only when --snapshot is omitted).",
+    )
+    compose_parser.add_argument(
+        "--package-version",
+        type=str,
+        default=None,
+        help="Optional explicit package_version override.",
+    )
+    compose_parser.add_argument(
+        "--author",
+        type=str,
+        default=DEFAULT_AUTHOR,
+        help=f"Mod author string for manifest.sii (default: {DEFAULT_AUTHOR!r}).",
+    )
+    compose_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print ComposeReport as deterministic JSON.",
+    )
+    compose_parser.set_defaults(handler=_handle_compose_local)
 
     return parser
 

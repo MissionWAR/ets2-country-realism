@@ -230,6 +230,21 @@ def render_promods_icon_bytes(edition: Season) -> bytes:
     )
 
 
+def render_combo_icon_bytes(edition: Season) -> bytes:
+    """Render a deterministic clean-room 276x162 RGB JPEG icon for local ComboPatch (D-12)."""
+    is_summer = edition == "summer"
+    season_label = "SUMMER MIX" if is_summer else "WINTER MIX"
+    accent = (255, 178, 72) if is_summer else (120, 236, 224)
+    return _render_icon_canvas(
+        edition,
+        season_label=season_label,
+        meta_line_1="COMBO PATCH",
+        meta_line_2="LOCAL OFFLINE",
+        badge_accent=accent,
+        badge_ribbon="COMBO",
+    )
+
+
 def generate_all_icons(out_dir: Path) -> dict[Season, Path]:
     """Generate and write clean-room ``summer.jpg`` and ``winter.jpg`` icons into ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)

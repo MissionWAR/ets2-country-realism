@@ -21,15 +21,19 @@ from ets2v2.package.icons import (
     ICON_SIZE,
     generate_all_icons,
     generate_promods_icons,
+    render_combo_icon_bytes,
     render_edition_icon_bytes,
     render_promods_icon_bytes,
 )
 from ets2v2.package.metadata import (
+    COMBO_LOCAL_DISPLAY_NAMES,
     DEFAULT_AUTHOR,
     ETS2V2_MANIFEST_MARKER,
     LOCAL_DISPLAY_NAMES,
     PROMODS_LOCAL_DISPLAY_NAMES,
     WORKSHOP_CATEGORIES,
+    render_combo_description_txt,
+    render_combo_manifest_sii,
     render_description_txt,
     render_manifest_sii,
     render_promods_description_txt,
@@ -53,6 +57,7 @@ from ets2v2.package.totems import (
 )
 
 __all__ = [
+    "COMBO_LOCAL_DISPLAY_NAMES",
     "DEFAULT_AUTHOR",
     "ETS2V2_MANIFEST_MARKER",
     "FUEL_LOCALE_FILENAME",
@@ -77,6 +82,9 @@ __all__ = [
     "format_sii_string",
     "generate_all_icons",
     "generate_promods_icons",
+    "render_combo_description_txt",
+    "render_combo_icon_bytes",
+    "render_combo_manifest_sii",
     "render_description_txt",
     "render_edition_icon_bytes",
     "render_manifest_sii",

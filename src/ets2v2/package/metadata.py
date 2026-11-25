@@ -19,6 +19,10 @@ PROMODS_LOCAL_DISPLAY_NAMES: Final[dict[Season, str]] = {
     "summer": "ETS2 World Country Realism - Summer (ProMods Edition)",
     "winter": "ETS2 World Country Realism - Winter (ProMods Edition)",
 }
+COMBO_LOCAL_DISPLAY_NAMES: Final[dict[Season, str]] = {
+    "summer": "ETS2 World Country Realism - Summer (Combo Patch)",
+    "winter": "ETS2 World Country Realism - Winter (Combo Patch)",
+}
 
 
 def _assert_hygiene(raw: bytes, *, label: str) -> None:
@@ -111,6 +115,22 @@ def render_promods_manifest_sii(
         package_version,
         kind="promods",
         workshop=workshop,
+        author=author,
+    )
+
+
+def render_combo_manifest_sii(
+    edition: Season,
+    package_version: str,
+    *,
+    author: str = DEFAULT_AUTHOR,
+) -> bytes:
+    """Render local ``manifest.sii`` for ``zz_ETS2V2_ComboPatch_{Summer|Winter}.scs`` (D-10)."""
+    return _render_managed_manifest_sii(
+        COMBO_LOCAL_DISPLAY_NAMES[edition],
+        package_version,
+        kind="combo",
+        workshop=False,
         author=author,
     )
 
@@ -215,5 +235,56 @@ def render_promods_description_txt(edition: Season) -> bytes:
         "  Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.\n"
         "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.\n"
         "- Built locally from user-installed ProMods archives (minimal realism-only footprint).\n"
+    )
+    return serialize_sii_text(body)
+
+
+def render_combo_description_txt(edition: Season) -> bytes:
+    """Render deterministic UTF-8 no-BOM LF ``description.txt`` for local ComboPatch (D-12)."""
+    is_summer = edition == "summer"
+    title = (
+        "ETS2 World Country Realism - Summer (Local Map Combo Patch)"
+        if is_summer
+        else "ETS2 World Country Realism - Winter (Local Map Combo Patch)"
+    )
+    if is_summer:
+        season_summary = (
+            "Seasonal profile: Summer peak (July 15 DST offsets and summer statutory rules).\n"
+            "- Daylight Saving Time active on single-TZ countries; multi-TZ maps preserved.\n"
+            "- Croatia, Moldova, and Israel daytime lights optional in summer daylight."
+        )
+    else:
+        season_summary = (
+            "Seasonal profile: Winter peak (January 15 standard offsets and winter rules).\n"
+            "- Standard winter time active on single-TZ countries; multi-TZ maps preserved.\n"
+            "- Croatia, Moldova, and Israel winter daytime lights mandatory."
+        )
+
+    body = (
+        f"{title}\n"
+        "==================================================\n\n"
+        "100% offline locally composed ETS2 1.62+ realism patch tailored to your active\n"
+        "multi-map combo load order (ProMods, RusMap, TST, UMCF, Beyond, EAA, SEA, RoC,\n"
+        "Project Japan, JRR, Africa, etc.).\n\n"
+        "Mod Manager Load Order Placement:\n"
+        "- Place this zz_ETS2V2_ComboPatch_*.scs package at the VERY TOP of Mod Manager\n"
+        "  (highest priority, ABOVE all map mods, map fix packs, and ProMods Def).\n"
+        "- Disable Vanilla Core and standalone ProMods Editions when using Combo Patch.\n"
+        "- Weekly re-runs automatically exclude previous zz_ETS2V2_ComboPatch_*.scs builds.\n\n"
+        f"{season_summary}\n\n"
+        "FieldOwnershipPolicy Guardrails:\n"
+        "- Preserves map-owned country IDs, geometry/pos, regions[], multi-timezone areas\n"
+        "  (TST Russia, UMCF Kazakhstan, EAA Brazil), custom lane classes, and train/tram.\n"
+        "- Never downgrades heavy map axle ladders (max_of_map_and_real carry-forward).\n"
+        "- Enforces imperial_units parity protection on speed_limits.sii.\n"
+        "- Emits zero def/country*.sii registration files and zero .dds/.tobj textures.\n"
+        "- Convoy multiplayer optional (mp_mod_optional: true).\n\n"
+        "Open-Source Attribution & Licensing:\n"
+        "- Generator & build pipeline: MIT License (ETS2 World Realism).\n"
+        "- Canonical statutory country registry data: CC BY 4.0.\n"
+        "- Open European fuel data: EC Weekly Oil Bulletin CC BY 4.0, fuel-prices.eu CC BY 4.0,\n"
+        "  UK DESNZ OGL v3, Norway SSB CC BY 4.0, France Licence Ouverte, Italy MIMIT IODL 2.0,\n"
+        "  Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.\n"
+        "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.\n"
     )
     return serialize_sii_text(body)

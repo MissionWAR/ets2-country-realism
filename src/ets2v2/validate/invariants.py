@@ -1018,7 +1018,18 @@ def validate_promods_realism_invariants(
     for slug in sorted(country_models):
         model = country_models[slug]
         sui_path = f"{rel_prefix}def/country/{slug}.sui"
-        _check_tz_tokens_and_monotonic_axles(slug, model, allowed_tz_keys, sui_path, collector)
+        is_multi_tz = bool(
+            model.secondary_time_zone
+            or model.secondary_time_zone_area
+            or model.secondary_time_zone_name
+        )
+        _check_tz_tokens_and_monotonic_axles(
+            slug,
+            model,
+            None if is_multi_tz else allowed_tz_keys,
+            sui_path,
+            collector,
+        )
 
         base_country = base_countries_by_slug.get(slug)
         if base_country is not None:
@@ -1102,7 +1113,18 @@ def validate_combo_invariants(
     for slug in sorted(country_models):
         model = country_models[slug]
         sui_path = f"{rel_prefix}def/country/{slug}.sui"
-        _check_tz_tokens_and_monotonic_axles(slug, model, allowed_tz_keys, sui_path, collector)
+        is_multi_tz = bool(
+            model.secondary_time_zone
+            or model.secondary_time_zone_area
+            or model.secondary_time_zone_name
+        )
+        _check_tz_tokens_and_monotonic_axles(
+            slug,
+            model,
+            None if is_multi_tz else allowed_tz_keys,
+            sui_path,
+            collector,
+        )
 
     canonical_tokens: frozenset[str] = frozenset()
     if fuel_locales:

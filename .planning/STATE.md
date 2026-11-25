@@ -5,24 +5,24 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 5 planned & verified (`05-01`..`05-04`, `05-VALIDATION.md` — `gsd-plan-checker` `PASSED`, 0 blockers/0 warnings) — ready to execute Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
+**Current focus:** Phase 5 in progress on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` — Plan `05-01` complete (`GLB-03`, 225 territories / 151 ISO-4217 currencies / 526 tests passing); paused by user request before Wave 2 (`05-02`).
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — Planned & Verified
-Plan: 0 of 4 executed in current phase (4 plans across 4 waves verified)
-Status: Phase 5 plans verified (`05-RESEARCH.md`, `05-PATTERNS.md`, `05-01-PLAN.md`..`05-04-PLAN.md`, `05-VALIDATION.md` passed `gsd-plan-checker` with 0 blockers/0 warnings; `GLB-01`..`GLB-04` and `D-01`..`D-16` 100% covered)
-Last activity: 2026-11-25 — Completed Phase 5 research, pattern mapping, planning (`05-01`..`05-04`), and plan-checker verification
+Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — In Progress (Paused after Wave 1)
+Plan: 1 of 4 executed in current phase (`05-01` complete; `05-02`..`05-04` pending)
+Status: Plan `05-01` complete (`3443717`); paused cleanly before Wave 2 (`05-02`: Non-EU Tier 1 open government fuel collectors)
+Last activity: 2026-11-25 — Completed Phase 5 Wave 1 (`05-01-PLAN.md` -> `05-01-SUMMARY.md`) and paused before Wave 2
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: ~28 min
-- Total execution time: ~8.0 hours
+- Total execution time: ~8.6 hours
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [████████░░] 80%
 | 2. Realism Registry, Core & Validator | 5/5 | ~68 min | ~14 min |
 | 3. European Fuel/FX & Totems | 4/4 | ~116 min | ~29 min |
 | 4. ProMods Companion & Combo Composer | 4/4 | ~227 min | ~57 min |
-| 5. Global Tier 1/2/3 & OSM Audit | 0/4 | - | - |
+| 5. Global Tier 1/2/3 & OSM Audit | 1/4 | ~36 min | ~36 min |
 
 ## Accumulated Context
 
@@ -69,6 +69,6 @@ None blocking Phase 4 closeout or Phase 5 planning.
 ## Session Continuity
 
 Last session: 2026-11-25
-Stopped at: Phase 5 plans (`05-01`..`05-04`) and `05-VALIDATION.md` verified (`gsd-plan-checker` PASSED)
-Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-01-PLAN.md
-Next action: Run `/gsd-execute-phase 5` to execute Phase 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit)
+Stopped at: Phase 5 Wave 1 (`05-01`) complete on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`; paused before Wave 2 (`05-02`)
+Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-02-PLAN.md
+Next action: Run `/gsd-execute-phase 5` (or resume Wave 2 with `05-02-PLAN.md` -> `05-03-PLAN.md` -> `05-04-PLAN.md`)

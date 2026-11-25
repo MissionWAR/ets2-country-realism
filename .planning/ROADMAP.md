@@ -99,7 +99,7 @@ Plans:
   4. An internal CI OSM Overpass/Taginfo (`CC BY-SA`) speed-limit drift audit generates maintainer review reports highlighting mismatches against `data/laws/`, while automated provenance checks verify zero `CC BY-SA` data enters any `CC BY 4.0` mod or snapshot artifact.
 **Plans**: 4 plans
 Plans:
-- [ ] `05-01-PLAN.md` — Global `225`-territory & `~156`-currency foundation (`currencies.json`, `tier3_fuel_baselines.json`, `225` canonical laws/mappings/lockfile, `58` global TZ overrides, `18` ECB + `~139` isolated FX, `0.010 EUR/L` floor clamping, frozen v1 snapshot, 11 updated Phase 2-4 tests) (`GLB-03`)
+- [x] `05-01-PLAN.md` — Global `225`-territory & `151`-currency foundation (`currencies.json`, `tier3_fuel_baselines.json`, `225` canonical laws/mappings/lockfile, `58` global TZ overrides, `18` ECB + `134` isolated FX, `0.010 EUR/L` floor clamping, frozen v1 snapshot, 12 updated Phase 2-4 tests) (`GLB-03`)
 - [ ] `05-02-PLAN.md` — Non-EU Tier 1 open government fuel collectors (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`/CREG, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), `code=` secret redaction, shared OOXML safety, EU Core vs Global Tier 1 outage gate separation, `--no-global`, and optional Friday CI secrets (`GLB-01`)
 - [ ] `05-03-PLAN.md` — Research-gated Tier 2 national portal scrapers (`IS`, `CH`, `MD`, `MK`, `RU`, `IL`, `AE`, `ZA`, `SA`, `NG`; `KE`/`ID`/`JO`/`EG` in Tier 3), stdlib `fetch/_html.py`, per-country circuit breakers, `--no-tier2`, 5-tier staleness (`14d`/`45d`/`105d`/`30d`/`180d`), noise-controlled Tier 3 rollups & Global Snapshot Coverage changelogs (`GLB-02`)
 - [ ] `05-04-PLAN.md` — Quarantined `src/ets2v2/audit/` subpackage + Phase 5 universal AST DAG quarantine walls, clean-room `speed_audit_allowlist.json`, `ets2v2 audit {osm-speeds,taint}` (`westnordost` + opt-in Overpass/Taginfo), independent `ETS2V2-INV-LICENSE-TAINT` validator gate, full repo/snapshot/package taint gate, and standalone monthly zero-Git-write `.github/workflows/osm-speed-audit.yml` (`GLB-04`)
@@ -112,7 +112,7 @@ Plans:
 | 2. Realism Registry, Core & Validator | 5/5 | Complete | 2026-11-20 |
 | 3. European Fuel/FX & Totems | 4/4 | Complete | 2026-11-22 |
 | 4. ProMods Companion & Combo Composer | 4/4 | Complete | 2026-11-25 |
-| 5. Global Tier 1/2/3 & OSM Audit | 0/4 | Not started | - |
+| 5. Global Tier 1/2/3 & OSM Audit | 1/4 | In progress | - |
 
 ## Future Milestone Scope (V2 — Deferred)
 

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Mapping, Sequence
+import os
+import shutil
+import tempfile
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
-from typing import Final, Self
+from typing import Final
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,11 +19,15 @@ from ets2v2.baseline.models import (
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
+from ets2v2.merge.aliases import CountryResolver
+from ets2v2.merge.load_order import BaselineVirtualArchive
+from ets2v2.merge.policy import apply_country_policy, apply_speed_limits_policy
 from ets2v2.merge.promods_discovery import (
     discover_promods_packs,
     resolve_mod_dir,
 )
 from ets2v2.merge.promods_fuel import compile_promods_fuel_locales
+from ets2v2.merge.scanner import ScannedMapCountry, scan_active_countries
 from ets2v2.package.builder import (
     default_package_version,
     ensure_contained,
@@ -35,59 +41,23 @@ from ets2v2.package.metadata import (
     render_promods_manifest_sii,
     render_versions_sii,
 )
-from ets2v2.package.synthesize import (
-    synthesize_country_sui,
-    synthesize_speed_limits_sii,
-)
 from ets2v2.package.totems import compile_totem_payloads, snapshot_to_totem_lockfile
 from ets2v2.registry.loader import load_country_aliases
-from ets2v2.registry.models import CountryAliasEntry, CountryAliasRegistry, RoadVehicleClass, Season
-from ets2v2.registry.snapshot import (
-    RealismSnapshot,
-    RealismSnapshotCountry,
-    load_or_build_snapshot,
-)
-from ets2v2.registry.timezone import DEFAULT_ANCHOR_YEAR, resolve_ets2_timezone
-from ets2v2.sii.country import (
-    CountryDataModel,
-    CountryDataPatch,
-    parse_country_data,
-    parse_country_includes,
-    patch_country_data,
-)
-from ets2v2.sii.hygiene import serialize_sii_text, validate_sii_hygiene
-from ets2v2.sii.speed_limits import LaneSpeedRule, parse_speed_limits, patch_speed_limits
+from ets2v2.registry.models import Season
+from ets2v2.registry.snapshot import load_or_build_snapshot
+from ets2v2.registry.timezone import DEFAULT_ANCHOR_YEAR
 from ets2v2.validate.workshop import validate_local_zip, validate_workshop_package
 from ets2v2.vfs.hashfs import open_archive
 from ets2v2.vfs.stack import VfsStack
-from ets2v2.vfs.types import (
-    ArchiveDiagnostic,
-    ProtectedPayloadError,
-    UnsupportedCompressionError,
-    VfsEntryMeta,
-    decode_vfs_text,
-    filter_paths_by_prefixes,
-    normalize_vfs_path,
-)
 
 PROMODS_LOCAL_ZIP_FILENAMES: Final[dict[Season, str]] = {
     "summer": "ETS2V2_ProMods_Summer.zip",
     "winter": "ETS2V2_ProMods_Winter.zip",
 }
 
-_FORBIDDEN_REPO_SUBDIRS: Final[tuple[str, ...]] = (
-    "data",
-    "src",
-    "tests",
-    "state",
-    "assets",
-    ".github",
-    ".git",
+_ALLOWED_REPO_OUTPUT_SUBDIRS: Final[frozenset[str]] = frozenset(
+    {"dist", "out", "build", "raw", "vendor"}
 )
-
-_COUNTRY_REG_SII_RE: Final[re.Pattern[str]] = re.compile(r"^def/country(?:\.[^/]+)?\.sii$")
-_COUNTRY_FRAG_RE: Final[re.Pattern[str]] = re.compile(r"^def/country/([a-z0-9_]+)\.(?:sui|sii)$")
-_ROAD_CLASSES: Final[tuple[RoadVehicleClass, ...]] = ("car", "truck", "bus")
 
 
 class ProModsBuildReport(BaseModel):
@@ -109,63 +79,6 @@ class ProModsBuildReport(BaseModel):
     validation_ok: bool
 
 
-class _InMemoryBaselineArchive:
-    """Clean-room in-memory Vanilla 1.62 VFS base layer when ``--game-dir`` is omitted."""
-
-    def __init__(self, entries: Mapping[str, bytes]) -> None:
-        self._path = Path("<baseline_1.62_virtual>")
-        self._entries: dict[str, bytes] = {
-            normalize_vfs_path(k): v for k, v in sorted(entries.items())
-        }
-
-    @property
-    def path(self) -> Path:
-        return self._path
-
-    @property
-    def format_name(self) -> str:
-        return "virtual_baseline"
-
-    @property
-    def diagnostics(self) -> list[ArchiveDiagnostic]:
-        return []
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(self, *args: object) -> None:
-        self.close()
-
-    def exists(self, vfs_path: str) -> bool:
-        norm = normalize_vfs_path(vfs_path)
-        return norm in self._entries
-
-    def get_meta(self, vfs_path: str) -> VfsEntryMeta | None:
-        norm = normalize_vfs_path(vfs_path)
-        payload = self._entries.get(norm)
-        if payload is None:
-            return None
-        return VfsEntryMeta(
-            path=norm, is_dir=False, size=len(payload), compressed_size=len(payload)
-        )
-
-    def list_paths(self, prefixes: Sequence[str] | None = None) -> list[str]:
-        return filter_paths_by_prefixes(self._entries.keys(), prefixes)
-
-    def read_bytes(self, vfs_path: str) -> bytes:
-        norm = normalize_vfs_path(vfs_path)
-        payload = self._entries.get(norm)
-        if payload is None:
-            raise FileNotFoundError(f"Entry {norm!r} not found in virtual baseline archive")
-        return payload
-
-    def read_text(self, vfs_path: str, encoding: str = "utf-8") -> str:
-        return decode_vfs_text(self.read_bytes(vfs_path), vfs_path, encoding=encoding)
-
-    def close(self) -> None:
-        return None
-
-
 def _candidate_repo_roots(explicit_root: Path | None) -> list[Path]:
     roots: list[Path] = []
     if explicit_root is not None:
@@ -181,261 +94,35 @@ def _candidate_repo_roots(explicit_root: Path | None) -> list[Path]:
 
 
 def assert_out_dir_not_tracked(out_dir: Path, *, repo_root: Path | None = None) -> None:
-    """Refuse ``--out-dir`` inside tracked repository directories (D-08, T-04-05)."""
+    """Refuse ``--out-dir`` at repo root or inside non-gitignored repo subdirs (D-08, T-04-05)."""
     resolved_out = out_dir.resolve()
     for root in _candidate_repo_roots(repo_root):
-        for subdir in _FORBIDDEN_REPO_SUBDIRS:
-            guarded = (root / subdir).resolve()
-            if resolved_out == guarded or resolved_out.is_relative_to(guarded):
-                raise ValueError(
-                    f"Refusing to write ProMods output inside tracked repository directory "
-                    f"{guarded}: {out_dir}"
-                )
-
-
-def _merge_axle_mass_limits(
-    map_axles: Sequence[int],
-    real_axles: Sequence[int],
-) -> list[int]:
-    """Element-wise max with carry-forward and monotonic non-decreasing enforcement (D-14)."""
-    if not map_axles:
-        return list(real_axles)
-    if not real_axles:
-        return list(map_axles)
-    target_len = max(len(map_axles), len(real_axles))
-    merged: list[int] = []
-    running_max = 0
-    for idx in range(target_len):
-        map_val = map_axles[min(idx, len(map_axles) - 1)]
-        real_val = real_axles[min(idx, len(real_axles) - 1)]
-        running_max = max(running_max, map_val, real_val)
-        merged.append(running_max)
-    return merged
-
-
-def _build_virtual_vanilla_base(
-    bl_countries: CountriesBaseline,
-    bl_speeds: SpeedLimitsBaseline,
-    snapshot: RealismSnapshot,
-) -> _InMemoryBaselineArchive:
-    """Synthesize a clean-room Vanilla 1.62 virtual archive (def/country.sii + 36 countries)."""
-    resolved_by_slug = {c.ets2_slug: c for c in snapshot.countries.values()}
-    speeds_by_slug = {s.slug: s for s in bl_speeds.speed_limits}
-    entries: dict[str, bytes] = {}
-    include_lines: list[str] = ["SiiNunit", "{"]
-
-    for bl_country in sorted(bl_countries.countries, key=lambda c: c.slug):
-        slug = bl_country.slug
-        resolved = resolved_by_slug.get(slug)
-        bl_speed = speeds_by_slug.get(slug)
-        if resolved is None or bl_speed is None:
-            raise ValueError(f"Incomplete Vanilla baseline/snapshot for slug {slug!r}")
-        include_lines.append(f'@include "country/{slug}.sui"')
-        entries[f"def/country/{slug}.sui"] = synthesize_country_sui(bl_country, resolved)
-        entries[f"def/country/{slug}/speed_limits.sii"] = synthesize_speed_limits_sii(
-            bl_speed, resolved
-        )
-
-    include_lines.append("}")
-    entries["def/country.sii"] = serialize_sii_text("\n".join(include_lines) + "\n")
-    return _InMemoryBaselineArchive(entries)
-
-
-def _decode_third_party_sii(raw: bytes) -> str:
-    """Decode third-party SII/SUI bytes (UTF-8 first, cp1252 fallback for legacy mod comments)."""
-    payload = raw[3:] if raw.startswith(b"\xef\xbb\xbf") else raw
-    try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        text = payload.decode("cp1252", errors="replace")
-    return text.replace("\r\n", "\n").replace("\r", "\n")
-
-
-def _discover_active_country_fragments(stack: VfsStack) -> dict[str, str]:
-    """Follow ``def/country*.sii`` ``@include`` graphs into canonical active fragment paths."""
-    reg_paths = sorted(
-        p for p in stack.list_paths("def") if _COUNTRY_REG_SII_RE.fullmatch(p) is not None
-    )
-    active_fragments: dict[str, str] = {}
-    visited_includes: set[str] = set()
-
-    def _visit_include_source(source_path: str, raw_bytes: bytes) -> None:
-        includes = parse_country_includes(_decode_third_party_sii(raw_bytes))
-        parent_dir = source_path.rsplit("/", 1)[0] if "/" in source_path else ""
-        for raw_inc in includes:
-            norm_inc = normalize_vfs_path(raw_inc)
-            if norm_inc.startswith("def/"):
-                target = norm_inc
-            elif parent_dir:
-                target = normalize_vfs_path(f"{parent_dir}/{norm_inc}")
-            else:
-                target = norm_inc
-            clean_target = validate_rel_path(target)
-            if clean_target in visited_includes:
-                continue
-            visited_includes.add(clean_target)
-
-            entry = stack.resolve(clean_target)
-            if entry is None or entry.is_empty_stub:
-                continue
-            frag_match = _COUNTRY_FRAG_RE.fullmatch(clean_target)
-            if frag_match is not None:
-                slug = frag_match.group(1)
-                active_fragments[slug] = clean_target
-                continue
-            try:
-                nested_bytes = stack.read_bytes(clean_target)
-            except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError):
-                continue
-            _visit_include_source(clean_target, nested_bytes)
-
-    for reg_path in reg_paths:
-        entry = stack.resolve(reg_path)
-        if entry is None or entry.is_empty_stub:
-            continue
-        try:
-            raw_reg = stack.read_bytes(reg_path)
-        except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError):
-            continue
-        _visit_include_source(reg_path, raw_reg)
-
-    return active_fragments
-
-
-def _resolve_country_snapshot(
-    slug: str,
-    map_country: CountryDataModel,
-    snapshot: RealismSnapshot,
-    aliases: CountryAliasRegistry,
-    by_iso3: Mapping[str, RealismSnapshotCountry],
-    by_slug: Mapping[str, RealismSnapshotCountry],
-) -> tuple[RealismSnapshotCountry | None, CountryAliasEntry | None]:
-    """Deterministic 3-tier country lookup: alias -> ISO3/ISO2 -> canonical ets2_slug (D-13)."""
-    norm_slug = slug.strip().lower()
-    alias_entry = aliases.aliases.get(norm_slug)
-    if alias_entry is not None:
-        return snapshot.countries.get(alias_entry.iso2), alias_entry
-
-    iso3 = map_country.iso_country_code.strip().lower()
-    if iso3 and iso3 in by_iso3:
-        return by_iso3[iso3], None
-
-    cc = map_country.country_code.strip().upper()
-    if cc and cc in snapshot.countries:
-        return snapshot.countries[cc], None
-
-    if norm_slug in by_slug:
-        return by_slug[norm_slug], None
-
-    return None, None
-
-
-def _patch_country_fragment_bytes(
-    raw_source: bytes,
-    map_country: CountryDataModel,
-    snapshot_country: RealismSnapshotCountry,
-    alias_entry: CountryAliasEntry | None,
-    *,
-    ref_date: date,
-    allowed_tz_keys: Sequence[str],
-    rel_path: str,
-) -> bytes:
-    """Surgically patch realism-owned fields while preserving map geometry/regions/multi-TZ."""
-    has_secondary_tz = bool(
-        map_country.secondary_time_zone
-        or map_country.secondary_time_zone_area
-        or map_country.secondary_time_zone_name
-    )
-    should_patch_tz = (not has_secondary_tz) and (map_country.time_zone is not None)
-
-    tz_offset: int | None = None
-    tz_name: str | None = None
-    if should_patch_tz:
-        if alias_entry is not None and alias_entry.iana_timezone_override is not None:
-            resolved_tz = resolve_ets2_timezone(
-                alias_entry.iana_timezone_override,
-                ref_date,
-                allowed_tz_keys,
+        if resolved_out == root:
+            raise ValueError(
+                f"Refusing to write ProMods/Combo output directly into repository root: {out_dir}"
             )
-            tz_offset = resolved_tz.offset_minutes
-            tz_name = resolved_tz.ets2_time_zone_name
-        else:
-            tz_offset = snapshot_country.time_zone
-            tz_name = snapshot_country.time_zone_name
-
-    merged_axles = _merge_axle_mass_limits(
-        map_country.mass_limit_per_axle_count,
-        snapshot_country.mass_limit_per_axle_count,
-    )
-    patch = CountryDataPatch(
-        fuel_price=snapshot_country.fuel.eur_per_liter,
-        lights_mandatory=snapshot_country.lights_mandatory,
-        driving_tired_offence=snapshot_country.driving_tired_offence,
-        time_zone=tz_offset,
-        time_zone_name=tz_name,
-        mass_limit_per_axle_count=merged_axles,
-    )
-    rendered = patch_country_data(_decode_third_party_sii(raw_source), patch)
-    out_bytes = serialize_sii_text(rendered)
-    hygiene = validate_sii_hygiene(out_bytes, require_siinunit=False)
-    if hygiene:
-        summary = "; ".join(f"{d.code}@{d.line}:{d.column}: {d.message}" for d in hygiene)
-        raise ValueError(f"Patched ProMods country SII hygiene failure for {rel_path}: {summary}")
-    return out_bytes
-
-
-def _patch_speed_limits_bytes(
-    raw_source: bytes,
-    map_country: CountryDataModel,
-    snapshot_country: RealismSnapshotCountry,
-    *,
-    rel_path: str,
-) -> bytes | None:
-    """Surgically patch canonical road lanes preserving custom lanes & train/tram (D-15)."""
-    map_is_imperial = map_country.imperial_units is True
-    if map_is_imperial != snapshot_country.imperial_units:
-        return None
-
-    decoded_source = _decode_third_party_sii(raw_source)
-    parsed = parse_speed_limits(decoded_source)
-    updates: dict[str, list[LaneSpeedRule]] = {}
-    for vclass in _ROAD_CLASSES:
-        block = parsed.get_block(vclass)
-        if block is None or not block.lanes:
-            continue
-        overrides_by_lane = {
-            lane.lane_speed_class: lane for lane in snapshot_country.speed_limits[vclass]
-        }
-        new_lanes: list[LaneSpeedRule] = []
-        for existing_lane in block.lanes:
-            override = overrides_by_lane.get(existing_lane.lane_speed_class)
-            if override is None:
-                # Preserve map-added custom lane classes verbatim in their exact slot
-                new_lanes.append(existing_lane)
-            else:
-                new_lanes.append(
-                    LaneSpeedRule(
-                        lane_speed_class=existing_lane.lane_speed_class,
-                        limit=override.limit,
-                        urban_limit=override.urban_limit,
-                        max_limit=(
-                            override.max_limit if existing_lane.max_limit is not None else None
-                        ),
-                        uncommon=existing_lane.uncommon,
-                    )
+        if resolved_out.is_relative_to(root):
+            top_dir = resolved_out.relative_to(root).parts[0]
+            if top_dir.lower() not in _ALLOWED_REPO_OUTPUT_SUBDIRS:
+                raise ValueError(
+                    f"Refusing to write ProMods/Combo output inside tracked/unignored repository "
+                    f"directory {root / top_dir}: {out_dir}"
                 )
-        updates[vclass] = new_lanes
 
-    if not updates:
-        return None
 
-    rendered = patch_speed_limits(decoded_source, updates)
-    out_bytes = serialize_sii_text(rendered)
-    hygiene = validate_sii_hygiene(out_bytes, require_siinunit=True)
-    if hygiene:
-        summary = "; ".join(f"{d.code}@{d.line}:{d.column}: {d.message}" for d in hygiene)
-        raise ValueError(f"Patched ProMods speed_limits hygiene failure for {rel_path}: {summary}")
-    return out_bytes
+def _deduplicate_scanned_countries(
+    countries: Sequence[ScannedMapCountry],
+) -> list[ScannedMapCountry]:
+    """Keep the highest-priority scanned fragment per slug to prevent duplicate .sui/.sii emits."""
+    winners: dict[str, ScannedMapCountry] = {}
+    for item in countries:
+        existing = winners.get(item.slug)
+        if existing is None or (item.winning_priority, item.fragment_path) >= (
+            existing.winning_priority,
+            existing.fragment_path,
+        ):
+            winners[item.slug] = item
+    return [winners[slug] for slug in sorted(winners)]
 
 
 def build_promods_edition(
@@ -544,7 +231,7 @@ def build_promods_edition(
             stack.mount(open_archive(def_scs), name="vanilla_def", priority=0)
         else:
             stack.mount(
-                _build_virtual_vanilla_base(bl_countries, bl_speeds, snapshot),
+                BaselineVirtualArchive.from_baselines(bl_countries, bl_speeds, snapshot=snapshot),
                 name="vanilla_baseline_1_62",
                 priority=0,
             )
@@ -556,10 +243,10 @@ def build_promods_edition(
                 priority=pack_spec.priority,
             )
 
-        active_fragments = _discover_active_country_fragments(stack)
+        scan_result = scan_active_countries(stack)
+        active_countries = _deduplicate_scanned_countries(scan_result.countries)
         vanilla_slugs = frozenset(c.slug for c in bl_countries.countries)
-        by_iso3 = {c.iso3.lower(): c for c in snapshot.countries.values()}
-        by_slug = {c.ets2_slug.lower(): c for c in snapshot.countries.values()}
+        resolver = CountryResolver(snapshot, aliases)
 
         shared_payloads: dict[str, bytes] = {
             "mod_icon.jpg": icon_bytes,
@@ -569,56 +256,38 @@ def build_promods_edition(
         vanilla_emitted = 0
         promods_emitted = 0
 
-        for slug in sorted(active_fragments):
-            frag_path = active_fragments[slug]
-            try:
-                raw_country = stack.read_bytes(frag_path)
-            except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError):
+        for scanned in active_countries:
+            resolution = resolver.resolve(scanned.slug, scanned.country_data)
+            if resolution.country is None:
                 continue
 
-            map_country = parse_country_data(_decode_third_party_sii(raw_country))
-            snapshot_country, alias_entry = _resolve_country_snapshot(
-                slug,
-                map_country,
-                snapshot,
-                aliases,
-                by_iso3,
-                by_slug,
-            )
-            if snapshot_country is None:
-                continue
-
-            clean_frag_rel = validate_rel_path(frag_path)
-            shared_payloads[clean_frag_rel] = _patch_country_fragment_bytes(
-                raw_country,
-                map_country,
+            snapshot_country = resolution.country
+            clean_frag_rel = validate_rel_path(scanned.fragment_path)
+            country_result = apply_country_policy(
+                scanned.raw_bytes,
+                scanned.country_data,
                 snapshot_country,
-                alias_entry,
+                iana_timezone_override=resolution.iana_timezone_override,
                 ref_date=ref_date,
-                allowed_tz_keys=bl_locales.tz_keys,
+                supported_tz_keys=bl_locales.tz_keys,
                 rel_path=clean_frag_rel,
             )
-            if slug in vanilla_slugs:
+            shared_payloads[clean_frag_rel] = country_result.rendered_bytes
+            if scanned.slug in vanilla_slugs:
                 vanilla_emitted += 1
             else:
                 promods_emitted += 1
 
-            spd_rel = validate_rel_path(f"def/country/{slug}/speed_limits.sii")
-            spd_entry = stack.resolve(spd_rel)
-            if spd_entry is not None and not spd_entry.is_empty_stub:
-                try:
-                    raw_spd = stack.read_bytes(spd_rel)
-                except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError):
-                    raw_spd = None
-                if raw_spd is not None:
-                    patched_spd = _patch_speed_limits_bytes(
-                        raw_spd,
-                        map_country,
-                        snapshot_country,
-                        rel_path=spd_rel,
-                    )
-                    if patched_spd is not None:
-                        shared_payloads[spd_rel] = patched_spd
+            if scanned.speed_limits_path is not None and scanned.speed_limits_raw is not None:
+                spd_rel = validate_rel_path(scanned.speed_limits_path)
+                spd_result = apply_speed_limits_policy(
+                    scanned.speed_limits_raw,
+                    scanned.country_data,
+                    snapshot_country,
+                    rel_path=spd_rel,
+                )
+                if spd_result.rendered_bytes is not None:
+                    shared_payloads[spd_rel] = spd_result.rendered_bytes
 
         # Vanilla Option 4b 460 sign boards + 43-locale local_module.ets2v2_fuel.sii
         totem_lockfile = snapshot_to_totem_lockfile(snapshot)
@@ -640,7 +309,8 @@ def build_promods_edition(
         stack.close()
 
     # Target A: Workshop unpacked root (<out_dir>/workshop/promods-{summer|winter}/)
-    workshop_dir = out_dir / "workshop" / f"promods-{edition}"
+    workshop_parent = out_dir / "workshop"
+    workshop_dir = workshop_parent / f"promods-{edition}"
     workshop_files: dict[str, bytes] = {
         "versions.sii": render_versions_sii(),
         "universal/manifest.sii": render_promods_manifest_sii(
@@ -653,8 +323,6 @@ def build_promods_edition(
     for rel_path, payload in shared_payloads.items():
         workshop_files[validate_rel_path(f"universal/{rel_path}")] = payload
 
-    workshop_file_count = write_workshop_tree(workshop_dir, out_dir, workshop_files)
-
     # Target B: Deterministic local ZIP (<out_dir>/local/ETS2V2_ProMods_{Summer|Winter}.zip)
     local_entries: dict[str, bytes] = {
         "manifest.sii": render_promods_manifest_sii(
@@ -665,28 +333,70 @@ def build_promods_edition(
         ),
         **shared_payloads,
     }
-    local_zip_path = out_dir / "local" / PROMODS_LOCAL_ZIP_FILENAMES[edition]
+    local_parent = out_dir / "local"
+    local_zip_path = local_parent / PROMODS_LOCAL_ZIP_FILENAMES[edition]
+    ensure_contained(workshop_dir, out_dir)
     ensure_contained(local_zip_path, out_dir)
-    local_zip_sha256 = write_deterministic_zip(local_zip_path, local_entries)
 
-    # Mandatory Offline SCS Validator hard gate on BOTH targets (profile="promods")
-    ws_report = validate_workshop_package(
-        workshop_dir,
-        baseline_dir=baseline_dir,
-        profile="promods",
-    )
-    if not ws_report.ok:
-        details = "; ".join(f"{i.code} [{i.path}]: {i.detail}" for i in ws_report.issues[:10])
-        raise ValueError(f"ProMods Workshop validation failed for {workshop_dir}: {details}")
+    workshop_parent.mkdir(parents=True, exist_ok=True)
+    local_parent.mkdir(parents=True, exist_ok=True)
 
-    zip_report = validate_local_zip(
-        local_zip_path,
-        baseline_dir=baseline_dir,
-        profile="promods",
-    )
-    if not zip_report.ok:
-        details = "; ".join(f"{i.code} [{i.path}]: {i.detail}" for i in zip_report.issues[:10])
-        raise ValueError(f"ProMods local ZIP validation failed for {local_zip_path}: {details}")
+    staged_ws = Path(tempfile.mkdtemp(dir=workshop_parent, prefix=f".tmp_promods-{edition}_"))
+    with tempfile.NamedTemporaryFile(
+        dir=local_parent,
+        prefix=f".tmp_promods_{edition}_",
+        suffix=".zip",
+        delete=False,
+    ) as tmp_zip_fh:
+        staged_zip = Path(tmp_zip_fh.name)
+
+    backup_ws: Path | None = None
+    try:
+        workshop_file_count = write_workshop_tree(staged_ws, out_dir, workshop_files)
+        local_zip_sha256 = write_deterministic_zip(staged_zip, local_entries)
+
+        # Mandatory Offline SCS Validator hard gate on BOTH staged targets BEFORE promotion (HI-05)
+        ws_report = validate_workshop_package(
+            staged_ws,
+            baseline_dir=baseline_dir,
+            profile="promods",
+        )
+        if not ws_report.ok:
+            details = "; ".join(f"{i.code} [{i.path}]: {i.detail}" for i in ws_report.issues[:10])
+            raise ValueError(f"ProMods Workshop validation failed for {workshop_dir}: {details}")
+
+        zip_report = validate_local_zip(
+            staged_zip,
+            baseline_dir=baseline_dir,
+            profile="promods",
+        )
+        if not zip_report.ok:
+            details = "; ".join(f"{i.code} [{i.path}]: {i.detail}" for i in zip_report.issues[:10])
+            raise ValueError(f"ProMods local ZIP validation failed for {local_zip_path}: {details}")
+
+        # Both staged targets passed validation -> promote atomically
+        if workshop_dir.is_symlink() or workshop_dir.is_file():
+            workshop_dir.unlink()
+        elif workshop_dir.exists():
+            backup_ws = workshop_parent / f".bak_{staged_ws.name}"
+            if backup_ws.exists():
+                shutil.rmtree(backup_ws)
+            workshop_dir.rename(backup_ws)
+        try:
+            staged_ws.rename(workshop_dir)
+            os.replace(staged_zip, local_zip_path)
+        except Exception:
+            if backup_ws is not None and backup_ws.exists() and not workshop_dir.exists():
+                backup_ws.rename(workshop_dir)
+            raise
+        if backup_ws is not None and backup_ws.exists():
+            shutil.rmtree(backup_ws, ignore_errors=True)
+    except Exception:
+        if staged_ws.exists():
+            shutil.rmtree(staged_ws, ignore_errors=True)
+        if staged_zip.exists():
+            staged_zip.unlink(missing_ok=True)
+        raise
 
     return ProModsBuildReport(
         edition=edition,

@@ -394,14 +394,32 @@ def test_snapshot_to_totem_lockfile_converts_priced_and_rejects_baseline_only() 
 
 
 def test_assert_out_dir_not_tracked_refuses_all_repo_subdirs(tmp_path: pathlib.Path) -> None:
-    for subdir in ("data", "src", "tests", "state", "assets", ".github", ".git"):
+    # HI-04: refuse repo root itself
+    with pytest.raises(ValueError, match="repository root"):
+        assert_out_dir_not_tracked(REPO_ROOT, repo_root=REPO_ROOT)
+
+    for subdir in (
+        "data",
+        "src",
+        "tests",
+        "state",
+        "assets",
+        ".github",
+        ".git",
+        ".planning",
+        "scripts",
+        ".agents",
+        "workshop",
+        "local",
+    ):
         with pytest.raises(ValueError, match="tracked"):
             assert_out_dir_not_tracked(REPO_ROOT / subdir, repo_root=REPO_ROOT)
         with pytest.raises(ValueError, match="tracked"):
             assert_out_dir_not_tracked(REPO_ROOT / subdir / "nested", repo_root=REPO_ROOT)
 
-    # dist/ and tmp_path are permitted
-    assert_out_dir_not_tracked(REPO_ROOT / "dist" / "promods_out", repo_root=REPO_ROOT)
+    # Allowed gitignored repo subdirs and external tmp_path are permitted
+    for allowed in ("dist", "out", "build", "raw", "vendor"):
+        assert_out_dir_not_tracked(REPO_ROOT / allowed / "promods_out", repo_root=REPO_ROOT)
     assert_out_dir_not_tracked(tmp_path / "safe_out", repo_root=REPO_ROOT)
 
 
@@ -596,6 +614,152 @@ def test_promods_builder_modular_eu_only_and_require_all_packs_fast_fail(
     )
     assert report.validation_ok is True
     assert report.pm_fuel_modules_emitted == []
+
+
+def test_hi05_promods_builder_stages_and_preserves_prior_build_on_validation_failure(
+    tmp_path: pathlib.Path,
+) -> None:
+    """HI-05: failed validation must not leave unvalidated artifacts or clobber prior builds."""
+    good_mod = _create_synthetic_promods_mod_dir(tmp_path / "good_mod")
+    bad_mod = tmp_path / "bad_mod"
+    bad_mod.mkdir()
+    # Missing UK scotland/wales regions triggers profile="promods" validation failure
+    _write_zip(
+        bad_mod / "promods-eu-def-v285.scs",
+        {
+            "def/country.promods.sii": b'SiiNunit\n{\n@include "country/uk.sui"\n}\n',
+            "def/country/uk.sui": (
+                b"country_data : country.data.uk\n{\n"
+                b"\tcountry_id: 10\n"
+                b'\tname: "United Kingdom"\n'
+                b'\tname_localized: "@@uk@@"\n'
+                b'\tcountry_code: "UK"\n'
+                b"\tiso_country_code: gbr\n"
+                b"\tfuel_price: 1.50\n"
+                b"\tlights_mandatory: false\n"
+                b"\tdriving_tired_offence: true\n"
+                b"\timperial_units: true\n"
+                b"\tleftside_traffic: true\n"
+                b"\ttime_zone: 60\n"
+                b'\ttime_zone_name: "@@tz_bst@@"\n'
+                b"\tmass_limit_per_axle_count[]: 18000\n"
+                b"\tmass_limit_per_axle_count[]: 26000\n"
+                b"\tmass_limit_per_axle_count[]: 40000\n"
+                b"}\n"
+            ),
+        },
+    )
+
+    # Case 1: Clean output dir -> validation fails and leaves ZERO final or temp artifacts
+    fresh_out = tmp_path / "fresh_out"
+    with pytest.raises(ValueError, match="ProMods Workshop validation failed"):
+        build_promods_edition(
+            "summer",
+            fresh_out,
+            mod_dir=bad_mod,
+            require_all_packs=False,
+        )
+    assert not (fresh_out / "workshop" / "promods-summer").exists()
+    assert not (fresh_out / "local" / "ETS2V2_ProMods_Summer.zip").exists()
+    assert list((fresh_out / "workshop").glob(".tmp_*")) == []
+    assert list((fresh_out / "local").glob(".tmp_*")) == []
+
+    # Case 2: Existing valid build -> subsequent failed build preserves prior valid files untouched
+    existing_out = tmp_path / "existing_out"
+    good_report = build_promods_edition(
+        "summer",
+        existing_out,
+        mod_dir=good_mod,
+        require_all_packs=False,
+    )
+    prev_zip_bytes = good_report.local_zip_path.read_bytes()
+    prev_uk_bytes = (
+        good_report.workshop_dir / "universal" / "def" / "country" / "uk.sui"
+    ).read_bytes()
+
+    with pytest.raises(ValueError, match="ProMods Workshop validation failed"):
+        build_promods_edition(
+            "summer",
+            existing_out,
+            mod_dir=bad_mod,
+            require_all_packs=False,
+        )
+    assert good_report.local_zip_path.read_bytes() == prev_zip_bytes
+    assert (
+        good_report.workshop_dir / "universal" / "def" / "country" / "uk.sui"
+    ).read_bytes() == prev_uk_bytes
+    assert list((existing_out / "workshop").glob(".tmp_*")) == []
+    assert list((existing_out / "local").glob(".tmp_*")) == []
+
+
+def test_md05_promods_builder_handles_wrapper_sii_3nk_and_root_absolute_include(
+    tmp_path: pathlib.Path,
+) -> None:
+    """MD-05 regression: wrapper .sii under def/country/, 3nK files, and /def/ includes work."""
+    mod_dir = tmp_path / "wrapper_mod"
+    mod_dir.mkdir()
+    uk_promods_sui = (
+        b"country_data : country.data.uk\n{\n"
+        b"\tcountry_id: 10\n"
+        b'\tname: "United Kingdom"\n'
+        b'\tname_localized: "@@uk@@"\n'
+        b'\tcountry_code: "UK"\n'
+        b"\tiso_country_code: gbr\n"
+        b"\tfuel_price: 1.50\n"
+        b"\tlights_mandatory: false\n"
+        b"\tdriving_tired_offence: true\n"
+        b"\timperial_units: true\n"
+        b"\tleftside_traffic: true\n"
+        b"\ttime_zone: 60\n"
+        b'\ttime_zone_name: "@@tz_bst@@"\n'
+        b"\tmass_limit_per_axle_count[]: 18000\n"
+        b"\tmass_limit_per_axle_count[]: 26000\n"
+        b"\tmass_limit_per_axle_count[]: 40000\n"
+        b'\tregions[]: "scotland"\n'
+        b'\tregions[]: "wales"\n'
+        b"}\n"
+    )
+    andorra_sui = (
+        b"country_data : country.data.andorra\n{\n"
+        b"\tcountry_id: 111\n"
+        b'\tname: "Andorra"\n'
+        b'\tcountry_code: "AND"\n'
+        b"\tiso_country_code: and\n"
+        b"\tfuel_price: 1.40\n"
+        b"\tlights_mandatory: false\n"
+        b"\tdriving_tired_offence: true\n"
+        b"\ttime_zone: 60\n"
+        b'\ttime_zone_name: "@@tz_cet@@"\n'
+        b"\tmass_limit_per_axle_count[]: 18000\n"
+        b"\tmass_limit_per_axle_count[]: 26000\n"
+        b"\tmass_limit_per_axle_count[]: 40000\n"
+        b"}\n"
+    )
+    _write_zip(
+        mod_dir / "promods-eu-def-v285.scs",
+        {
+            "def/country.promods.sii": (
+                b'SiiNunit\n{\n@include "country/wrapper.sii"\n@include "country/obf_3nk.sui"\n}\n'
+            ),
+            "def/country/wrapper.sii": b'@include "/def/country/andorra.sui"\n',
+            "def/country/andorra.sui": andorra_sui,
+            "def/country/obf_3nk.sui": b"3nK\x01\x00\x01obfuscated_country",
+            "def/country/uk.sui": uk_promods_sui,
+        },
+    )
+
+    out_dir = tmp_path / "wrapper_out"
+    report = build_promods_edition(
+        "summer",
+        out_dir,
+        mod_dir=mod_dir,
+        require_all_packs=False,
+    )
+    assert report.validation_ok is True
+    uni = report.workshop_dir / "universal"
+    assert (uni / "def" / "country" / "andorra.sui").is_file()
+    assert not (uni / "def" / "country" / "wrapper.sii").exists()
+    assert not (uni / "def" / "country" / "obf_3nk.sui").exists()
 
 
 def _has_local_promods() -> bool:

@@ -135,13 +135,16 @@ def resolve_mod_dir(explicit: Path | str | None = None) -> Path:
 
 
 def _parse_version_tuple(version_str: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in version_str.split("."))
+    parts = tuple(int(part) for part in version_str.split("."))
+    if len(parts) == 1 and 100 <= parts[0] < 1000:
+        return (parts[0] // 100, parts[0] % 100)
+    return parts
 
 
 def _is_st_variant(variant: str | None) -> bool:
     if variant is None:
         return False
-    tokens = [tok for tok in re.split(r"[-_]", variant.lower()) if tok]
+    tokens = [tok for tok in variant.lower().split("_") if tok]
     return "st" in tokens
 
 

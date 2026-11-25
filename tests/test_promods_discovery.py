@@ -55,7 +55,7 @@ def test_discover_promods_version_agnostic_selection_and_st_preference(
     assert isinstance(pack_set, ProModsPackSet)
     assert isinstance(pack_set.eu_def, ProModsPackSpec)
     assert pack_set.eu_def.path == eu_def_285
-    assert pack_set.eu_def.version == (285,)
+    assert pack_set.eu_def.version == (2, 85)
     assert pack_set.eu_def.is_special_transport is False
     assert pack_set.eu_assets is not None and pack_set.eu_assets.path == eu_assets_285
     assert pack_set.tgs_def is not None and pack_set.tgs_def.path == tgs_def_171
@@ -148,3 +148,34 @@ def test_discover_honors_explicit_per_pack_overrides(tmp_path: pathlib.Path) -> 
 
     with pytest.raises(FileNotFoundError, match="override"):
         discover_promods_packs(tmp_path, tgs_def=tmp_path / "does_not_exist.scs")
+
+
+def test_lo01_compact_vs_dotted_version_comparison_and_st_underscore_split(
+    tmp_path: pathlib.Path,
+) -> None:
+    """LO-01 regression: compact v284 normalizes to (2, 84) < dotted v2.85 (2, 85) < v286."""
+    mixed_a = tmp_path / "mixed_a"
+    mixed_a.mkdir()
+    _touch(mixed_a, "promods-def-v284.scs")
+    dotted_285 = _touch(mixed_a, "promods-eu-def-v2.85.scs")
+    pack_a = discover_promods_packs(mixed_a)
+    assert pack_a.eu_def is not None
+    assert pack_a.eu_def.path == dotted_285
+    assert pack_a.eu_def.version == (2, 85)
+
+    mixed_b = tmp_path / "mixed_b"
+    mixed_b.mkdir()
+    _touch(mixed_b, "promods-eu-def-v2.85.scs")
+    compact_286 = _touch(mixed_b, "promods-eu-def-v286.scs")
+    pack_b = discover_promods_packs(mixed_b)
+    assert pack_b.eu_def is not None
+    assert pack_b.eu_def.path == compact_286
+    assert pack_b.eu_def.version == (2, 86)
+
+    st_dir = tmp_path / "st_underscore"
+    st_dir.mkdir()
+    st_pack = _touch(st_dir, "promods-def-foo_st-v285.scs")
+    pack_st = discover_promods_packs(st_dir)
+    assert pack_st.eu_def is not None
+    assert pack_st.eu_def.path == st_pack
+    assert pack_st.eu_def.is_special_transport is True

@@ -10,10 +10,17 @@ from typing import Final, Protocol
 from pydantic import BaseModel, ConfigDict
 
 from ets2v2.baseline.models import FuelBoardEntry, FuelBoardsBaseline, LocalesBaseline
-from ets2v2.normalize.models import CountryFuelLockEntry, PricesLockfile
+from ets2v2.normalize.currencies import EUROPEAN_TERRITORY_ISO2S
+from ets2v2.normalize.models import (
+    CANONICAL_FUEL_GRADES,
+    CountryFuelLockEntry,
+    FuelGrade,
+    PricesLockfile,
+)
 from ets2v2.normalize.totem_catalog import TotemBoardClassification, classify_all_fuel_boards
 from ets2v2.normalize.totem_format import resolve_totem_token_and_value
 from ets2v2.package.synthesize import format_sii_string
+from ets2v2.registry.snapshot import RealismSnapshot
 from ets2v2.sii.hygiene import serialize_sii_text, validate_sii_hygiene
 
 # SCS unit segment rule: <= 12 chars matching [a-z0-9_]{1,12} ("ets2v2_fuel" = 11 chars).
@@ -25,6 +32,65 @@ _UNIT_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^\.?[a-z0-9_]+(\.[a-z0-9_]+
 _LOCALE_CODE_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z]{2}_[a-z]{2}$")
 _VALID_HALIGN: Final[frozenset[str]] = frozenset({"left", "center", "right"})
 _VALID_VALIGN: Final[frozenset[str]] = frozenset({"top", "center", "bottom"})
+_CANONICAL_GRADE_MAP: Final[dict[str, FuelGrade]] = {
+    grade: grade for grade in CANONICAL_FUEL_GRADES
+}
+
+
+def snapshot_to_totem_lockfile(snapshot: RealismSnapshot) -> PricesLockfile:
+    """Convert a price-backed v1 ``RealismSnapshot`` into a typed ``PricesLockfile`` for totems."""
+    if not snapshot.countries:
+        raise ValueError(
+            "Cannot compile fuel totems from an empty snapshot; provide a price-backed v1 "
+            "realism snapshot or pass --no-totems"
+        )
+
+    countries: dict[str, CountryFuelLockEntry] = {}
+    missing_local_iso2s: list[str] = []
+    any_local_prices = False
+    timestamp = f"{snapshot.anchor_date}T00:00:00Z"
+
+    for iso2 in sorted(snapshot.countries):
+        country = snapshot.countries[iso2]
+        narrowed: dict[FuelGrade, float] = {}
+        for raw_grade, price in sorted(country.fuel.local_prices.items()):
+            grade = _CANONICAL_GRADE_MAP.get(raw_grade)
+            if grade is not None and math.isfinite(price) and price > 0.0:
+                narrowed[grade] = float(price)
+
+        if narrowed:
+            any_local_prices = True
+        elif iso2 in EUROPEAN_TERRITORY_ISO2S:
+            missing_local_iso2s.append(iso2)
+
+        clamped_eur = min(max(country.fuel.eur_per_liter, 0.01), 5.00)
+        countries[iso2] = CountryFuelLockEntry(
+            iso2=country.iso2,
+            currency=country.fuel.currency,
+            eur_per_liter=clamped_eur,
+            local_prices=narrowed,
+            derived_grades=[],
+            source=country.fuel.source,
+            license="snapshot_v1",
+            data_date=snapshot.anchor_date,
+            fetched_at=timestamp,
+            fallback_used=False,
+        )
+
+    if not any_local_prices or missing_local_iso2s:
+        sample = ", ".join(missing_local_iso2s[:8]) if missing_local_iso2s else "all territories"
+        raise ValueError(
+            f"Realism snapshot is missing local_prices for totem territory(ies) ({sample}); "
+            "supply a price-backed v1 snapshot (built with --prices-lock) or pass --no-totems"
+        )
+
+    return PricesLockfile(
+        schema_version=1,
+        updated_at=timestamp,
+        fx_rates={},
+        countries=countries,
+        alerts=[],
+    )
 
 
 class TotemTokenResolver(Protocol):

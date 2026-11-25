@@ -47,6 +47,7 @@ from ets2v2.package.totems import (
     CompiledTotems,
     TotemTokenResolver,
     compile_totem_payloads,
+    snapshot_to_totem_lockfile,
     synthesize_fuel_locale_module_sii,
     synthesize_sign_board_sii,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "render_promods_icon_bytes",
     "render_promods_manifest_sii",
     "render_versions_sii",
+    "snapshot_to_totem_lockfile",
     "synthesize_country_sui",
     "synthesize_fuel_locale_module_sii",
     "synthesize_sign_board_sii",

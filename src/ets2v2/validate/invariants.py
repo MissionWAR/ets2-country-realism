@@ -806,12 +806,11 @@ def _check_tz_tokens_and_monotonic_axles(
             f"mass_limit_per_axle_count[] is not non-decreasing for {slug!r}: {cand_axles}",
         )
 
-    tz_values: list[str] = []
+    # Validate primary time_zone_name against Vanilla 1.62 12-key whitelist; map-owned
+    # secondary_time_zone_name[] entries (e.g. ProMods TGS @@tz_samt@@/@@tz_yekt@@/@@tz_omst@@)
+    # are backed by the map mod's own localization modules and preserved verbatim (D-15).
     if model.time_zone_name is not None:
-        tz_values.append(model.time_zone_name)
-    tz_values.extend(model.secondary_time_zone_name)
-
-    for tz_val in tz_values:
+        tz_val = model.time_zone_name
         if not tz_val.strip() or _NUMERIC_TZ_RE.fullmatch(tz_val.strip()) is not None:
             collector.error(
                 "ETS2V2-INV-TZ-TOKEN",

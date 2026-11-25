@@ -23,11 +23,13 @@ from ets2v2.baseline import (
     write_baseline_bundle,
 )
 from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, redact_url_secrets, run_price_fetch
+from ets2v2.merge import build_promods_editions
 from ets2v2.normalize import PricesLockfile, load_prices_lockfile
 from ets2v2.package import (
     DEFAULT_AUTHOR,
     build_core_editions,
     generate_all_icons,
+    generate_promods_icons,
 )
 from ets2v2.publish import run_phase_a_release
 from ets2v2.registry import (
@@ -41,6 +43,7 @@ from ets2v2.registry import (
     write_realism_snapshot,
 )
 from ets2v2.validate import (
+    PackageProfile,
     ValidationReport,
     validate_local_zip,
     validate_workshop_package,
@@ -330,14 +333,122 @@ def _handle_registry_snapshot_verify(args: argparse.Namespace) -> int:
 def _handle_package_icons(args: argparse.Namespace) -> int:
     out_dir = cast(Path, args.out_dir)
     try:
-        written = generate_all_icons(out_dir)
+        written_core = generate_all_icons(out_dir)
+        written_promods = generate_promods_icons(out_dir)
     except (OSError, ValueError) as exc:
         print(f"error: icon generation failed: {exc}", file=sys.stderr)
         return 1
 
     for edition in ("summer", "winter"):
-        path = written[edition]
+        path = written_core[edition]
         print(f"Generated {edition} icon ({path.stat().st_size} bytes) -> {path}")
+    for edition in ("summer", "winter"):
+        pm_path = written_promods[edition]
+        print(f"Generated promods_{edition} icon ({pm_path.stat().st_size} bytes) -> {pm_path}")
+    return 0
+
+
+def _handle_package_promods_icons(args: argparse.Namespace) -> int:
+    out_dir = cast(Path, args.out_dir)
+    try:
+        written = generate_promods_icons(out_dir)
+    except (OSError, ValueError) as exc:
+        print(f"error: ProMods icon generation failed: {exc}", file=sys.stderr)
+        return 1
+
+    for edition in ("summer", "winter"):
+        path = written[edition]
+        print(f"Generated promods_{edition} icon ({path.stat().st_size} bytes) -> {path}")
+    return 0
+
+
+def _handle_package_promods(args: argparse.Namespace) -> int:
+    edition_choice = cast(str, args.edition)
+    mod_dir = cast(Path | None, args.mod_dir)
+    game_dir = cast(Path | None, args.game_dir)
+    out_dir = cast(Path, args.out_dir)
+    snapshot_path = cast(Path | None, args.snapshot)
+    checksums_path = cast(Path | None, args.checksums)
+    require_all_packs = cast(bool, args.require_all_packs)
+    eu_def = cast(Path | None, args.promods_eu)
+    eu_assets = cast(Path | None, args.promods_eu_assets)
+    me_def = cast(Path | None, args.promods_me)
+    me_assets = cast(Path | None, args.promods_me_assets)
+    ma_def = cast(Path | None, args.promods_ma)
+    ma_assets = cast(Path | None, args.promods_ma_assets)
+    tgs_def = cast(Path | None, args.promods_tgs)
+    tgs_assets = cast(Path | None, args.promods_tgs_assets)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    aliases_path = cast(Path, args.aliases)
+    baseline_dir = cast(Path, args.baseline_dir)
+    icons_dir = cast(Path, args.icons_dir)
+    prices_lock_path = cast(Path, args.prices_lock)
+    package_version = cast(str | None, args.package_version)
+    author = cast(str, args.author)
+    as_json = cast(bool, args.json)
+
+    editions: tuple[Season, ...] = (
+        ("summer", "winter")
+        if edition_choice == "all"
+        else ("summer",)
+        if edition_choice == "summer"
+        else ("winter",)
+    )
+
+    try:
+        reports = build_promods_editions(
+            out_dir,
+            editions=editions,
+            mod_dir=mod_dir,
+            game_dir=game_dir,
+            snapshot_path=snapshot_path,
+            checksums_path=checksums_path,
+            require_all_packs=require_all_packs,
+            eu_def=eu_def,
+            eu_assets=eu_assets,
+            me_def=me_def,
+            me_assets=me_assets,
+            ma_def=ma_def,
+            ma_assets=ma_assets,
+            tgs_def=tgs_def,
+            tgs_assets=tgs_assets,
+            laws_dir=laws_dir,
+            mappings_path=mappings_path,
+            aliases_path=aliases_path,
+            baseline_dir=baseline_dir,
+            icons_dir=icons_dir,
+            prices_lock_path=prices_lock_path,
+            package_version=package_version,
+            author=author,
+        )
+    except (
+        FileNotFoundError,
+        OSError,
+        ValueError,
+        ValidationError,
+        ProtectedPayloadError,
+        UnsupportedCompressionError,
+    ) as exc:
+        print(f"error: ProMods companion build failed: {exc}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = {
+            edition: reports[edition].model_dump(mode="json") for edition in editions
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        return 0
+
+    for edition in editions:
+        rep = reports[edition]
+        print(
+            f"Built {rep.edition} ProMods Edition ({rep.package_version}): "
+            f"{rep.countries_patched} countries ({rep.vanilla_countries_emitted} vanilla + "
+            f"{rep.promods_countries_emitted} ProMods), pm_fuel={rep.pm_fuel_modules_emitted}, "
+            f"workshop={rep.workshop_dir} ({rep.workshop_file_count} files), "
+            f"local={rep.local_zip_path} (sha256={rep.local_zip_sha256[:12]}...)"
+        )
     return 0
 
 
@@ -415,9 +526,10 @@ def _emit_validation_report(report: ValidationReport, *, as_json: bool) -> int:
 def _handle_validate_workshop(args: argparse.Namespace) -> int:
     target = cast(Path, args.target)
     baseline_dir = cast(Path | None, args.baseline_dir)
+    profile = cast(PackageProfile, args.profile)
     as_json = cast(bool, args.json)
     try:
-        report = validate_workshop_package(target, baseline_dir=baseline_dir)
+        report = validate_workshop_package(target, baseline_dir=baseline_dir, profile=profile)
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
         print(f"error: workshop validation failed: {exc}", file=sys.stderr)
         return 1
@@ -427,9 +539,10 @@ def _handle_validate_workshop(args: argparse.Namespace) -> int:
 def _handle_validate_local(args: argparse.Namespace) -> int:
     target = cast(Path, args.target)
     baseline_dir = cast(Path | None, args.baseline_dir)
+    profile = cast(PackageProfile, args.profile)
     as_json = cast(bool, args.json)
     try:
-        report = validate_local_zip(target, baseline_dir=baseline_dir)
+        report = validate_local_zip(target, baseline_dir=baseline_dir, profile=profile)
     except (FileNotFoundError, OSError, ValueError, ValidationError) as exc:
         print(f"error: local ZIP validation failed: {exc}", file=sys.stderr)
         return 1
@@ -809,15 +922,151 @@ def build_parser() -> argparse.ArgumentParser:
 
     package_icons = package_subparsers.add_parser(
         "icons",
-        help="Generate clean-room 276x162 EXIF/ICC-stripped Summer and Winter JPEG icons.",
+        help="Generate clean-room 276x162 Core and ProMods Summer/Winter JPEG icons.",
     )
     package_icons.add_argument(
         "--out-dir",
         type=Path,
         default=Path("assets/icons"),
-        help="Output directory for summer.jpg and winter.jpg (default: assets/icons).",
+        help="Output directory for Core & ProMods JPEG icons (default: assets/icons).",
     )
     package_icons.set_defaults(handler=_handle_package_icons)
+
+    package_promods_icons = package_subparsers.add_parser(
+        "promods-icons",
+        help="Generate clean-room 276x162 ProMods Summer and Winter JPEG icons.",
+    )
+    package_promods_icons.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("assets/icons"),
+        help="Output directory for promods_{summer,winter}.jpg (default: assets/icons).",
+    )
+    package_promods_icons.set_defaults(handler=_handle_package_promods_icons)
+
+    package_promods = package_subparsers.add_parser(
+        "promods",
+        help="Build standalone all-in-one ProMods Editions from local ProMods archives (offline).",
+    )
+    package_promods.add_argument(
+        "--edition",
+        choices=("summer", "winter", "all"),
+        default="all",
+        help="Seasonal ProMods Edition(s) to compile (default: all).",
+    )
+    package_promods.add_argument(
+        "--mod-dir",
+        type=Path,
+        default=None,
+        help="ETS2 mod directory containing ProMods def/defmap & assets archives.",
+    )
+    package_promods.add_argument(
+        "--game-dir",
+        type=Path,
+        default=None,
+        help="Optional ETS2 install dir containing Vanilla def.scs (defaults to 1.62 baseline).",
+    )
+    package_promods.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("dist"),
+        help="Root output directory for workshop/promods-* and local/ targets (default: dist).",
+    )
+    package_promods.add_argument(
+        "--snapshot",
+        type=Path,
+        default=None,
+        help="Optional offline v1 realism-snapshot-{summer,winter}.json path.",
+    )
+    package_promods.add_argument(
+        "--checksums",
+        type=Path,
+        default=None,
+        help="Optional SHA256SUMS.txt manifest path to verify --snapshot.",
+    )
+    package_promods.add_argument(
+        "--require-all-packs",
+        action="store_true",
+        help="Fail fast unless EU, ME, MA, and TGS def/defmap + EU/ME/TGS assets are all present.",
+    )
+    package_promods.add_argument(
+        "--promods-eu", type=Path, default=None, help="Explicit EU def path."
+    )
+    package_promods.add_argument(
+        "--promods-eu-assets", type=Path, default=None, help="Explicit EU assets path."
+    )
+    package_promods.add_argument(
+        "--promods-me", type=Path, default=None, help="Explicit ME defmap path."
+    )
+    package_promods.add_argument(
+        "--promods-me-assets", type=Path, default=None, help="Explicit ME assets path."
+    )
+    package_promods.add_argument(
+        "--promods-ma", type=Path, default=None, help="Explicit MA defmap path."
+    )
+    package_promods.add_argument(
+        "--promods-ma-assets", type=Path, default=None, help="Explicit MA assets path."
+    )
+    package_promods.add_argument(
+        "--promods-tgs", type=Path, default=None, help="Explicit TGS defmap path."
+    )
+    package_promods.add_argument(
+        "--promods-tgs-assets", type=Path, default=None, help="Explicit TGS assets path."
+    )
+    package_promods.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    package_promods.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    package_promods.add_argument(
+        "--aliases",
+        type=Path,
+        default=Path("data/mappings/country_aliases.json"),
+        help="Path to bundled country_aliases.json mapping file.",
+    )
+    package_promods.add_argument(
+        "--baseline-dir",
+        type=Path,
+        default=Path("data/baselines/ets2_1.62_def"),
+        help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    package_promods.add_argument(
+        "--icons-dir",
+        type=Path,
+        default=Path("assets/icons"),
+        help="Directory containing checked-in promods_{summer,winter}.jpg icons.",
+    )
+    package_promods.add_argument(
+        "--prices-lock",
+        type=Path,
+        default=Path("state/prices.lock.json"),
+        help="Path to canonical state/prices.lock.json lockfile (used when --snapshot is omitted).",
+    )
+    package_promods.add_argument(
+        "--package-version",
+        type=str,
+        default=None,
+        help="Optional explicit package_version override.",
+    )
+    package_promods.add_argument(
+        "--author",
+        type=str,
+        default=DEFAULT_AUTHOR,
+        help=f"Mod author string for manifest.sii (default: {DEFAULT_AUTHOR!r}).",
+    )
+    package_promods.add_argument(
+        "--json",
+        action="store_true",
+        help="Print ProModsBuildReport mapping as JSON.",
+    )
+    package_promods.set_defaults(handler=_handle_package_promods)
 
     package_build = package_subparsers.add_parser(
         "build",
@@ -917,6 +1166,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory containing clean-room ETS2 baseline JSON files.",
     )
     validate_workshop.add_argument(
+        "--profile",
+        choices=("core", "promods", "combo"),
+        default="core",
+        help="Validation profile: core (default), promods, or combo.",
+    )
+    validate_workshop.add_argument(
         "--json",
         action="store_true",
         help="Print validation report as JSON.",
@@ -937,6 +1192,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("data/baselines/ets2_1.62_def"),
         help="Directory containing clean-room ETS2 baseline JSON files.",
+    )
+    validate_local.add_argument(
+        "--profile",
+        choices=("core", "promods", "combo"),
+        default="core",
+        help="Validation profile: core (default), promods, or combo.",
     )
     validate_local.add_argument(
         "--json",

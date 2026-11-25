@@ -17,7 +17,7 @@ from ets2v2.sii.document import SiiDocument
 from ets2v2.sii.hygiene import validate_sii_hygiene
 from ets2v2.sii.sign_board import parse_sign_board
 from ets2v2.vfs.stack import VfsStack
-from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError
+from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError, detect_3nk
 
 HardcodedTotemStatus = Literal[
     "patched",
@@ -154,7 +154,13 @@ def patch_hardcoded_numeric_totems(
 
         try:
             raw_bytes = stack.read_bytes(vfs_path)
-        except (FileNotFoundError, ProtectedPayloadError, UnsupportedCompressionError) as exc:
+        except (
+            FileNotFoundError,
+            ProtectedPayloadError,
+            UnsupportedCompressionError,
+            OSError,
+            ValueError,
+        ) as exc:
             if _FUEL_KEYWORD_RE.search(board_name) is not None:
                 actions.append(
                     HardcodedTotemBoardAction(
@@ -163,6 +169,19 @@ def patch_hardcoded_numeric_totems(
                         winning_layer=entry.layer_name,
                         status="skipped_unreadable",
                         detail=str(exc),
+                    )
+                )
+            continue
+
+        if detect_3nk(raw_bytes):
+            if _FUEL_KEYWORD_RE.search(board_name) is not None:
+                actions.append(
+                    HardcodedTotemBoardAction(
+                        board_name=board_name,
+                        vfs_path=vfs_path,
+                        winning_layer=entry.layer_name,
+                        status="skipped_unreadable",
+                        detail="3nK\\x01 obfuscated sign board skipped; decryption is disabled.",
                     )
                 )
             continue
@@ -298,7 +317,19 @@ def patch_hardcoded_numeric_totems(
         hygiene = validate_sii_hygiene(out_bytes, require_siinunit=True)
         if hygiene:
             summary = "; ".join(f"{d.code}@{d.line}:{d.column}: {d.message}" for d in hygiene)
-            raise ValueError(f"Rewritten hardcoded board hygiene failure for {vfs_path}: {summary}")
+            actions.append(
+                HardcodedTotemBoardAction(
+                    board_name=board_name,
+                    vfs_path=vfs_path,
+                    winning_layer=entry.layer_name,
+                    status="skipped_unreadable",
+                    iso2=iso2,
+                    grade=canonical_grade,
+                    original_text=raw_text,
+                    detail=f"Rewritten hardcoded board hygiene failure: {summary}",
+                )
+            )
+            continue
 
         board_files[vfs_path] = out_bytes
         extra_locale_tokens[token_key] = formatted_price

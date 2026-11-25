@@ -881,6 +881,154 @@ def test_compose_local_nested_wrapper_include_end_to_end(tmp_path: Path) -> None
         assert parsed.time_zone_name == "@@tz_cest@@"
 
 
+def test_md02_md07_in03_compose_fault_isolation_malformed_fragments_and_atomic_report(
+    tmp_path: Path,
+) -> None:
+    """MD-02 + MD-07 + IN-03: malformed speed_limits, hygiene/half-TZ/missing-code skip cleanly."""
+    mod_dir = tmp_path / "mods"
+    mod_dir.mkdir()
+    with ZipFile(mod_dir / "broken_third_party.scs", "w") as zf:
+        zf.writestr(
+            "def/country.broken.sii",
+            (
+                "SiiNunit\n{\n"
+                '@include "country/bad_hygiene_de.sui"\n'
+                '@include "country/half_tz_de.sui"\n'
+                '@include "country/missing_cc_de.sui"\n'
+                '@include "country/bad_spd_de.sui"\n'
+                "}\n"
+            ),
+        )
+        # 1. >12-char unit segment triggers apply_country_policy() hygiene ValueError (MD-02)
+        zf.writestr(
+            "def/country/bad_hygiene_de.sui",
+            (
+                "country_data : country.data.superlongcountryname\n{\n"
+                "\tcountry_id: 701\n"
+                '\tname: "Bad Hygiene DE"\n'
+                '\tcountry_code: "D"\n'
+                "\tiso_country_code: deu\n"
+                "\tfuel_price: 1.50\n"
+                "\tlights_mandatory: false\n"
+                "\tdriving_tired_offence: true\n"
+                "\ttime_zone: 60\n"
+                '\ttime_zone_name: "@@tz_cet@@"\n'
+                "\tmass_limit_per_axle_count[]: 18000\n"
+                "\tmass_limit_per_axle_count[]: 26000\n"
+                "\tmass_limit_per_axle_count[]: 40000\n"
+                "}\n"
+            ),
+        )
+        # 2. Half-TZ: time_zone_name set without time_zone (MD-07)
+        zf.writestr(
+            "def/country/half_tz_de.sui",
+            (
+                "country_data : country.data.half_tz_de\n{\n"
+                "\tcountry_id: 702\n"
+                '\tname: "Half TZ DE"\n'
+                '\tcountry_code: "D"\n'
+                "\tiso_country_code: deu\n"
+                "\tfuel_price: 1.50\n"
+                "\tlights_mandatory: false\n"
+                "\tdriving_tired_offence: true\n"
+                '\ttime_zone_name: "@@tz_cet@@"\n'
+                "\tmass_limit_per_axle_count[]: 18000\n"
+                "\tmass_limit_per_axle_count[]: 26000\n"
+                "\tmass_limit_per_axle_count[]: 40000\n"
+                "}\n"
+            ),
+        )
+        # 3. Missing country_code (MD-07)
+        zf.writestr(
+            "def/country/missing_cc_de.sui",
+            (
+                "country_data : country.data.missing_cc\n{\n"
+                "\tcountry_id: 703\n"
+                '\tname: "Missing Code DE"\n'
+                "\tiso_country_code: deu\n"
+                "\tfuel_price: 1.50\n"
+                "\tlights_mandatory: false\n"
+                "\tdriving_tired_offence: true\n"
+                "\ttime_zone: 60\n"
+                '\ttime_zone_name: "@@tz_cet@@"\n'
+                "\tmass_limit_per_axle_count[]: 18000\n"
+                "\tmass_limit_per_axle_count[]: 26000\n"
+                "\tmass_limit_per_axle_count[]: 40000\n"
+                "}\n"
+            ),
+        )
+        # 4. Valid country with malformed speed_limits.sii (limit[] before lane_speed_class[])
+        zf.writestr(
+            "def/country/bad_spd_de.sui",
+            (
+                "country_data : country.data.bad_spd_de\n{\n"
+                "\tcountry_id: 704\n"
+                '\tname: "Bad Speed DE"\n'
+                '\tcountry_code: "D"\n'
+                "\tiso_country_code: deu\n"
+                "\tfuel_price: 1.50\n"
+                "\tlights_mandatory: false\n"
+                "\tdriving_tired_offence: true\n"
+                "\ttime_zone: 60\n"
+                '\ttime_zone_name: "@@tz_cet@@"\n'
+                "\tmass_limit_per_axle_count[]: 18000\n"
+                "\tmass_limit_per_axle_count[]: 26000\n"
+                "\tmass_limit_per_axle_count[]: 40000\n"
+                "}\n"
+            ),
+        )
+        zf.writestr(
+            "def/country/bad_spd_de/speed_limits.sii",
+            (
+                "SiiNunit\n{\n"
+                "country_speed_limit : .speed_limit.car\n{\n"
+                "\tvehicle_speed_class: car\n"
+                "\tlimit[]: 80\n"
+                "\tlane_speed_class[]: local_road\n"
+                "}\n}\n"
+            ),
+        )
+
+    modlist = tmp_path / "mods.txt"
+    modlist.write_text("broken_third_party.scs\n", encoding="utf-8", newline="\n")
+    snap_path = tmp_path / "snap.json"
+    write_realism_snapshot(load_or_build_snapshot("summer"), snap_path)
+    out_dir = tmp_path / "out_fault"
+    report_path = tmp_path / "report_dir" / "compose.json"
+
+    report = compose_local(
+        "summer",
+        out_dir=out_dir,
+        modlist=modlist,
+        mod_dir=mod_dir,
+        snapshot_path=snap_path,
+        no_totems=True,
+        report_json_path=report_path,
+    )
+    assert report.ok is True
+    assert report.validation_ok is True
+    by_slug = {c.slug: c for c in report.countries}
+    assert by_slug["bad_hygiene_de"].emitted is False
+    assert by_slug["half_tz_de"].emitted is False
+    assert by_slug["missing_cc_de"].emitted is False
+    assert by_slug["bad_spd_de"].emitted is True
+    assert by_slug["bad_spd_de"].speed_limits_status == "skipped_parse_error"
+
+    scs_path = out_dir / COMBO_SCS_FILENAMES["summer"]
+    assert validate_local_zip(scs_path, baseline_dir=_BASELINE_DIR, profile="combo").ok is True
+    with ZipFile(scs_path, "r") as zf:
+        names = set(zf.namelist())
+        assert "def/country/bad_hygiene_de.sui" not in names
+        assert "def/country/half_tz_de.sui" not in names
+        assert "def/country/missing_cc_de.sui" not in names
+        assert "def/country/bad_spd_de.sui" in names
+        assert "def/country/bad_spd_de/speed_limits.sii" not in names
+
+    # IN-03: atomic report written cleanly with no temp files left behind
+    assert report_path.is_file()
+    assert list(report_path.parent.glob(".tmp_*")) == []
+
+
 def _find_local_combo_inputs() -> tuple[Path, Path, Path] | None:
     mod_dir = _LOCAL_ETS2_DATA_DIR / "mod"
     if not mod_dir.is_dir():

@@ -6,6 +6,8 @@ import pathlib
 import struct
 import zipfile
 
+import pytest
+
 from ets2v2.merge.scanner import (
     ComboScanResult,
     ScannedMapCountry,
@@ -299,3 +301,39 @@ def test_scanner_detects_active_promods_fuel_modules(tmp_path: pathlib.Path) -> 
         result = scan_active_countries(stack)
 
     assert result.detected_promods_fuel_modules == ["pm_fuel", "pm_me_fuel"]
+
+
+def test_in03_scanner_reads_each_country_fragment_once(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """IN-03 regression: scan_active_countries() caches fragment bytes instead of reading twice."""
+    mod_zip = _write_zip(
+        tmp_path / "cache_test.scs",
+        {
+            "def/country.sii": (
+                b'SiiNunit\n{\n@include "country/germany.sui"\n@include "country/france.sui"\n}\n'
+            ),
+            "def/country/germany.sui": _country_sui(
+                "germany", country_id=3, name="Germany", code="D", iso3="deu"
+            ),
+            "def/country/france.sui": _country_sui(
+                "france", country_id=4, name="France", code="F", iso3="fra"
+            ),
+        },
+    )
+
+    read_counts: dict[str, int] = {}
+    with VfsStack.from_paths([mod_zip]) as stack:
+        orig_read_bytes = stack.read_bytes
+
+        def _counting_read_bytes(vfs_path: str) -> bytes:
+            read_counts[vfs_path] = read_counts.get(vfs_path, 0) + 1
+            return orig_read_bytes(vfs_path)
+
+        monkeypatch.setattr(stack, "read_bytes", _counting_read_bytes)
+        result = scan_active_countries(stack)
+
+    assert {c.slug for c in result.countries} == {"germany", "france"}
+    assert read_counts["def/country/germany.sui"] == 1
+    assert read_counts["def/country/france.sui"] == 1

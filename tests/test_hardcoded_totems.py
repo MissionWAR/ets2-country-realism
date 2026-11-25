@@ -284,3 +284,46 @@ def test_7rm_numeric_boards_and_ambiguous_or_localized_boards(tmp_path: Path) ->
     assert by_name["uz_gas_diesel"] == "patched"
     assert by_name["ru_gas_already_loc_95"] == "skipped_already_localized"
     assert by_name["unknown_sign_99"] == "skipped_ambiguous"
+
+
+def test_md02_hardcoded_totems_isolate_hygiene_3nk_and_read_errors(tmp_path: Path) -> None:
+    """MD-02 regression: >12-char unit segment, 3nK, and read ValueError/OSError skip cleanly."""
+    bl_boards = FuelBoardsBaseline.model_validate_json(
+        (_BASELINE_DIR / "fuel_boards.json").read_text("utf-8")
+    )
+    snap_phase4 = load_or_build_snapshot("summer")
+
+    long_unit_board = (
+        b"SiiNunit\n{\n"
+        b"sign_board_template : sign_templ.kz_gas_diesel_long\n{\n"
+        b'\tboard_name: "kz_gas_diesel"\n'
+        b"\twidth: 1.5\n\theight: 0.6\n"
+        b'\tmodel_name: ""\n'
+        b"\titems: 1\n\titems[0]: _nameless.200.slot0\n"
+        b"}\n"
+        b"sign_template_text : _nameless.200.slot0\n{\n"
+        b'\tfont_face: "/font/sign/dot_matrix.font"\n'
+        b'\ttext: "205"\n'
+        b"}\n}\n"
+    )
+
+    mod_zip = tmp_path / "malformed_boards.scs"
+    with ZipFile(mod_zip, "w") as zf:
+        zf.writestr("def/sign/board/kz_gas_diesel.sii", long_unit_board)
+        zf.writestr("def/sign/board/uz_gas_95.sii", b"3nK\x01\x00\x01obfuscated_board")
+        zf.writestr("def/sign/board/kz_gas_95.sii", _single_text_board_sii("kz_gas_95", "205"))
+
+    stack = VfsStack()
+    try:
+        stack.mount(open_archive(mod_zip), name="malformed", priority=10)
+        res = patch_hardcoded_numeric_totems(stack, snap_phase4, bl_boards)
+    finally:
+        stack.close()
+
+    by_name = {a.board_name: a for a in res.actions}
+    assert by_name["kz_gas_diesel"].status == "skipped_unreadable"
+    assert "hygiene" in (by_name["kz_gas_diesel"].detail or "").lower()
+    assert by_name["uz_gas_95"].status == "skipped_unreadable"
+    assert "3nK" in (by_name["uz_gas_95"].detail or "")
+    assert by_name["kz_gas_95"].status == "patched"
+    assert list(res.board_files) == ["def/sign/board/kz_gas_95.sii"]

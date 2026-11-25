@@ -138,6 +138,7 @@ def scan_active_countries(stack: VfsStack) -> ComboScanResult:
     suppressed_stubs: list[SuppressedRegistrationStub] = []
     diagnostics: list[ScanDiagnostic] = []
     fragment_regs: dict[str, set[str]] = {}
+    fragment_raw_cache: dict[str, bytes] = {}
     recorded_diag_keys: set[tuple[str, str, str]] = set()
 
     def _add_diag(path: str, kind: str, detail: str, layer_name: str | None = None) -> None:
@@ -207,17 +208,21 @@ def scan_active_countries(stack: VfsStack) -> ComboScanResult:
                 # (e.g., wrapper .sii under def/country/ or cyclic test fixture).
                 if target in visited_wrappers:
                     continue
-                try:
-                    frag_raw = stack.read_bytes(target)
-                except ProtectedPayloadError as exc:
-                    _add_diag(target, "protected_payload", str(exc), entry.layer_name)
-                    continue
-                except UnsupportedCompressionError as exc:
-                    _add_diag(target, "unsupported_compression", str(exc), entry.layer_name)
-                    continue
-                except (FileNotFoundError, OSError, ValueError) as exc:
-                    _add_diag(target, "read_error", str(exc), entry.layer_name)
-                    continue
+                if target in fragment_raw_cache:
+                    frag_raw = fragment_raw_cache[target]
+                else:
+                    try:
+                        frag_raw = stack.read_bytes(target)
+                    except ProtectedPayloadError as exc:
+                        _add_diag(target, "protected_payload", str(exc), entry.layer_name)
+                        continue
+                    except UnsupportedCompressionError as exc:
+                        _add_diag(target, "unsupported_compression", str(exc), entry.layer_name)
+                        continue
+                    except (FileNotFoundError, OSError, ValueError) as exc:
+                        _add_diag(target, "read_error", str(exc), entry.layer_name)
+                        continue
+                    fragment_raw_cache[target] = frag_raw
 
                 if detect_3nk(frag_raw):
                     _add_diag(
@@ -321,17 +326,21 @@ def scan_active_countries(stack: VfsStack) -> ComboScanResult:
         if frag_entry is None or frag_entry.is_empty_stub:
             continue
 
-        try:
-            raw_bytes = stack.read_bytes(frag_path)
-        except ProtectedPayloadError as exc:
-            _add_diag(frag_path, "protected_payload", str(exc), frag_entry.layer_name)
-            continue
-        except UnsupportedCompressionError as exc:
-            _add_diag(frag_path, "unsupported_compression", str(exc), frag_entry.layer_name)
-            continue
-        except (FileNotFoundError, OSError, ValueError) as exc:
-            _add_diag(frag_path, "read_error", str(exc), frag_entry.layer_name)
-            continue
+        if frag_path in fragment_raw_cache:
+            raw_bytes = fragment_raw_cache[frag_path]
+        else:
+            try:
+                raw_bytes = stack.read_bytes(frag_path)
+            except ProtectedPayloadError as exc:
+                _add_diag(frag_path, "protected_payload", str(exc), frag_entry.layer_name)
+                continue
+            except UnsupportedCompressionError as exc:
+                _add_diag(frag_path, "unsupported_compression", str(exc), frag_entry.layer_name)
+                continue
+            except (FileNotFoundError, OSError, ValueError) as exc:
+                _add_diag(frag_path, "read_error", str(exc), frag_entry.layer_name)
+                continue
+            fragment_raw_cache[frag_path] = raw_bytes
 
         if detect_3nk(raw_bytes):
             _add_diag(

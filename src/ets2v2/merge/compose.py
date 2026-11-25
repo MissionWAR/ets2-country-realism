@@ -65,6 +65,7 @@ from ets2v2.package.totems import (
 from ets2v2.registry.models import Season
 from ets2v2.registry.snapshot import load_or_build_snapshot
 from ets2v2.registry.timezone import DEFAULT_ANCHOR_YEAR
+from ets2v2.sii.country import CountryDataModel
 from ets2v2.validate.workshop import validate_local_zip
 
 COMBO_SCS_FILENAMES: Final[dict[Season, str]] = {
@@ -137,8 +138,45 @@ class ComposeReport(BaseModel):
 def _write_report_json(report: ComposeReport, report_path: Path) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     payload: object = report.model_dump(mode="json")
-    rendered = json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    report_path.write_bytes(rendered.encode("utf-8"))
+    rendered = (json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode(
+        "utf-8"
+    )
+    with tempfile.NamedTemporaryFile(
+        dir=report_path.parent,
+        prefix=".tmp_ets2v2_report_",
+        suffix=".json",
+        delete=False,
+    ) as tmp_fh:
+        tmp_path = Path(tmp_fh.name)
+        tmp_fh.write(rendered)
+    try:
+        os.replace(tmp_path, report_path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def _check_map_owned_country_fields(
+    slug: str,
+    frag_path: str,
+    country_data: CountryDataModel,
+) -> list[str]:
+    """Pre-check map-owned fields required by the combo validator before emitting (MD-07)."""
+    issues: list[str] = []
+    if country_data.country_id <= 0:
+        issues.append(f"non-positive country_id={country_data.country_id}")
+    if not country_data.name.strip():
+        issues.append("missing required name")
+    if not country_data.country_code.strip():
+        issues.append("missing required country_code")
+    if (country_data.time_zone is None) != (country_data.time_zone_name is None):
+        issues.append("asymmetric time_zone/time_zone_name")
+    if not issues:
+        return []
+    return [
+        f"Skipping malformed third-party country fragment {frag_path!r} ({slug}): "
+        + "; ".join(issues)
+    ]
 
 
 def _resolve_load_order(
@@ -336,16 +374,60 @@ def compose_local(
                 )
                 continue
 
-            country_res = apply_country_policy(
-                scanned.raw_bytes,
+            precheck_warnings = _check_map_owned_country_fields(
+                scanned.slug,
+                scanned.fragment_path,
                 scanned.country_data,
-                resolution.country,
-                policy=policy,
-                iana_timezone_override=resolution.iana_timezone_override,
-                ref_date=ref_date,
-                supported_tz_keys=bl_locales.tz_keys,
-                rel_path=scanned.fragment_path,
             )
+            if precheck_warnings:
+                warnings.extend(precheck_warnings)
+                country_audits.append(
+                    ComposeCountryAudit(
+                        slug=scanned.slug,
+                        fragment_path=scanned.fragment_path,
+                        winning_layer=scanned.winning_layer,
+                        winning_priority=scanned.winning_priority,
+                        match_tier=resolution.match_tier,
+                        resolved_iso2=resolution.resolved_iso2,
+                        unmatched_reason=None,
+                        emitted=False,
+                        warnings=precheck_warnings,
+                    )
+                )
+                continue
+
+            try:
+                country_res = apply_country_policy(
+                    scanned.raw_bytes,
+                    scanned.country_data,
+                    resolution.country,
+                    policy=policy,
+                    iana_timezone_override=resolution.iana_timezone_override,
+                    ref_date=ref_date,
+                    supported_tz_keys=bl_locales.tz_keys,
+                    rel_path=scanned.fragment_path,
+                )
+            except ValueError as exc:
+                warn_msg = (
+                    f"Skipping country fragment {scanned.fragment_path!r} ({scanned.slug}) due to "
+                    f"policy/SII error: {exc}"
+                )
+                warnings.append(warn_msg)
+                country_audits.append(
+                    ComposeCountryAudit(
+                        slug=scanned.slug,
+                        fragment_path=scanned.fragment_path,
+                        winning_layer=scanned.winning_layer,
+                        winning_priority=scanned.winning_priority,
+                        match_tier=resolution.match_tier,
+                        resolved_iso2=resolution.resolved_iso2,
+                        unmatched_reason=None,
+                        emitted=False,
+                        warnings=[warn_msg],
+                    )
+                )
+                continue
+
             clean_frag = validate_rel_path(scanned.fragment_path)
             payloads[clean_frag] = country_res.rendered_bytes
             countries_patched += 1
@@ -354,20 +436,28 @@ def compose_local(
             spd_status = "skipped_absent"
             preserved_lanes: dict[str, list[str]] = {}
             if scanned.speed_limits_path is not None and scanned.speed_limits_raw is not None:
-                spd_res = apply_speed_limits_policy(
-                    scanned.speed_limits_raw,
-                    scanned.country_data,
-                    resolution.country,
-                    policy=policy,
-                    rel_path=scanned.speed_limits_path,
-                )
-                spd_status = spd_res.status
-                preserved_lanes = spd_res.preserved_custom_lanes
-                country_warnings.extend(spd_res.warnings)
-                if spd_res.rendered_bytes is not None:
-                    clean_spd = validate_rel_path(scanned.speed_limits_path)
-                    payloads[clean_spd] = spd_res.rendered_bytes
-                    speed_limits_patched += 1
+                try:
+                    spd_res = apply_speed_limits_policy(
+                        scanned.speed_limits_raw,
+                        scanned.country_data,
+                        resolution.country,
+                        policy=policy,
+                        rel_path=scanned.speed_limits_path,
+                    )
+                except ValueError as exc:
+                    spd_status = "skipped_parse_error"
+                    country_warnings.append(
+                        f"Skipping malformed speed_limits.sii {scanned.speed_limits_path!r} "
+                        f"({scanned.slug}): {exc}"
+                    )
+                else:
+                    spd_status = spd_res.status
+                    preserved_lanes = spd_res.preserved_custom_lanes
+                    country_warnings.extend(spd_res.warnings)
+                    if spd_res.rendered_bytes is not None:
+                        clean_spd = validate_rel_path(scanned.speed_limits_path)
+                        payloads[clean_spd] = spd_res.rendered_bytes
+                        speed_limits_patched += 1
 
             warnings.extend(country_warnings)
             country_audits.append(

@@ -529,13 +529,20 @@ def test_scs_00006_permission_error_reported_cleanly(
     ws = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_perm")
     target_file = (ws / "universal" / "manifest.sii").resolve()
     orig_read_bytes = pathlib.Path.read_bytes
+    orig_open = pathlib.Path.open
 
     def _deny_manifest(self: pathlib.Path) -> bytes:
         if self.resolve() == target_file:
             raise PermissionError("Simulated OS permission denial")
         return orig_read_bytes(self)
 
+    def _deny_open(self: pathlib.Path, *args: object, **kwargs: object) -> object:
+        if self.resolve() == target_file:
+            raise PermissionError("Simulated OS permission denial")
+        return orig_open(self, *args, **kwargs)  # type: ignore[arg-type]
+
     monkeypatch.setattr(pathlib.Path, "read_bytes", _deny_manifest)
+    monkeypatch.setattr(pathlib.Path, "open", _deny_open)
     report = validate_workshop_package(ws)
     assert report.ok is False
     assert "00006" in _issue_codes(report)

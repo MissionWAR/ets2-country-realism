@@ -558,6 +558,7 @@ def fetch_de_tankerkoenig(
             tier="tier1",
             ok=True,
             skipped=True,
+            skip_reason="skipped (TANKERKOENIG_API_KEY unset; using EC WOB)",
             quotes=[],
         )
 

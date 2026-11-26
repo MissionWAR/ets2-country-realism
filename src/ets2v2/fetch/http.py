@@ -6,7 +6,7 @@ import math
 import re
 import time
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from typing import Final
 from urllib.parse import urljoin, urlsplit
 
@@ -25,7 +25,7 @@ _REDIRECT_STATUS_CODES: Final[frozenset[int]] = frozenset({301, 302, 303, 307, 3
 _MAX_REDIRECTS: Final[int] = 5
 
 _SECRET_QUERY_RE: Final[re.Pattern[str]] = re.compile(
-    r"([?&]|^)(apikey|api_key|token|key)=([^&\s'\"`)]+)",
+    r"([?&]|^)(apikey|api_key|token|key|code)=([^&\s'\"`)]+)",
     flags=re.IGNORECASE,
 )
 _XML_FORBIDDEN_DECL_RE: Final[re.Pattern[str]] = re.compile(
@@ -43,7 +43,7 @@ class HttpFetchError(RuntimeError):
 
 
 def redact_url_secrets(text: str) -> str:
-    """Mask query-parameter credentials (``apikey``, ``api_key``, ``token``, ``key``) in strings."""
+    """Mask query-parameter credentials (``apikey``, ``api_key``, ``token``, ``key``, ``code``)."""
     return _SECRET_QUERY_RE.sub(r"\1\2=***", text)
 
 
@@ -107,7 +107,7 @@ def fetch_bytes_with_retry(
     url: str,
     *,
     allowed_hosts: frozenset[str],
-    params: Mapping[str, str] | None = None,
+    params: Mapping[str, str] | Sequence[tuple[str, str]] | None = None,
     headers: Mapping[str, str] | None = None,
     max_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
     max_retries: int = DEFAULT_MAX_RETRIES,
@@ -118,10 +118,14 @@ def fetch_bytes_with_retry(
     validate_https_url(url, allowed_hosts)
     sleeper = sleep_fn if sleep_fn is not None else time.sleep
 
+    resolved_params: Mapping[str, str] | tuple[tuple[str, str], ...] | None = (
+        params if params is None or isinstance(params, Mapping) else tuple(params)
+    )
+
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
         current_url = url
-        current_params = params
+        current_params: Mapping[str, str] | tuple[tuple[str, str], ...] | None = resolved_params
         try:
             for _redirect_hop in range(_MAX_REDIRECTS + 1):
                 with client.stream(

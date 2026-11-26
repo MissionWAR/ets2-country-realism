@@ -13,14 +13,32 @@ import pytest
 
 from ets2v2.fetch._parsing import validate_ooxml_zip_safety
 from ets2v2.fetch.global_tier1 import (
+    AR_ENERGIA_CKAN_FALLBACK_URL,
+    AR_ENERGIA_CKAN_PRIMARY_URL,
+    BR_ANP_DIESEL_GNV_URL,
+    BR_ANP_GASOLINA_ETANOL_URL,
+    CL_CNE_V3_URL,
+    CL_CNE_V4_URL,
+    CO_CREG_FALLBACK_URL,
+    CO_SICOM_CATALOG_URL,
+    JP_METI_LANDING_URL,
     KR_OPINET_URL,
     MY_OPENDOSM_URL,
     NIST_LITERS_PER_US_GALLON,
     US_EIA_V2_URL,
+    discover_co_sicom_resource_url,
+    discover_jp_meti_xlsx_url,
+    fetch_all_global_tier1_feeds,
+    fetch_ar_energia,
+    fetch_br_anp,
+    fetch_cl_cne,
+    fetch_co_sicom,
+    fetch_jp_meti,
     fetch_kr_opinet,
     fetch_my_opendosm,
     fetch_us_eia_v2,
     gallon_to_liter,
+    parse_jp_meti_xlsx,
 )
 from ets2v2.fetch.http import (
     create_http_client,
@@ -493,3 +511,462 @@ def test_fetch_kr_opinet_skip_mapping_ignores_c004_and_scrubs_code_secret(
     assert failed_to.ok is False
     assert failed_to.error is not None
     assert secret not in failed_to.error
+
+
+def _build_jp_meti_xlsx_bytes() -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "全国平均価格"
+    ws.append(["石油製品価格調査 (給油所小売価格調査)"])
+    ws.append(["調査日", "2026年11月16日"])
+    ws.append(["都道府県", "ガソリン (円/L)", "", "軽油 (円/L)", "灯油 (円/18L)"])
+    ws.append(["", "レギュラー", "ハイオク", "軽油", "灯油 (店頭)"])
+    ws.append(["全国平均", 174.8, 185.6, 154.2, 2110.0])
+    ws.append(["北海道", 173.1, 184.0, 152.9, 2090.0])
+    ws.append(["東京都", 176.2, 187.1, 155.5, 2180.0])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_fetch_br_anp_latin1_median_outliers_and_excludes_glp_gnv() -> None:
+    # Latin-1 encoded semicolon CSVs with comma decimals, outliers, old week rows, and GLP/GNV
+    diesel_csv = (
+        "Região - Sigla;Estado - Sigla;Produto;Data da Coleta;Valor de Venda;Unidade de Medida\n"
+        "SE;SP;DIESEL S10;18/11/2026;6,15;R$ / litro\n"
+        "SE;RJ;DIESEL S10;19/11/2026;6,25;R$ / litro\n"
+        "S;PR;DIESEL S10;19/11/2026;999,99;R$ / litro\n"  # typo outlier rejected by median
+        "N;AM;DIESEL S10;19/11/2026;0,01;R$ / litro\n"  # typo outlier rejected by median
+        "SE;MG;DIESEL S10;20/11/2026;6,20;R$ / litro\n"
+        "SE;SP;DIESEL S10;01/11/2026;4,50;R$ / litro\n"  # >7 days older than max date -> excluded
+        "SE;SP;DIESEL;19/11/2026;5,95;R$ / litro\n"  # S10 preferred over generic DIESEL
+        "SE;SP;GNV;19/11/2026;4,80;R$ / m³\n"  # must be ignored
+        "SE;SP;GLP;19/11/2026;105,00;R$ / 13 kg\n"  # must be ignored
+    ).encode("latin-1")
+
+    gasolina_csv = (
+        "Região - Sigla;Estado - Sigla;Produto;Data da Coleta;Valor de Venda;Unidade de Medida\n"
+        "SE;SP;GASOLINA COMUM;18/11/2026;6,05;R$ / litro\n"
+        "SE;RJ;GASOLINA COMUM;19/11/2026;6,15;R$ / litro\n"
+        "SE;MG;GASOLINA COMUM;20/11/2026;999,99;R$ / litro\n"
+        "SE;SP;GASOLINA ADITIVADA;19/11/2026;6,35;R$ / litro\n"
+        "SE;RJ;GASOLINA ADITIVADA;20/11/2026;6,45;R$ / litro\n"
+        "SE;SP;ETANOL;19/11/2026;4,10;R$ / litro\n"
+        "SE;RJ;ETANOL;20/11/2026;4,20;R$ / litro\n"
+    ).encode("latin-1")
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == BR_ANP_DIESEL_GNV_URL:
+            return httpx.Response(200, content=diesel_csv)
+        if url == BR_ANP_GASOLINA_ETANOL_URL:
+            return httpx.Response(200, content=gasolina_csv)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        res = fetch_br_anp(client, sleep_fn=lambda _: None)
+
+    assert res.ok is True
+    assert res.tier == "tier1"
+    assert res.region_scope == "global"
+    assert res.data_date == "2026-11-20"
+    assert len(res.quotes) == 1
+    quote = res.quotes[0]
+    assert quote.iso2 == "BR"
+    assert quote.currency == "BRL"
+    assert quote.unit_basis == "local_per_liter"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(6.20)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(6.15)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(6.40)
+    assert quote.prices_by_grade["e85"] == pytest.approx(4.15)
+    assert "lpg" not in quote.prices_by_grade
+
+
+def test_fetch_ar_energia_rejects_historico_filters_stale_stations_and_ignores_gnc() -> None:
+    vigente_url = "https://datos.energia.gob.ar/dataset/abc/precios-en-surtidor-vigentes.csv"
+    historico_url = "https://datos.energia.gob.ar/dataset/abc/precios-en-surtidor-historico.csv"
+    ckan_payload = {
+        "success": True,
+        "result": {
+            "resources": [
+                {
+                    "name": "Precios en surtidor historico (Res. 314)",
+                    "format": "CSV",
+                    "url": historico_url,
+                },
+                {
+                    "name": "Precios vigentes en surtidor (Res. 314)",
+                    "format": "CSV",
+                    "url": vigente_url,
+                },
+            ]
+        },
+    }
+    csv_text = (
+        "producto,precio,tipohorario,fecha_vigencia\n"
+        # Stale 2019 dead stations must be filtered out (>60d older than max date)
+        "Gas Oil Grado 2,42.50,Diurno,2019-06-15 10:00:00\n"
+        "Nafta (súper),45.00,Diurno,2019-06-15 10:00:00\n"
+        # Recent valid Diurno rows + outlier
+        "Gas Oil Grado 2,1180.0,Diurno,2026-11-18 08:00:00\n"
+        "Gas Oil Grado 2,1200.0,Diurno,2026-11-19 08:00:00\n"
+        "Gas Oil Grado 2,99999.0,Diurno,2026-11-19 09:00:00\n"
+        "Gas Oil Grado 2,1350.0,Nocturno,2026-11-19 23:00:00\n"
+        "Gas Oil Grado 3,1420.0,Diurno,2026-11-19 08:00:00\n"
+        "Nafta (súper),1120.0,Diurno,2026-11-18 08:00:00\n"
+        "Nafta (super),1140.0,Diurno,2026-11-19 08:00:00\n"
+        "Nafta (super),1160.0,Diurno,2026-11-19 10:00:00\n"
+        "Nafta (premium),1380.0,Diurno,2026-11-19 08:00:00\n"
+        "GNC,540.0,Diurno,2026-11-19 08:00:00\n"  # must be ignored
+    )
+
+    seen_urls: list[str] = []
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        seen_urls.append(url)
+        if url == AR_ENERGIA_CKAN_PRIMARY_URL:
+            return httpx.Response(503)  # Exercise fallback to datos.energia.gob.ar
+        if url == AR_ENERGIA_CKAN_FALLBACK_URL:
+            return httpx.Response(200, json=ckan_payload)
+        if url == vigente_url:
+            return httpx.Response(200, text=csv_text)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        res = fetch_ar_energia(client, sleep_fn=lambda _: None)
+
+    assert historico_url not in seen_urls
+    assert res.ok is True
+    assert res.tier == "tier1"
+    assert res.region_scope == "global"
+    assert res.data_date == "2026-11-19"
+    quote = res.quotes[0]
+    assert quote.iso2 == "AR"
+    assert quote.currency == "ARS"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(1200.0)
+    assert quote.prices_by_grade["diesel_plus"] == pytest.approx(1420.0)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(1140.0)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(1380.0)
+    assert "lpg" not in quote.prices_by_grade
+
+
+def test_fetch_co_sicom_primary_soda_creg_fallback_and_ssrf_guard() -> None:
+    # 1. Primary Socrata discovery skipping dispatch-volume fbht-2fzd
+    catalog_payload = {
+        "results": [
+            {
+                "resource": {
+                    "id": "fbht-2fzd",
+                    "name": "Volumen combustible despachado SICOM",
+                },
+                "permalink": "https://www.datos.gov.co/d/fbht-2fzd",
+            },
+            {
+                "resource": {
+                    "id": "ab12-cd34",
+                    "name": "Precio mes combustible retail SICOM",
+                },
+                "permalink": "https://www.datos.gov.co/d/ab12-cd34",
+            },
+        ]
+    }
+    soda_rows = [
+        {"producto": "BIODIESEL", "precio": "9540", "fecha": "2026-11-15"},
+        {"producto": "ACPM", "precio": "9500", "fecha": "2026-11-15"},
+        {"producto": "ACPM", "precio": "9580", "fecha": "2026-11-15"},
+        {"producto": "GASOLINA CORRIENTE", "precio": "15588", "fecha": "2026-11-15"},
+        {"producto": "GASOLINA MOTOR CORRIENTE", "precio": "15600", "fecha": "2026-11-15"},
+        {"producto": "GASOLINA EXTRA", "precio": "21200", "fecha": "2026-11-15"},
+    ]
+
+    def _primary_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == CO_SICOM_CATALOG_URL:
+            return httpx.Response(200, json=catalog_payload)
+        if url.startswith("https://www.datos.gov.co/resource/ab12-cd34.json"):
+            return httpx.Response(200, json=soda_rows)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_primary_handler)) as client:
+        res = fetch_co_sicom(client, sleep_fn=lambda _: None)
+
+    assert res.ok is True
+    assert res.region_scope == "global"
+    assert res.data_date == "2026-11-15"
+    quote = res.quotes[0]
+    assert quote.iso2 == "CO"
+    assert quote.currency == "COP"
+    assert quote.source == "co_sicom"
+    assert quote.prices_by_grade["diesel"] == pytest.approx(gallon_to_liter(9540.0), rel=1e-9)
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(gallon_to_liter(15594.0), rel=1e-9)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(gallon_to_liter(21200.0), rel=1e-9)
+
+    # 2. Fallback to CREG HTML with Colombian dot-thousands (15.588 and 9.540 COP/gal)
+    creg_html = (
+        "<html><body><p>Actualizado: 2026-11-16</p>"
+        "<table>"
+        "<tr><th>Ciudad</th><th>Gasolina MC ($/gal)</th><th>ACPM ($/gal)</th></tr>"
+        "<tr><td>Bogotá</td><td>15.800</td><td>9.700</td></tr>"
+        "<tr><td>Medellín</td><td>15.700</td><td>9.650</td></tr>"
+        "<tr><td>Promedio PVP precio</td><td>15.588</td><td>9.540</td></tr>"
+        "</table></body></html>"
+    )
+
+    def _creg_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == CO_SICOM_CATALOG_URL:
+            return httpx.Response(503)
+        if url == CO_CREG_FALLBACK_URL:
+            return httpx.Response(200, text=creg_html)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_creg_handler)) as client:
+        res_creg = fetch_co_sicom(client, sleep_fn=lambda _: None)
+
+    assert res_creg.ok is True
+    assert res_creg.data_date == "2026-11-16"
+    q_creg = res_creg.quotes[0]
+    assert q_creg.source == "co_creg"
+    assert q_creg.prices_by_grade["petrol_95"] == pytest.approx(gallon_to_liter(15588.0), rel=1e-9)
+    assert q_creg.prices_by_grade["diesel"] == pytest.approx(gallon_to_liter(9540.0), rel=1e-9)
+
+    # 3. SSRF rejection of off-host catalog link
+    evil_catalog: dict[object, object] = {
+        "results": [
+            {
+                "resource": {"id": "ab12-cd34", "name": "Precio mes combustible"},
+                "permalink": "https://evil.example/d/ab12-cd34",
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match=r"allowlist|host"):
+        discover_co_sicom_resource_url(evil_catalog)
+
+
+def test_fetch_cl_cne_skip_v4_v3_median_and_secret_scrubbing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 1. Token unset -> silent skip
+    monkeypatch.delenv("CNE_API_TOKEN", raising=False)
+    with create_http_client(
+        transport=httpx.MockTransport(lambda _req: httpx.Response(500))
+    ) as client:
+        skipped = fetch_cl_cne(client, sleep_fn=lambda _: None)
+    assert skipped.ok is True
+    assert skipped.skipped is True
+    assert skipped.region_scope == "global"
+    assert skipped.skip_reason is not None
+    assert "CNE_API_TOKEN" in skipped.skip_reason
+
+    # 2. v4 Bearer schema happy path
+    v4_payload = [
+        {
+            "fecha_hora_actualizacion": "2026-11-18 12:00:00",
+            "precios": {
+                "diesel": 1020,
+                "93": 1240,
+                "95": 1280,
+                "97": 1340,
+                "glp": 610,
+            },
+        },
+        {
+            "fecha_hora_actualizacion": "2026-11-19 15:30:00",
+            "precios": {
+                "diesel": 1040,
+                "93": 1260,
+                "95": 1300,
+                "97": 1360,
+                "glp": 630,
+            },
+        },
+        {
+            "fecha_hora_actualizacion": "2026-11-19 16:00:00",
+            "precios": {
+                "diesel": 99999,  # typo outlier rejected by median
+                "93": 1250,
+                "95": 1290,
+                "97": 1350,
+            },
+        },
+    ]
+
+    def _v4_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == CL_CNE_V4_URL:
+            assert request.headers.get("authorization") == "Bearer CNE_SECRET_V4"
+            return httpx.Response(200, json=v4_payload)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_v4_handler)) as client:
+        res_v4 = fetch_cl_cne(client, api_token="CNE_SECRET_V4", sleep_fn=lambda _: None)
+
+    assert res_v4.ok is True
+    assert res_v4.data_date == "2026-11-19"
+    q_v4 = res_v4.quotes[0]
+    assert q_v4.iso2 == "CL"
+    assert q_v4.currency == "CLP"
+    assert q_v4.prices_by_grade["diesel"] == pytest.approx(1040.0)
+    assert q_v4.prices_by_grade["petrol_92"] == pytest.approx(1250.0)
+    assert q_v4.prices_by_grade["petrol_95"] == pytest.approx(1290.0)
+    assert q_v4.prices_by_grade["petrol_98"] == pytest.approx(1350.0)
+    assert q_v4.prices_by_grade["lpg"] == pytest.approx(620.0)
+
+    # 3. v3 fallback schema when v4 returns 404
+    v3_payload = {
+        "estado": "OK",
+        "data": [
+            {
+                "fecha_hora_actualizacion": "2026-11-19 10:00:00",
+                "combustibles": [
+                    {"id": "diesel", "precio": 1035},
+                    {"id": "95", "precio": 1289},
+                    {"id": "97", "precio": 1349},
+                    {"id": "93", "precio": 1249},
+                    {"id": "glp", "precio": 615},
+                ],
+            }
+        ],
+    }
+
+    def _v3_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == CL_CNE_V4_URL:
+            return httpx.Response(404)
+        if url.startswith(CL_CNE_V3_URL):
+            assert request.url.params.get("token") == "CNE_SECRET_V3"
+            return httpx.Response(200, json=v3_payload)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_v3_handler)) as client:
+        res_v3 = fetch_cl_cne(client, api_token="CNE_SECRET_V3", sleep_fn=lambda _: None)
+
+    assert res_v3.ok is True
+    assert res_v3.quotes[0].prices_by_grade["diesel"] == pytest.approx(1035.0)
+    assert res_v3.quotes[0].prices_by_grade["petrol_95"] == pytest.approx(1289.0)
+
+    # 4. Error scrubbing when both v4 and v3 fail
+    secret = "CNE_TOP_SECRET_555"
+    with create_http_client(
+        transport=httpx.MockTransport(lambda _req: httpx.Response(500, text=f"bad {secret}"))
+    ) as client:
+        failed = fetch_cl_cne(client, api_token=secret, sleep_fn=lambda _: None)
+    assert failed.ok is False
+    assert failed.error is not None
+    assert secret not in failed.error
+
+
+def test_fetch_jp_meti_rejects_xls_ignores_kerosene_and_blocks_xxe() -> None:
+    xlsx_bytes = _build_jp_meti_xlsx_bytes()
+
+    # Discovery selects .xlsx and rejects .xls
+    html = (
+        "<html><body>"
+        '<a href="/statistics/petroleum_and_lpgas/pl007/results_legacy.xls">旧形式 (.xls)</a>'
+        '<a href="/statistics/petroleum_and_lpgas/pl007/results_20261116.xlsx">'
+        "最新調査結果 (.xlsx)</a>"
+        "</body></html>"
+    )
+    resolved = discover_jp_meti_xlsx_url(html, JP_METI_LANDING_URL)
+    assert resolved == (
+        "https://www.enecho.meti.go.jp/statistics/petroleum_and_lpgas/pl007/results_20261116.xlsx"
+    )
+
+    # Only .xls link -> must fail cleanly
+    with pytest.raises(ValueError, match=r"\.xlsx"):
+        discover_jp_meti_xlsx_url(
+            '<a href="/statistics/petroleum_and_lpgas/pl007/old.xls">Legacy</a>',
+            JP_METI_LANDING_URL,
+        )
+
+    # Off-host .xlsx link -> SSRF rejection
+    with pytest.raises(ValueError, match="allowlist"):
+        discover_jp_meti_xlsx_url(
+            '<a href="https://evil.example/meti.xlsx">Latest</a>',
+            JP_METI_LANDING_URL,
+        )
+
+    # Direct workbook parse verifies national average & kerosene exclusion
+    quote, data_date = parse_jp_meti_xlsx(xlsx_bytes)
+    assert data_date == "2026-11-16"
+    assert quote.iso2 == "JP"
+    assert quote.currency == "JPY"
+    assert quote.prices_by_grade == {
+        "petrol_95": pytest.approx(174.8),
+        "petrol_98": pytest.approx(185.6),
+        "diesel": pytest.approx(154.2),
+    }
+
+    # End-to-end mocked HTTP fetch
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == JP_METI_LANDING_URL:
+            return httpx.Response(200, text=html)
+        if url == resolved:
+            return httpx.Response(200, content=xlsx_bytes)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        res = fetch_jp_meti(client, sleep_fn=lambda _: None)
+
+    assert res.ok is True
+    assert res.tier == "tier1"
+    assert res.region_scope == "global"
+    assert res.data_date == "2026-11-16"
+    assert res.quotes[0].prices_by_grade["diesel"] == pytest.approx(154.2)
+
+    # OOXML XXE payload inside METI .xlsx MUST be rejected
+    xxe_buf = io.BytesIO()
+    with zipfile.ZipFile(xxe_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("xl/workbook.xml", b"<!DOCTYPE x [<!ENTITY a 'b'>]><workbook/>")
+    with pytest.raises(ValueError, match=r"DOCTYPE|ENTITY"):
+        parse_jp_meti_xlsx(xxe_buf.getvalue())
+
+
+def test_fetch_all_global_tier1_feeds_returns_8_isolated_results_in_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("EIA_API_KEY", raising=False)
+    monkeypatch.delenv("OPINET_API_KEY", raising=False)
+    monkeypatch.delenv("CNE_API_TOKEN", raising=False)
+
+    # Only MY OpenDOSM succeeds; all other keyless feeds return 500 -> must NOT abort
+    my_payload = [
+        {
+            "date": "2026-11-19",
+            "series_type": "level",
+            "ron95": 2.05,
+            "ron97": 3.19,
+            "diesel": 2.95,
+        }
+    ]
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).startswith(MY_OPENDOSM_URL):
+            return httpx.Response(200, json=my_payload)
+        return httpx.Response(500)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        results = fetch_all_global_tier1_feeds(client, sleep_fn=lambda _: None)
+
+    assert [r.feed_name for r in results] == [
+        "us_eia_v2",
+        "br_anp",
+        "ar_energia",
+        "co_sicom",
+        "cl_cne",
+        "my_opendosm",
+        "jp_meti",
+        "kr_opinet",
+    ]
+    assert all(r.tier == "tier1" and r.region_scope == "global" for r in results)
+    by_name = {r.feed_name: r for r in results}
+    assert by_name["us_eia_v2"].skipped is True
+    assert by_name["cl_cne"].skipped is True
+    assert by_name["kr_opinet"].skipped is True
+    assert by_name["my_opendosm"].ok is True
+    assert by_name["br_anp"].ok is False
+    assert by_name["ar_energia"].ok is False
+    assert by_name["co_sicom"].ok is False
+    assert by_name["jp_meti"].ok is False

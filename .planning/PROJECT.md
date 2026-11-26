@@ -1,46 +1,46 @@
-# ETS2 World Country Realism Generator (V2)
+# ETS2 Country Realism
 
 ## What This Is
 
-A clean-room, open-source (**public GitHub repo**) ETS2 `1.62+` country-realism data pipeline, mod compiler, and local map-combo composer written in Python `3.12+` (`uv`). Instead of manually merging incompatible Steam Workshop mods every week (such as *Updated WINTER speed limits* `3668352310` and *Real life fuel prices* `3249064596`), V2 collects verified real-world global fuel prices, FX rates, seasonal speed limits, DST timezones, mandatory daytime running light laws, and axle mass limits into one canonical snapshot — producing:
+A clean-room, open-source (**public GitHub repo**, `MIT` code / `CC BY 4.0` curated data) ETS2 `1.62+` country-realism data pipeline, mod compiler, and local map-combo composer written in Python `3.12+` (`uv`), maintained by **MissionWAR** (`ets2-country-realism` / package `ets2_realism` / CLI `ets2-realism`). Instead of manually merging incompatible Steam Workshop mods every week (such as *Updated WINTER speed limits* `3668352310` and *Real life fuel prices* `3249064596`), it collects verified real-world global fuel prices, FX rates, seasonal speed limits, DST timezones, mandatory daytime running light laws, and axle mass limits into one canonical snapshot — producing:
 
 1. **Steam Workshop Vanilla + DLC Core Editions:** **Summer** and **Winter** (built automatically via CI from ETS2 `1.62.3.3s` clean baselines).
 2. **Steam Workshop ProMods Companion Editions:** **Summer (ProMods Edition)** and **Winter (ProMods Edition)** covering **ProMods Europe + ProMods Middle East + ProMods Maghreb + ProMods The Great Steppe** (compiled locally from the user's installed ProMods `def` packages so zero proprietary ProMods assets or copied `.scs` files are ever redistributed in the public repo).
-3. **Local Map Combo Auto-Composer (`ets2v2 compose-local`):** A CLI tool consuming CI's global `realism-snapshot-{summer|winter}.json` across any user's `mod/` load order (*RusMap*, *Trans-Siberian Truckway*, *UMCF*, *Beyond Map*, *Project Japan Relocated*, *Java Road Revolution*, *Southeast Asia*, *Roads of Chunghwa*, *EAA Rescaled*, Africa mods, etc.) to output a conflict-free `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs`.
+3. **Local Map Combo Auto-Composer (`ets2-realism compose-local`):** A CLI tool consuming CI's global `realism-snapshot-{summer|winter}.json` (`225` territories) across any user's `mod/` load order (*RusMap*, *Trans-Siberian Truckway*, *UMCF*, *Beyond Map*, *Project Japan Relocated*, *Java Road Revolution*, *Southeast Asia*, *Roads of Chunghwa*, *EAA Rescaled*, Africa mods, etc.) to output a conflict-free `zz_ETS2_Realism_ComboPatch_{Summer|Winter}.scs`.
 
 ## Core Value
 
 One public, open-source, reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 country realism mods and multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla, ProMods, and arbitrary global Map Combos.
 
-## Current Baseline & Scope Decisions
+## Current State (v1.0 Shipped — 2026-11-26)
 
-### Locked Decisions (2026-11-16 Post-Research Checkpoint)
+- **Shipped Version:** `v1.0` (`tag: v1.0`, `24/24` V1 requirements satisfied, `5/5` phases verified & code-reviewed, `5/5` Nyquist validation docs compliant).
+- **Codebase:** `73` source modules (`26,090` LOC) + `45` test modules (`21,978` LOC) passing strict `ruff`, `basedpyright`, `pytest`, Offline SCS Workshop Validator, and `ETS2R-INV-LICENSE-TAINT` gates.
+- **Data Coverage:** `225` countries/territories (`151` currencies, `119` map-mod aliases), `36` SCS `1.62.3.3s` Vanilla+DLC baselines, `460` Zero-DDS fuel sign boards across all `43` active locales.
+- **Operational Readiness:** Codebase, `README.md`, `LICENSE`, and all 3 GitHub Actions workflows (`ci.yml`, `phase-a-release.yml`, `osm-speed-audit.yml`) are ready for GitHub push, first live `workflow_dispatch` fuel/FX run, and initial manual Steam Workshop upload via **SCS Workshop Uploader (`AppID 421800`)**.
+- **Archive:** [MILESTONES.md](MILESTONES.md), [v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md), [v1.0-REQUIREMENTS.md](milestones/v1.0-REQUIREMENTS.md), [v1.0-MILESTONE-AUDIT.md](v1.0-MILESTONE-AUDIT.md).
 
-- **Clean V2 Public Open-Source Rewrite:** Built from scratch in `d:\CODE\Ets2 Mod V2` (`MIT` / `CC BY 4.0` clean-room codebase; legacy `d:\CODE\Ets2 Mod` is reference-only; `.agents/skills/scs-modding-wiki` is vendored locally). Zero GPL dependency contamination and zero `3nK` decryption/copying.
-- **Target Game Version:** **ETS2 `1.62.3.3s`** (`D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2`). Uses fresh base extracts from `def.scs` (36 countries incl. 5-axle 60t `iceland.sui`) and `locale.scs` (43 active locales, 12 supported `@@tz_*@@` keys).
-- **Workshop Distribution & ProMods IP Boundary (Option C):**
-  - Public CI generates **Vanilla + DLC (`Summer` & `Winter`)** plus global `realism-snapshot-{summer|winter}.json` without committing any ProMods `.scs` or copied ProMods map/def files into GitHub.
-  - **ProMods Edition (`Summer` & `Winter`, covering Europe + Middle East + Maghreb + The Great Steppe)** builds cleanly on the maintainer's PC from local installed ProMods `def` archives using the exact same `merge` engine + `realism-snapshot`.
-- **Map Combo Protection & Field-Ownership Policy:**
-  - Strict separation between realism fields (`fuel_price`, `lights_mandatory`, `driving_tired_offence`, `speed_limits` `car`/`truck`/`bus`) and map-owned identity/geometry (`country_id`, `pos`, `regions[]`/`region_areas[]`, `train`/`tram` speed units, `leftside_traffic`, `imperial_units`, `country_code` by default).
-  - **`max_of_map_and_real`** for `mass_limit_per_axle_count[]` (never downgrades EAA 80t, Iceland 60t, RusMap/TST 48t, Finland 105t).
-  - **`patch_if_single_tz`** for `time_zone` (preserves multi-TZ coordinate boxes in TST 27-TZ Russia, UMCF 5-TZ Kazakhstan, EAA Brazil; shifts single-TZ Summer/Winter DST via Python `zoneinfo` + `tzdata`, emitting plain `"CET"`/`"WET"` where `locale.scs` lacks keys).
-  - Explicit diagnostics + `--unpacked-defs` fallback on `AEM!` / encrypted ZIP archives; hardcoded community map totems (JRR/7RM) opt-in only (`--patch-hardcoded-totems`).
-- **Full Sign-Board Totem System (Option 4b, Zero DDS):** Namespaced `@@fp_*_ets2v2@@` `def/sign/board/*.sii` rewrites + `locale/<lang>/local_module.ets2v2_fuel.sii` across all **43** active ETS2 `1.62` locales (zero `.dds`/`.tobj` textures), displaying native local currencies/formats (`pence` vs `GBP`, `eurocents` vs `EUR`, `<sup>9</sup>` tenth-cents, post-2026 Bulgaria `EUR`, multi-grade `95`/`98`/`100`/`Diesel`/`Diesel+`/`E85`/`LPG`), repairing all 17+ active missing/placeholder `1.62` boards (`gas_bi_*`, `gas_ie_*`, `gas_ba_*_lpg`, `gas_dk_92`, `gas_is_ip1_98`), and updating `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` in ProMods Edition.
-- **3-Tier Global Data Collection Pipeline (`CC BY 4.0` Compatible):**
-  - **FX:** `Frankfurter v2` (MIT, 219 currencies) primary + `ECB eurofxref-daily.xml` validator + `fawazahmed0/exchange-api` (CC0) & CBR XML fallbacks.
-  - **Fuel Tiers:** Tier 1 open government APIs (`EC Weekly Oil Bulletin` + `FionnHughes`/`fuel-prices.eu` `CC BY 4.0` fallbacks, `UK DESNZ` OGL v3, `NO SSB`, `FR`/`DE`/`ES`/`IT`/`NL` multi-grade APIs, `US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), Tier 2 guarded national portals with `prices.lock.json` circuit-breaker fallback & range alerts, and Tier 3 curated community baselines.
-  - **Explicitly Excluded:** `GlobalPetrolPrices.com` (`CC BY-NC-ND 3.0`), `MyLPG.eu`, paid `IEA`, and direct redistribution of `CC BY-SA` OSM Wiki data (used internally as CI speed-limit drift audit only).
-- **Workshop Publishing Strategy (Phase A Now, Phase B Later):**
-  - **Phase A (Semi-Auto in Scope):** Automated weekly Friday `06:00 UTC` CI build, strict **Offline SCS Validator** (`00001`–`00010` + `WARN 00001`/`00002`, `276x162` `.jpg` icon, zero `display_name`/`compatible_versions[]` in Workshop `manifest.sii`, no ZIP-as-`.scs`), canonical payload SHA-256 diff gate against `state/published.json`, and generated Summer/Winter changelogs + artifacts for 1-click GUI upload.
-  - **Phase B (Full-Auto Deferred):** SteamCMD `+workshop_build_item` + inline post-self-update 30s `STEAM_SHARED_SECRET` TOTP + isolated matrix deploys + hidden-item (`visibility: 2`) verification spike deferred until after V1 Semi-Auto workflow is battle-tested.
+## Next Milestone Goals
+
+- **Operational Launch (Post-v1.0):** Push repository to `MissionWAR/ets2-country-realism`, run the first live Friday / manual `Phase A Weekly Release` workflow to populate live `state/prices.lock.json` and `snapshots-latest`, verify in ETS2 `1.62.3.3s` `game.log.txt`, and publish initial Core & ProMods Workshop items via `AppID 421800`.
+- **v1.1 Candidates:** Non-editable wheel packaging (`importlib.resources` for `pip`/`uv tool install`), SHA-pinned GitHub Actions, and concurrent Tier 2 HTTP fetching / modular CLI refactor.
+- **v2.0 Candidates:** Phase B full-auto SteamCMD Workshop publishing (`PUB-V2-01`, `PUB-V2-02`) after Phase A semi-auto publishing is proven across consecutive weekly cycles.
+
+## Locked Architecture & Scope Decisions
+
+- **Clean Open-Source Rewrite:** Built from scratch in Python `3.12+` (`uv`, `src/ets2_realism/`, `MIT` / `CC BY 4.0`). Zero GPL dependency contamination and zero `3nK` decryption/copying.
+- **Target Game Version:** **ETS2 `1.62.3.3s`** (`D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2`). Uses fresh clean-room JSON baselines from `def.scs` (36 countries incl. 5-axle 60t `iceland.sui`) and `locale.scs` (43 active locales, 12 supported `@@tz_*@@` keys).
+- **Workshop Distribution & ProMods IP Boundary (Option C):** Public CI generates Vanilla+DLC Core (`Summer` & `Winter`) plus global `realism-snapshot-{summer|winter}.json` with zero ProMods `.scs`/def files in Git; ProMods Editions (`EU + ME + MA + TGS`) compile locally from user-installed ProMods archives.
+- **Map Combo Protection (`FieldOwnershipPolicy`):** Strict separation between realism overlays (`fuel_price`, `lights_mandatory`, `driving_tired_offence`, `speed_limits` `car`/`truck`/`bus`) and map-owned identity/geometry (`country_id`, `pos`, `regions[]`/`region_areas[]`, `train`/`tram`, `leftside_traffic`, `imperial_units`, `country_code` default), `max_of_map_and_real` axle weights, `patch_if_single_tz` seasonal DST shifting, explicit `AEM!`/`3nK`/encrypted-ZIP diagnostics + `--unpacked-defs`, and opt-in `--patch-hardcoded-totems`.
+- **Option 4b Zero-DDS Fuel Totems:** Namespaced `@@fp_*_ets2r@@` `def/sign/board/*.sii` rewrites + synchronized `locale/<lang>/local_module.ets2r_fuel.sii` across all 43 active ETS2 `1.62` locales (zero `.dds`/`.tobj`), plus `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` in ProMods Edition.
+- **Legally Clean 3-Tier Global Data Pipeline (`CC BY 4.0` Compatible):** Multi-provider FX (`Frankfurter v2`, `ECB`, `fawazahmed0`, `CBR`), Tier 1 open EU & Global government APIs, Tier 2 guarded national portals with per-country circuit breakers & `prices.lock.json`, Tier 3 curated baselines (`225` total territories), and an AST-quarantined monthly CI OSM (`CC BY-SA`) speed-limit drift audit that never writes into `CC BY 4.0` outputs.
+- **Phase A Semi-Auto Publishing:** Friday `06:00 UTC` CI build, Offline SCS Validator (`00001`–`00010` + `WARN 00001`/`00002`, `276x162` `.jpg`, `mp_mod_optional: true`), canonical SHA-256 diff gate (`state/published.json`), rolling `snapshots-latest` release, and persistent Release PR for 1-click GUI Workshop upload with zero Steam secrets in CI.
 
 ## Context
 
 - **Installed ETS2 baseline:** `D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2\def.scs` & `locale.scs` (HashFS v2, ETS2 `1.62.3.3s`).
-- **Local reference Workshop mods:** `3668352310` (*Updated WINTER speed limits*, HashFS v1) and `3249064596` (*Real life fuel prices*, HashFS v2).
 - **User's local mod & combo directory:** `D:\ETS2Data\Euro Truck Simulator 2\mod` (audited 503 mods across ProMods EU/ME/TGS/MA, RusMap, TST, UMCF, GMC Beyond Fix, JRR, SEA, RoC, Project Japan Relocated, EAA Rescaled, SemEuropa).
-- **Research synthesis:** Full technical forensics, license checks, and 503-mod census documented in [SUMMARY.md](file:///d:/CODE/Ets2%20Mod%20V2/.planning/research/SUMMARY.md).
+- **Research synthesis:** Full technical forensics, license checks, and 503-mod census documented in [SUMMARY.md](research/SUMMARY.md).
 
 ## Constraints
 
@@ -49,9 +49,5 @@ One public, open-source, reproducible pipeline generating bug-free **Summer** an
 - **Convoy Compatibility:** Always set `mp_mod_optional: true` in `manifest.sii`.
 - **Clean Provenance & Public License:** Public GitHub repo stays strictly free of ProMods `.scs`/def dumps, `CC BY-NC-ND` scrapers, `CC BY-SA` redistributed blobs, and GPL archive extractors.
 
-## Evolution
-
-This document evolves cleanly across milestone phases. Current phase decisions are locked into `REQUIREMENTS.md` and `ROADMAP.md`.
-
 ---
-*Updated: 2026-11-16 — Post-research architectural, map-combo, data-tier, and semi-auto publishing decisions locked.*
+*Updated: 2026-11-26 — v1.0 milestone shipped and archived.*

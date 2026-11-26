@@ -298,19 +298,30 @@ def _discover_xlsx_links(
     return links
 
 
+_NG_AGO_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"(?<![a-z0-9])ago(?![a-z0-9])")
+_NG_PMS_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"(?<![a-z0-9])pms(?![a-z0-9])")
+_NG_PCT_HEADER_RE: Final[re.Pattern[str]] = re.compile(
+    r"%|(?<![a-z0-9])(?:mom|yoy|change|growth|var|variance)(?![a-z0-9])|"
+    r"month[\s-]*on[\s-]*month|year[\s-]*on[\s-]*year",
+    flags=re.IGNORECASE,
+)
+
+
 def _iter_xlsx_rows(raw_xlsx: bytes) -> list[list[object]]:
     validate_ooxml_zip_safety(raw_xlsx)
     wb = openpyxl.load_workbook(io.BytesIO(raw_xlsx), read_only=True, data_only=True)
     rows: list[list[object]] = []
+    scanned_rows = 0
     try:
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
             for row in ws.iter_rows(values_only=True):
-                if len(rows) >= TIER2_MAX_XLSX_ROWS:
+                scanned_rows += 1
+                if scanned_rows > TIER2_MAX_XLSX_ROWS:
                     break
                 if any(cell is not None for cell in row):
                     rows.append(list(row))
-            if len(rows) >= TIER2_MAX_XLSX_ROWS:
+            if scanned_rows > TIER2_MAX_XLSX_ROWS:
                 break
     finally:
         wb.close()
@@ -512,10 +523,60 @@ def _parse_ch_json_stat2(obj: dict[object, object]) -> tuple[dict[FuelGrade, flo
     if time_dim_pos is None or product_dim_pos is None or not product_positions:
         raise Tier2SelectorDriftError("CH BFS JSON-stat2 missing recognizable time/fuel dimensions")
 
+    extra_dim_offset = 0
+    for dim_pos, dim_name in enumerate(dim_ids):
+        if dim_pos in {time_dim_pos, product_dim_pos}:
+            continue
+        dim_size = sizes[dim_pos]
+        if dim_size == 1:
+            continue
+        dim_obj = dims.get(dim_name)
+        if not isinstance(dim_obj, dict):
+            raise Tier2SelectorDriftError(
+                f"CH BFS JSON-stat2 unexpected multi-valued dimension {dim_name!r} "
+                f"(size={dim_size})"
+            )
+        cat_obj = cast(dict[object, object], dim_obj).get("category")
+        if not isinstance(cat_obj, dict):
+            raise Tier2SelectorDriftError(
+                f"CH BFS JSON-stat2 multi-valued dimension {dim_name!r} missing category metadata"
+            )
+        cat = cast(dict[object, object], cat_obj)
+        index_map = _json_stat2_index_map(cat)
+        label_map = _json_stat2_label_map(cat)
+        chf_positions: list[int] = []
+        for key, pos in index_map.items():
+            combined = _fold_ascii(f"{key} {label_map.get(key, '')}")
+            if any(
+                tok in combined for tok in ("chf", "preis", "prix", "price", "prezzo")
+            ) and not any(
+                bad in combined
+                for bad in (
+                    "%",
+                    "percent",
+                    "prozent",
+                    "pourcent",
+                    "index",
+                    "indice",
+                    "change",
+                    "veranderung",
+                    "variation",
+                )
+            ):
+                chf_positions.append(pos)
+        if len(chf_positions) != 1:
+            raise Tier2SelectorDriftError(
+                f"CH BFS JSON-stat2 unexpected multi-valued dimension {dim_name!r} "
+                f"(size={dim_size}, unambiguous CHF price matches={len(chf_positions)})"
+            )
+        extra_dim_offset += chf_positions[0] * strides[dim_pos]
+
     for iso_month, t_pos in time_entries:
         prices: dict[FuelGrade, float] = {}
         for grade, p_pos in product_positions.items():
-            flat_idx = t_pos * strides[time_dim_pos] + p_pos * strides[product_dim_pos]
+            flat_idx = (
+                extra_dim_offset + t_pos * strides[time_dim_pos] + p_pos * strides[product_dim_pos]
+            )
             val = _get_val(flat_idx)
             if val is not None:
                 prices[grade] = val
@@ -636,7 +697,11 @@ def fetch_md_anre(
                 if len(row) < 2:
                     continue
                 label = _fold_ascii(row[0])
-                val = _extract_first_price(row[1])
+                val: float | None = None
+                for cell in row[1:]:
+                    val = _extract_first_price(cell)
+                    if val is not None:
+                        break
                 if val is None:
                     continue
                 if ("cor 95" in label or ("benzina" in label and "95" in label)) and (
@@ -1238,14 +1303,24 @@ def _parse_ng_nbs_national_average(
         if found_date is not None:
             break
 
+    excluded_cols: set[int] = set()
+    for row in xlsx_rows:
+        for col_idx, cell in enumerate(row[1:], start=1):
+            if isinstance(cell, str) and _NG_PCT_HEADER_RE.search(_fold_ascii(cell)):
+                excluded_cols.add(col_idx)
+
     for row in xlsx_rows:
         if len(row) < 2:
             continue
         label = _fold_ascii(str(row[0] or ""))
         if "national" in label or label in {"nigeria", "average", "all states"}:
-            # Prefer rightmost numeric column (latest month in NBS Watch spreadsheets)
+            # Prefer rightmost non-percentage numeric column (latest month in NBS Watch sheets)
             latest_val: float | None = None
-            for cell in row[1:]:
+            for col_idx, cell in enumerate(row[1:], start=1):
+                if col_idx in excluded_cols:
+                    continue
+                if isinstance(cell, str) and "%" in cell:
+                    continue
                 parsed = (
                     parse_positive_float(cell)
                     if not isinstance(cell, str)
@@ -1281,9 +1356,13 @@ def fetch_ng_nbs(
         pms_url: str | None = None
         for link_url, link_text in xlsx_links:
             haystack = _fold_ascii(f"{link_url} {link_text}")
-            if ago_url is None and ("ago" in haystack or "diesel" in haystack):
+            if ago_url is None and (
+                _NG_AGO_TOKEN_RE.search(haystack) is not None or "diesel" in haystack
+            ):
                 ago_url = link_url
-            if pms_url is None and ("pms" in haystack or "petrol" in haystack):
+            if pms_url is None and (
+                _NG_PMS_TOKEN_RE.search(haystack) is not None or "petrol" in haystack
+            ):
                 pms_url = link_url
 
         if ago_url is None and pms_url is None:

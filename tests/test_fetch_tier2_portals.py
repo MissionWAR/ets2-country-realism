@@ -810,3 +810,110 @@ def test_table_extractor_flushes_unclosed_table_on_close_md07() -> None:
     tables = extract_html_tables(nested_unclosed)
     assert [["Inner", "1.99"]] in tables
     assert [["Outer"]] in tables
+
+
+def test_tier2_empty_row_cap_ng_yoy_ago_boundary_ch_multidim_and_md_anre_md03_lo01() -> None:
+    """MD-03 & LO-01: Empty-row cap, NG YoY/AGO boundary, CH multi-dim reject, MD ANRE row[1:]."""
+    from ets2v2.fetch.tier2_portals import TIER2_MAX_XLSX_ROWS, _iter_xlsx_rows
+
+    # 1. Empty-row XLSX cap: rows past TIER2_MAX_XLSX_ROWS empty rows are NOT scanned
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    assert ws is not None
+    # Sparse cell beyond cap creates TIER2_MAX_XLSX_ROWS + 5 empty rows before it
+    ws.cell(row=TIER2_MAX_XLSX_ROWS + 10, column=1, value="Beyond Cap")
+    buf = io.BytesIO()
+    wb.save(buf)
+    assert _iter_xlsx_rows(buf.getvalue()) == []
+
+    # 2. Nigeria NBS: skips MoM (%)/YoY (%) rightmost columns & rejects "lagos"/"pages" for AGO
+    ago_url = "https://nigerianstat.gov.ng/downloads/ago_watch_nov2026.xlsx"
+    pms_url = "https://nigerianstat.gov.ng/downloads/pms_watch_nov2026.xlsx"
+    ago_xlsx = _build_xlsx(
+        [
+            ["Automotive Gas Oil Watch", "2026-11-01"],
+            ["State", "Oct-2026", "Nov-2026", "MoM (%)", "YoY (%)"],
+            ["National Average", 1400.0, 1425.5, 1.82, 20.0],
+        ]
+    )
+    pms_xlsx = _build_xlsx(
+        [
+            ["Premium Motor Spirit Watch", "2026-11-01"],
+            ["State", "Oct-2026", "Nov-2026", "Month-on-Month Change", "Year-on-Year (%)"],
+            ["National Average", 1020.0, 1045.25, 2.47, 15.0],
+        ]
+    )
+
+    def _ng_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == NG_NBS_URL:
+            return httpx.Response(
+                200,
+                request=request,
+                text=(
+                    '<a href="/downloads/lagos_pages_category_report.xlsx">Lagos Report</a>'
+                    f'<a href="{ago_url}">Download</a>'
+                    f'<a href="{pms_url}">Download</a>'
+                ),
+            )
+        if url == ago_url:
+            return httpx.Response(200, request=request, content=ago_xlsx)
+        if url == pms_url:
+            return httpx.Response(200, request=request, content=pms_xlsx)
+        return httpx.Response(404, request=request)
+
+    with _mock_client(httpx.MockTransport(_ng_handler)) as client:
+        ng_res = fetch_ng_nbs(client, sleep_fn=_no_sleep)
+    assert ng_res.ok is True
+    assert ng_res.quotes[0].prices_by_grade["diesel"] == pytest.approx(1425.5)
+    assert ng_res.quotes[0].prices_by_grade["petrol_95"] == pytest.approx(1045.25)
+
+    # 3. CH BFS JSON-stat2 rejects ambiguous multi-valued extra dimension
+    ambiguous_ch = {
+        "id": ["Pos", "Zeit", "Measure"],
+        "size": [2, 1, 2],
+        "dimension": {
+            "Pos": {
+                "category": {
+                    "index": {"0": 0, "1": 1},
+                    "label": {"0": "Bleifrei 95", "1": "Diesel"},
+                }
+            },
+            "Zeit": {"category": {"index": {"2026M11": 0}, "label": {"2026M11": "2026M11"}}},
+            "Measure": {
+                "category": {
+                    "index": {"idx": 0, "pct": 1},
+                    "label": {"idx": "Index", "pct": "Change %"},
+                }
+            },
+        },
+        "value": [101.2, 2.5, 99.8, -1.1],
+    }
+
+    def _ch_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == CH_BFS_LIK_URL:
+            return httpx.Response(200, request=request, json=ambiguous_ch)
+        return httpx.Response(404, request=request)
+
+    with _mock_client(httpx.MockTransport(_ch_handler)) as client:
+        ch_res = fetch_ch_bfs_lik(client, sleep_fn=_no_sleep)
+    assert ch_res.ok is False
+    assert ch_res.error_code == "tier2_selector_drift"
+
+    # 4. MD ANRE scans row[1:] when an intermediate unit column appears before the price
+    anre_html = (
+        "<html><body><p>18.11.2026</p><table>"
+        "<tr><td>Benzina COR 95</td><td>lei/L</td><td>24,18</td></tr>"
+        "<tr><td>Motorina standard</td><td>lei/L</td><td>21,76</td></tr>"
+        "</table></body></html>"
+    )
+
+    def _md_handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == MD_ANRE_URL
+        return httpx.Response(200, request=request, text=anre_html)
+
+    with _mock_client(httpx.MockTransport(_md_handler)) as client:
+        md_res = fetch_md_anre(client, sleep_fn=_no_sleep)
+    assert md_res.ok is True
+    assert md_res.quotes[0].prices_by_grade["petrol_95"] == pytest.approx(24.18)
+    assert md_res.quotes[0].prices_by_grade["diesel"] == pytest.approx(21.76)

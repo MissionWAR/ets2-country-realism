@@ -624,3 +624,35 @@ def test_hi03_fx_only_fetch_preserves_all_extended_global_currencies(tmp_path: P
     for ext_ccy in EXTENDED_PROMODS_CURRENCIES:
         assert ext_ccy in after.fx_rates
         assert after.fx_rates[ext_ccy].rate_per_eur > 0.0
+
+
+def test_http_retry_and_max_bytes_bounds_validation_lo02() -> None:
+    """LO-02: Negative max_retries and non-positive max_bytes raise ValueError cleanly."""
+    from ets2v2.fetch.http import post_form_bytes_with_retry
+
+    allowed = frozenset({"api.frankfurter.dev"})
+    with create_http_client(transport=httpx.MockTransport(lambda _r: httpx.Response(200))) as c:
+        with pytest.raises(ValueError, match="max_retries"):
+            fetch_bytes_with_retry(
+                c, "https://api.frankfurter.dev/v2/rates", allowed_hosts=allowed, max_retries=-1
+            )
+        with pytest.raises(ValueError, match="max_bytes"):
+            fetch_bytes_with_retry(
+                c, "https://api.frankfurter.dev/v2/rates", allowed_hosts=allowed, max_bytes=0
+            )
+        with pytest.raises(ValueError, match="max_retries"):
+            post_form_bytes_with_retry(
+                c,
+                "https://api.frankfurter.dev/v2/rates",
+                allowed_hosts=allowed,
+                data={"k": "v"},
+                max_retries=-2,
+            )
+        with pytest.raises(ValueError, match="max_bytes"):
+            post_form_bytes_with_retry(
+                c,
+                "https://api.frankfurter.dev/v2/rates",
+                allowed_hosts=allowed,
+                data={"k": "v"},
+                max_bytes=-10,
+            )

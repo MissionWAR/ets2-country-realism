@@ -115,6 +115,10 @@ def fetch_bytes_with_retry(
     sleep_fn: Callable[[float], None] | None = None,
 ) -> bytes:
     """Perform a hardened GET with allowlisted redirect checking, byte cap, and bounded retries."""
+    if max_retries < 0:
+        raise ValueError(f"max_retries must be >= 0, got {max_retries!r}")
+    if max_bytes <= 0:
+        raise ValueError(f"max_bytes must be > 0, got {max_bytes!r}")
     validate_https_url(url, allowed_hosts)
     sleeper = sleep_fn if sleep_fn is not None else time.sleep
 
@@ -194,6 +198,10 @@ def post_form_bytes_with_retry(
     sleep_fn: Callable[[float], None] | None = None,
 ) -> bytes:
     """Perform a hardened form-encoded POST with allowlist checking, byte cap, and retries."""
+    if max_retries < 0:
+        raise ValueError(f"max_retries must be >= 0, got {max_retries!r}")
+    if max_bytes <= 0:
+        raise ValueError(f"max_bytes must be > 0, got {max_bytes!r}")
     validate_https_url(url, allowed_hosts)
     sleeper = sleep_fn if sleep_fn is not None else time.sleep
     form_data = dict(data)

@@ -5,15 +5,15 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 5 COMPLETE & verified on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` (`05-01`..`05-04`, `05-VERIFICATION.md` `PASSED` `19/19`, `05-REVIEW.md` all `19/19` code review findings fixed; `634 passed, 4 deselected`, `0` ruff/basedpyright errors, `0` license-taint violations) — all 5/5 V1 phases complete and ready for branch merge / milestone audit (`GLB-01`..`GLB-04` done).
+**Current focus:** V1.0 Milestone audited (`v1.0-MILESTONE-AUDIT.md`) and pre-release polish complete on `master` (rebranded to `ets2_realism` / `ets2-realism` by `MissionWAR`; `24/24` V1 requirements verified, `5/5` Nyquist validation docs compliant, external-CWD guard, CH BFS PxWeb POST, CI `--previous-snapshots-dir`, dynamic `anchor_year`, and root `README.md`/`LICENSE` resolved) — ready for `/gsd-complete-milestone`.
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — Complete & Verified (Code Review Resolved)
-Plan: 4 of 4 executed in current phase (`05-01`..`05-04` complete; `05-VERIFICATION.md` `PASSED`; `05-REVIEW.md` `19/19` findings resolved)
-Status: All 5 V1 phases (`21/21` plans, `24/24` requirements) complete on `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`; ready to merge into `master` and run `/gsd-audit-milestone` / `/gsd-complete-milestone`
-Last activity: 2026-11-26 — Completed Phase 5 Waves 2–4 (`05-02`..`05-04`), verification (`05-VERIFICATION.md` `PASSED`), deep code review (`05-REVIEW.md`), and resolved all 19 review findings (`634 passed, 4 deselected`)
+Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — Complete, Merged & Audited on `master`
+Plan: 21 of 21 executed across Phases 1–5 (`24/24` V1 requirements complete; `5/5` phases verified & reviewed; `5/5` Nyquist `VALIDATION.md` compliant)
+Status: Pre-release polish & milestone audit complete on `master`; ready to run `/gsd-complete-milestone`
+Last activity: 2026-11-26 — Completed V1.0 milestone audit, resolved verified edge-case bugs & CI diff wiring, added root `README.md`/`LICENSE`, and closed Phase 4/5 Nyquist validation docs
 
 Progress: [██████████] 100%
 
@@ -69,6 +69,6 @@ None blocking Phase 4 closeout or Phase 5 planning.
 ## Session Continuity
 
 Last session: 2026-11-26
-Stopped at: Phase 5 complete, verified (`05-VERIFICATION.md` `PASSED`), and all 19 code review findings fixed (`05-REVIEW.md` resolved) on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`
-Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-VERIFICATION.md
-Next action: Merge `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` into `master` (tag `phase-05`), then run `/gsd-audit-milestone` and `/gsd-complete-milestone` to close V1
+Stopped at: V1.0 milestone audited and pre-release polish + Nyquist validation completed on `master`
+Resume file: .planning/v1.0-MILESTONE-AUDIT.md
+Next action: Commit pre-release polish changes and run `/gsd-complete-milestone` to archive V1.0 and tag `v1.0.0`

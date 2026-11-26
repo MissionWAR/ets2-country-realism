@@ -43,6 +43,33 @@ _D09_EXACT_BOARD_TOKEN_BASES: Final[dict[str, str]] = {
     "gas_dk_92": "fp_dk_petrol_92",
 }
 
+FORBIDDEN_LICENSE_TAINT_PATTERNS: Final[tuple[tuple[str, re.Pattern[str]], ...]] = (
+    ("CC BY-SA", re.compile(r"cc[\s-]*by[\s-]*sa", re.IGNORECASE)),
+    ("ODbL", re.compile(r"\bodbl\b", re.IGNORECASE)),
+    ("OpenStreetMap", re.compile(r"openstreetmap", re.IGNORECASE)),
+    ("osm-legal-default-speeds", re.compile(r"osm-legal-default-speeds", re.IGNORECASE)),
+    ("GlobalPetrolPrices", re.compile(r"globalpetrolprices", re.IGNORECASE)),
+    ("CC BY-NC-ND", re.compile(r"cc[\s-]*by[\s-]*nc[\s-]*nd", re.IGNORECASE)),
+    ("MyLPG", re.compile(r"\bmylpg\b", re.IGNORECASE)),
+    ("IEA", re.compile(r"(?:international\s+energy\s+agency|\biea\b)", re.IGNORECASE)),
+)
+
+
+def check_license_taint_bytes(
+    raw: bytes,
+    rel_path: str,
+    collector: ValidationCollector,
+) -> None:
+    """Reject CC BY-SA / ODbL / CC BY-NC-ND / forbidden source markers in CC BY 4.0 packages."""
+    text = raw.decode("utf-8", errors="replace")
+    for label, pattern in FORBIDDEN_LICENSE_TAINT_PATTERNS:
+        if pattern.search(text) is not None:
+            collector.error(
+                "ETS2V2-INV-LICENSE-TAINT",
+                rel_path,
+                f"Forbidden non-CC-BY-4.0 license/source marker {label!r} detected in package text",
+            )
+
 
 def _float_close(a: float | None, b: float | None) -> bool:
     if a is None or b is None:

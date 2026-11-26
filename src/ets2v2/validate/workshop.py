@@ -30,6 +30,7 @@ from ets2v2.sii.localization import LocalizationEntry, parse_localization_db
 from ets2v2.sii.sign_board import SignBoardTemplate, parse_sign_board
 from ets2v2.sii.speed_limits import SpeedLimitsFile, parse_speed_limits
 from ets2v2.validate.invariants import (
+    check_license_taint_bytes,
     validate_combo_invariants,
     validate_core_realism_invariants,
     validate_fuel_locale_modules_consistency,
@@ -588,6 +589,8 @@ def _validate_manifest(
     if manifest_raw is None:
         return None, None
 
+    check_license_taint_bytes(manifest_raw, manifest_loc, collector)
+
     _record_sii_hygiene(
         manifest_raw,
         manifest_loc,
@@ -862,6 +865,7 @@ def _validate_manifest(
                     desc_raw = _read_archive_entry(archive, desc_name, desc_loc, collector)
                     if desc_raw is not None:
                         _validate_utf8_lf_text(desc_raw, desc_loc, collector)
+                        check_license_taint_bytes(desc_raw, desc_loc, collector)
 
     return icon_name, desc_name
 
@@ -1041,6 +1045,7 @@ def _validate_package_contents(
                 loc_raw = _read_archive_entry(archive, vfs_path, display_path, collector)
                 if loc_raw is not None:
                     _validate_utf8_lf_text(loc_raw, display_path, collector)
+                    check_license_taint_bytes(loc_raw, display_path, collector)
             continue
 
         if vfs_path == "manifest.sii":
@@ -1050,6 +1055,8 @@ def _validate_package_contents(
             raw = _read_archive_entry(archive, vfs_path, display_path, collector)
             if raw is None:
                 continue
+
+            check_license_taint_bytes(raw, display_path, collector)
 
             country_sii_match = (
                 _COUNTRY_SII_FRAGMENT_RE.fullmatch(vfs_path) if profile != "core" else None
@@ -1351,6 +1358,7 @@ def validate_workshop_package(
         collector.error("00008", "versions.sii", f"Unable to read versions.sii: {exc}")
         return collector.build_report(workshop_dir, "workshop")
 
+    check_license_taint_bytes(versions_raw, "versions.sii", collector)
     _record_sii_hygiene(versions_raw, "versions.sii", require_siinunit=True, collector=collector)
 
     try:

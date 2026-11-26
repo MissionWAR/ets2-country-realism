@@ -294,6 +294,8 @@ def test_phase_a_workflow_reports_tier2_counters_and_rolls_up_tier3_staleness() 
     assert "tier2_feeds_succeeded" in text
     assert "tier2_feeds_failed" in text
     assert text.count("stale_tier3_curated") >= 2
+    assert text.count("extended_fx_alerts") >= 2
+    assert text.count("EXTENDED_GLOBAL_CURRENCIES") >= 2
     assert text.count("def _sanitize(") >= 2
 
     # Compile every embedded Python snippet and confirm zero ${{ inside run: blocks

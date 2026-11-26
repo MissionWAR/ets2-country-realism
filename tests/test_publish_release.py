@@ -916,3 +916,44 @@ def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attribution
         "Nigeria NBS",
     ):
         assert attr in md, f"Missing D-12 attribution: {attr!r}"
+
+
+def test_changelog_rolls_up_extended_fx_warning_alerts_while_keeping_core_itemized_hi03() -> None:
+    """HI-03: >5 extended global FX warning alerts roll up into one line; Core FX stays itemized."""
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    ext_fx_alerts = [
+        LockAlert(
+            severity="warning",
+            code="fx_lockfile_retained",
+            scope=ccy,
+            detail=f"Retained previous lockfile rate for {ccy}.",
+        )
+        for ccy in ("AED", "AFN", "AMD", "AOA", "ARS", "BHD", "BND")
+    ]
+    core_fx_alert = LockAlert(
+        severity="warning",
+        code="fx_divergence_warning",
+        scope="PLN",
+        detail="PLN FX divergence 2.5% exceeds 2.0% threshold.",
+    )
+    lock = base_lock.model_copy(update={"alerts": [core_fx_alert, *ext_fx_alerts]})
+    snap = build_realism_snapshot(registry, bl_countries, bl_locales, "summer", prices_lock=lock)
+    md = render_edition_changelog(
+        "summer", "1.62-2026.47", "a" * 64, "b" * 64, snap, prices_lock=lock
+    ).decode("utf-8")
+    alerts_section = md[
+        md.index("## Circuit-Breaker & Staleness Alerts") : md.index(
+            "## 36-Country Fuel Price Summary"
+        )
+    ]
+    assert "`fx_divergence_warning` (`PLN`)" in alerts_section
+    assert "`extended_fx_alerts` (`extended_fx`)" in alerts_section
+    assert "`7` extended global FX warning alerts" in alerts_section
+    assert "`fx_lockfile_retained` (`AED`)" not in alerts_section

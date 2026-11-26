@@ -281,6 +281,8 @@ def _validate_single_currency(
         if cand_data is not None:
             validator_candidates.append((candidate_provider, cand_data[0], cand_data[1]))
 
+    is_single_source_extended = is_extended and currency not in _ALL_ECB_COVERED
+
     if primary_data is not None:
         active_provider = PRIMARY_FX_PROVIDER
         active_rate, active_date = primary_data
@@ -288,24 +290,28 @@ def _validate_single_currency(
         remaining_validators = validator_candidates
     elif validator_candidates:
         active_provider, active_rate, active_date = validator_candidates[0]
-        fallback_used = True
         remaining_validators = validator_candidates[1:]
-        reason = (
-            f"failed sanity bounds for {currency}"
-            if primary_err is not None
-            else f"omitted {currency}"
-        )
-        alerts.append(
-            LockAlert(
-                severity="warning",
-                code="fx_primary_fallback",
-                scope=currency,
-                detail=(
-                    f"Primary FX provider {PRIMARY_FX_PROVIDER!r} {reason}; "
-                    f"promoted {active_provider!r} ({active_rate})."
-                ),
+        if is_single_source_extended and primary_err is None:
+            # Non-ECB extended global currencies use fawazahmed0 as their primary live source.
+            fallback_used = False
+        else:
+            fallback_used = True
+            reason = (
+                f"failed sanity bounds for {currency}"
+                if primary_err is not None
+                else f"omitted {currency}"
             )
-        )
+            alerts.append(
+                LockAlert(
+                    severity="warning",
+                    code="fx_primary_fallback",
+                    scope=currency,
+                    detail=(
+                        f"Primary FX provider {PRIMARY_FX_PROVIDER!r} {reason}; "
+                        f"promoted {active_provider!r} ({active_rate})."
+                    ),
+                )
+            )
     else:
         _resolve_fallback_or_missing(
             currency,
@@ -381,17 +387,18 @@ def _validate_single_currency(
             fallback_used=fallback_used,
         )
     else:
-        alerts.append(
-            LockAlert(
-                severity="warning",
-                code="fx_validator_unavailable",
-                scope=currency,
-                detail=(
-                    f"No cross-validator quote available for {currency}; "
-                    f"accepted {active_provider!r} ({active_rate}) within sanity band."
-                ),
+        if not is_single_source_extended:
+            alerts.append(
+                LockAlert(
+                    severity="warning",
+                    code="fx_validator_unavailable",
+                    scope=currency,
+                    detail=(
+                        f"No cross-validator quote available for {currency}; "
+                        f"accepted {active_provider!r} ({active_rate}) within sanity band."
+                    ),
+                )
             )
-        )
         resolved[currency] = FxRateLockEntry(
             currency=currency,
             rate_per_eur=active_rate,

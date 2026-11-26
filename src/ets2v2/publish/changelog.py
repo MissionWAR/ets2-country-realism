@@ -6,10 +6,11 @@ from typing import Final
 
 from ets2v2.normalize.currencies import (
     CORE_REFERENCE_FX_RATES,
+    EXTENDED_GLOBAL_CURRENCIES,
     TIER3_CURATED_BASELINE_SOURCE,
     VANILLA_36_ISO2S,
 )
-from ets2v2.normalize.models import PricesLockfile
+from ets2v2.normalize.models import LockAlert, PricesLockfile
 from ets2v2.normalize.totem_format import format_national_pump_price
 from ets2v2.publish.ledger import PublishedEditionState
 from ets2v2.registry.models import LaneSpeedOverride, RoadVehicleClass, Season
@@ -18,6 +19,7 @@ from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 _VEHICLE_ORDER: tuple[RoadVehicleClass, ...] = ("car", "truck", "bus")
 _MAX_ALERT_DETAIL_LEN: int = 240
 _EXTENDED_FX_ROLLUP_THRESHOLD: Final[int] = 20
+_EXTENDED_FX_ALERT_ROLLUP_THRESHOLD: Final[int] = 5
 
 _EU_TIER1_SOURCES: Final[frozenset[str]] = frozenset(
     {
@@ -124,14 +126,28 @@ def _render_fuel_summary_table(
     return lines
 
 
+def _is_extended_fx_warning(alert: LockAlert) -> bool:
+    return (
+        alert.severity == "warning"
+        and alert.code.startswith("fx_")
+        and alert.scope in EXTENDED_GLOBAL_CURRENCIES
+    )
+
+
 def _render_alerts_section(
     snapshot: RealismSnapshot,
     prices_lock: PricesLockfile | None,
 ) -> list[str]:
     if prices_lock is None:
         return []
-    itemized_alerts = [a for a in prices_lock.alerts if a.code != "stale_tier3_curated"]
     tier3_stale_alerts = [a for a in prices_lock.alerts if a.code == "stale_tier3_curated"]
+    ext_fx_warnings = [a for a in prices_lock.alerts if _is_extended_fx_warning(a)]
+    roll_up_ext_fx = len(ext_fx_warnings) > _EXTENDED_FX_ALERT_ROLLUP_THRESHOLD
+    itemized_alerts = [
+        a
+        for a in prices_lock.alerts
+        if a.code != "stale_tier3_curated" and not (roll_up_ext_fx and _is_extended_fx_warning(a))
+    ]
 
     non_tier3_fallback_countries = sorted(
         iso2
@@ -151,6 +167,7 @@ def _render_alerts_section(
     if (
         not itemized_alerts
         and not tier3_stale_alerts
+        and not (roll_up_ext_fx and ext_fx_warnings)
         and not non_tier3_fallback_countries
         and not tier3_fallback_countries
         and not fallback_fx
@@ -164,6 +181,18 @@ def _render_alerts_section(
         safe_detail = _sanitize_markdown_inline(alert.detail)
         lines.append(
             f"- **[{alert.severity.upper()}] `{safe_code}` (`{safe_scope}`):** {safe_detail}"
+        )
+    if roll_up_ext_fx and ext_fx_warnings:
+        code_counts: dict[str, int] = {}
+        for alert in ext_fx_warnings:
+            code_counts[alert.code] = code_counts.get(alert.code, 0) + 1
+        breakdown = ", ".join(
+            f"`{_sanitize_markdown_inline(code, max_len=64)}`={count}"
+            for code, count in sorted(code_counts.items())
+        )
+        lines.append(
+            f"- **[WARNING] `extended_fx_alerts` (`extended_fx`):** "
+            f"`{len(ext_fx_warnings)}` extended global FX warning alerts ({breakdown})."
         )
     if non_tier3_fallback_countries:
         joined_cc = ", ".join(f"`{iso2}`" for iso2 in non_tier3_fallback_countries)

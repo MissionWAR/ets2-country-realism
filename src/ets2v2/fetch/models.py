@@ -87,9 +87,12 @@ class RawFuelFeedResult(BaseModel):
     model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
 
     feed_name: str = Field(min_length=1)
-    tier: Literal["tier1", "fallback"]
+    tier: Literal["tier1", "tier2", "fallback"]
+    region_scope: Literal["eu_core", "global"] = "eu_core"
     ok: bool
     skipped: bool = False
+    skip_reason: str | None = None
+    error_code: str | None = None
     quotes: list[RawCountryFuelQuote] = Field(default_factory=list)
     error: str | None = None
     data_date: str | None = None
@@ -113,6 +116,12 @@ class FetchRunReport(BaseModel):
     lock_path: Path
     tier1_feeds_succeeded: int = Field(ge=0)
     tier1_feeds_failed: int = Field(ge=0)
+    eu_tier1_feeds_succeeded: int = Field(default=0, ge=0)
+    eu_tier1_feeds_failed: int = Field(default=0, ge=0)
+    global_tier1_feeds_succeeded: int = Field(default=0, ge=0)
+    global_tier1_feeds_failed: int = Field(default=0, ge=0)
+    tier2_feeds_succeeded: int = Field(default=0, ge=0)
+    tier2_feeds_failed: int = Field(default=0, ge=0)
     countries_updated: int = Field(ge=0)
     countries_fallback: int = Field(ge=0)
     fx_currencies_validated: int = Field(ge=0)

@@ -86,11 +86,11 @@ def _issue_codes(report: ValidationReport) -> set[str]:
 
 
 def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
-    """Enforce Layer 8 isolation: validate NEVER imports package/merge/normalize/fetch/publish."""
+    """Enforce Layer 8 isolation: validate NEVER imports package/merge/normalize/fetch/pub/audit."""
     py_files = sorted(VALIDATE_PKG_DIR.rglob("*.py"))
     assert py_files, "Expected Python modules under src/ets2v2/validate/"
 
-    forbidden_subpkgs = ("package", "merge", "normalize", "fetch", "publish")
+    forbidden_subpkgs = ("package", "merge", "normalize", "fetch", "publish", "audit")
     forbidden_roots = ("httpx", "openpyxl")
     violations: list[str] = []
     for py_file in py_files:
@@ -1311,3 +1311,83 @@ def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
     r_dangling = validate_local_zip(dangling_board_zip, baseline_dir=BASELINE_DIR, profile="combo")
     assert r_dangling.ok is False
     assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_dangling)
+
+
+def test_license_taint_gate_rejects_forbidden_markers_across_all_profiles(
+    built_editions: dict[str, BuiltEditionPaths],
+    tmp_path: pathlib.Path,
+) -> None:
+    """ETS2V2-INV-LICENSE-TAINT rejects forbidden markers across core, promods, and combo."""
+    # 1. Core Workshop profile: description.txt, def/country/*.sui, and versions.sii
+    ws_desc = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_desc")
+    desc_path = ws_desc / "universal" / "description.txt"
+    desc_path.write_bytes(desc_path.read_bytes() + b"\nSource: OpenStreetMap CC BY-SA 2.0\n")
+    r_desc = validate_workshop_package(ws_desc, baseline_dir=BASELINE_DIR, profile="core")
+    assert r_desc.ok is False
+    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_desc)
+
+    ws_sui = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_sui")
+    alb_path = ws_sui / "universal" / "def" / "country" / "albania.sui"
+    alb_path.write_bytes(b"# Data via GlobalPetrolPrices\n" + alb_path.read_bytes())
+    r_sui = validate_workshop_package(ws_sui, baseline_dir=BASELINE_DIR, profile="core")
+    assert r_sui.ok is False
+    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_sui)
+
+    ws_ver = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_ver")
+    ver_path = ws_ver / "versions.sii"
+    ver_path.write_bytes(b"# ODbL notice\n" + ver_path.read_bytes())
+    r_ver = validate_workshop_package(ws_ver, baseline_dir=BASELINE_DIR, profile="core")
+    assert r_ver.ok is False
+    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_ver)
+
+    # 2. ProMods profile: tainted manifest.sii and def/country/albania.sui in local zip
+    tainted_pm_zip = _rebuild_zip_with_mutations(
+        built_editions["summer"].local_zip_path,
+        tmp_path / "tainted_promods.zip",
+        overrides={
+            "description.txt": b"ProMods companion referencing MyLPG prices.\n",
+        },
+    )
+    r_pm = validate_local_zip(tainted_pm_zip, baseline_dir=BASELINE_DIR, profile="promods")
+    assert r_pm.ok is False
+    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_pm)
+
+    # 3. Combo profile: tainted def/country/thailand.sii and description.txt
+    icon_bytes = (ICONS_DIR / "summer.jpg").read_bytes()
+    manifest_bytes = (
+        b"SiiNunit\n{\n# ets2v2:managed-package kind=combo\nmod_package : .package_name\n{\n"
+        b'\tpackage_version: "1.62-2026.47"\n'
+        b'\tdisplay_name: "ETS2V2 Combo Patch"\n'
+        b'\tauthor: "ETS2 World Realism"\n'
+        b'\tcategory[]: "other"\n'
+        b'\ticon: "mod_icon.jpg"\n'
+        b'\tdescription_file: "description.txt"\n'
+        b"\tmp_mod_optional: true\n}\n}\n"
+    )
+    tainted_thailand_sii = (
+        b"# Paid IEA fuel benchmark (CC BY-NC-ND 3.0)\n"
+        b"country_data : country.data.thailand\n{\n"
+        b"\tcountry_id: 210\n"
+        b'\tname: "Thailand"\n'
+        b'\tcountry_code: "TH"\n'
+        b"\tfuel_price: 0.95\n"
+        b"\tlights_mandatory: false\n"
+        b"\tdriving_tired_offence: true\n"
+        b"\tmass_limit_per_axle_count[]: 18000\n"
+        b"\tmass_limit_per_axle_count[]: 25000\n"
+        b"\tmass_limit_per_axle_count[]: 36000\n}\n"
+    )
+    combo_tainted_zip = tmp_path / "tainted_combo.scs"
+    with zipfile.ZipFile(combo_tainted_zip, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for name, data in (
+            ("def/country/thailand.sii", tainted_thailand_sii),
+            ("description.txt", b"Combo patch.\n"),
+            ("manifest.sii", manifest_bytes),
+            ("mod_icon.jpg", icon_bytes),
+        ):
+            zi = zipfile.ZipInfo(filename=name, date_time=(1980, 1, 1, 0, 0, 0))
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zf.writestr(zi, data)
+    r_combo = validate_local_zip(combo_tainted_zip, baseline_dir=BASELINE_DIR, profile="combo")
+    assert r_combo.ok is False
+    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_combo)

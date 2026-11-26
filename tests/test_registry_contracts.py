@@ -9,6 +9,7 @@ import pytest
 from ets2v2.baseline.models import CountriesBaseline
 from ets2v2.cli import main
 from ets2v2.registry import (
+    load_country_aliases,
     load_law_registry,
     serialize_registry_json_bytes,
     validate_law_registry,
@@ -19,6 +20,7 @@ DATA_DIR = REPO_ROOT / "data"
 LAWS_DIR = DATA_DIR / "laws"
 COUNTRIES_LAWS_DIR = LAWS_DIR / "countries"
 MAPPINGS_PATH = DATA_DIR / "mappings" / "ets2_countries.json"
+ALIASES_PATH = DATA_DIR / "mappings" / "country_aliases.json"
 BASELINE_DIR = DATA_DIR / "baselines" / "ets2_1.62_def"
 
 EXPECTED_CURRENCIES: dict[str, str] = {
@@ -131,12 +133,12 @@ YEAR_ROUND_DRL_FALSE: frozenset[str] = frozenset(
 )
 
 
-def test_committed_registry_exact_76_vanilla_and_promods_countries_and_clean_room_hygiene() -> None:
+def test_committed_registry_exact_225_global_territories_and_clean_room_hygiene() -> None:
     assert MAPPINGS_PATH.is_file(), f"Missing {MAPPINGS_PATH}"
     assert COUNTRIES_LAWS_DIR.is_dir(), f"Missing {COUNTRIES_LAWS_DIR}"
 
     law_files = sorted(COUNTRIES_LAWS_DIR.glob("*.json"))
-    assert len(law_files) == 76
+    assert len(law_files) == 225
 
     raw_scs = [
         p for p in DATA_DIR.rglob("*") if p.is_file() and p.suffix.lower() in {".sii", ".sui"}
@@ -144,15 +146,19 @@ def test_committed_registry_exact_76_vanilla_and_promods_countries_and_clean_roo
     assert raw_scs == []
 
     bundle = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
-    assert len(bundle.mappings.countries) == 76
-    assert len(bundle.laws_by_iso2) == 76
+    assert len(bundle.mappings.countries) == 225
+    assert len(bundle.laws_by_iso2) == 225
 
     vanilla_entries = [e for e in bundle.mappings.countries if e.vanilla_1_62]
-    promods_entries = [e for e in bundle.mappings.countries if not e.vanilla_1_62]
+    non_vanilla_entries = [e for e in bundle.mappings.countries if not e.vanilla_1_62]
     assert len(vanilla_entries) == 36
-    assert len(promods_entries) == 40
+    assert len(non_vanilla_entries) == 189
     assert all(e.country_id is not None for e in vanilla_entries)
-    assert all(e.country_id is None for e in promods_entries)
+    assert all(e.country_id is None for e in non_vanilla_entries)
+
+    # 100% coverage of all country_aliases.json ISO-2 targets
+    aliases = load_country_aliases(ALIASES_PATH)
+    assert {entry.iso2 for entry in aliases.aliases.values()} <= set(bundle.laws_by_iso2)
 
     expected_promods_sample = {
         "AM",
@@ -174,8 +180,8 @@ def test_committed_registry_exact_76_vanilla_and_promods_countries_and_clean_roo
         "MD",
         "UZ",
     }
-    promods_iso2s = {e.iso2 for e in promods_entries}
-    assert expected_promods_sample <= promods_iso2s
+    non_vanilla_iso2s = {e.iso2 for e in non_vanilla_entries}
+    assert expected_promods_sample <= non_vanilla_iso2s
 
     assert validate_law_registry(LAWS_DIR, MAPPINGS_PATH, BASELINE_DIR) == []
 
@@ -408,4 +414,4 @@ def test_cli_registry_validate_default_committed_tree(
     exit_code = main(["registry", "validate"])
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "76 countries" in captured.out
+    assert "225 countries" in captured.out

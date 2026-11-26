@@ -9,7 +9,10 @@ from typing import Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ets2v2.normalize.currencies import ALL_TERRITORY_CURRENCIES
+from ets2v2.normalize.currencies import (
+    ALL_TERRITORY_CURRENCIES,
+    TIER3_CURATED_BASELINE_SOURCE,
+)
 from ets2v2.normalize.fx import round_eur_per_liter
 from ets2v2.normalize.models import (
     CANONICAL_FUEL_GRADES,
@@ -42,9 +45,14 @@ _FOUR_DP: Final[Decimal] = Decimal("0.0001")
 _DEFAULT_PETROL_TO_DIESEL_RATIO: Final[Decimal] = Decimal("1.03")
 _BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
 _PROMODS_CURATED_SEED_SOURCE: Final[str] = "promods_curated_seed"
-_SEEDED_SOURCES: Final[frozenset[str]] = frozenset(
-    {_BASELINE_SEEDED_SOURCE, _PROMODS_CURATED_SEED_SOURCE}
+SEEDED_LOCKFILE_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        _BASELINE_SEEDED_SOURCE,
+        _PROMODS_CURATED_SEED_SOURCE,
+        TIER3_CURATED_BASELINE_SOURCE,
+    }
 )
+_SEEDED_SOURCES: Final[frozenset[str]] = SEEDED_LOCKFILE_SOURCES
 
 
 class FuelNormalizationResult(BaseModel):

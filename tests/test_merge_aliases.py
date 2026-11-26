@@ -82,11 +82,11 @@ def test_semeuropa_brazilian_state_iso2_collision_shield(
     phase4_snapshot: RealismSnapshot,
     bundled_aliases: CountryAliasRegistry,
 ) -> None:
-    """All colliding SemEuropa Brazilian states MUST stop at Tier 1 (never match EU/MA ISO-2!)."""
-    assert len(phase4_snapshot.countries) == 76
-    assert "BR" not in phase4_snapshot.countries
+    """All colliding SemEuropa Brazilian states MUST resolve to BR (never match EU/MA ISO-2!)."""
+    assert len(phase4_snapshot.countries) == 225
+    assert "BR" in phase4_snapshot.countries
 
-    resolver = CountryResolver(phase4_snapshot, bundled_aliases)
+    resolver_full = CountryResolver(phase4_snapshot, bundled_aliases)
     colliding_states: list[tuple[str, str]] = [
         ("alagoas", "AL"),  # Albania
         ("amazonas", "AM"),  # Armenia
@@ -99,16 +99,35 @@ def test_semeuropa_brazilian_state_iso2_collision_shield(
         ("sergipe", "SE"),  # Sweden
     ]
 
+    # 1. With BR present in the 225-territory snapshot: Tier 1 alias resolves directly to BR!
     for state_slug, colliding_cc in colliding_states:
         assert colliding_cc in phase4_snapshot.countries
-        res = resolver.resolve(
+        res = resolver_full.resolve(
             state_slug,
             _dummy_country(state_slug, country_code=colliding_cc, iso_country_code=""),
         )
-        assert res.country is None, f"{state_slug} falsely matched {res.country}"
-        assert res.match_tier == "unmatched"
+        assert res.match_tier == "alias"
         assert res.resolved_iso2 == "BR"
-        assert res.unmatched_reason == "alias_target_not_in_snapshot"
+        assert res.country is not None
+        assert res.country.iso2 == "BR"
+        assert res.unmatched_reason is None
+
+    # 2. Against a synthetic snapshot missing BR: shield still stops at Tier 1 (never AL/AM/...)
+    snap_without_br = phase4_snapshot.model_copy(
+        update={
+            "countries": {iso2: c for iso2, c in phase4_snapshot.countries.items() if iso2 != "BR"}
+        }
+    )
+    resolver_no_br = CountryResolver(snap_without_br, bundled_aliases)
+    for state_slug, colliding_cc in colliding_states:
+        res_absent = resolver_no_br.resolve(
+            state_slug,
+            _dummy_country(state_slug, country_code=colliding_cc, iso_country_code=""),
+        )
+        assert res_absent.country is None, f"{state_slug} falsely matched {res_absent.country}"
+        assert res_absent.match_tier == "unmatched"
+        assert res_absent.resolved_iso2 == "BR"
+        assert res_absent.unmatched_reason == "alias_target_not_in_snapshot"
 
 
 def test_tier1_overrides_unexpected_iso_country_code(

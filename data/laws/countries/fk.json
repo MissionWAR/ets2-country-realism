@@ -1,0 +1,170 @@
+{
+  "currency": "FKP",
+  "driving_tired_offence": true,
+  "ets2_slug": "falkland_islands",
+  "iana_timezone": "Atlantic/Stanley",
+  "iso2": "FK",
+  "iso3": "flk",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.falklands.gov.fk/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Falkland Islands Road Traffic Ordinance: imperial mph limits (25 Stanley / 40 MPA road)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  }
+}

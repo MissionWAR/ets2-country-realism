@@ -1,0 +1,170 @@
+{
+  "currency": "XCD",
+  "driving_tired_offence": true,
+  "ets2_slug": "saint_kitts_nevis",
+  "iana_timezone": "America/St_Kitts",
+  "iso2": "KN",
+  "iso3": "kna",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.kn/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Saint Kitts and Nevis Vehicles and Road Traffic Act: imperial mph limits."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 20
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 30,
+          "max_limit": 30,
+          "uncommon": null,
+          "urban_limit": 30
+        }
+      ]
+    }
+  }
+}

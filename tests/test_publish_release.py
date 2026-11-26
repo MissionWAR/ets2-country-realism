@@ -169,14 +169,14 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
     )
     assert summer_verify.ok is True
     assert summer_verify.checksum_verified is True
-    assert summer_verify.country_count == 76
+    assert summer_verify.country_count == 225
     assert winter_verify.ok is True
     assert winter_verify.checksum_verified is True
-    assert winter_verify.country_count == 76
+    assert winter_verify.country_count == 225
 
     summer_snap = RealismSnapshot.model_validate_json(summer_snap_path.read_text("utf-8"))
     assert summer_snap.schema_version == 1
-    assert len(summer_snap.countries) == 76
+    assert len(summer_snap.countries) == 225
 
     state_bytes_after_run1 = state_path.read_bytes()
     ledger_after_run1 = load_published_ledger(state_path)
@@ -548,7 +548,7 @@ def test_changelog_d16_fuel_table_alerts_and_open_data_attributions() -> None:
     ).decode("utf-8")
 
     assert "## 36-Country Fuel Price Summary" in clean_md
-    assert "- **Countries Covered:** `36` (Core) / `76` (Snapshot)" in clean_md
+    assert "- **Countries Covered:** `36` (Core) / `225` (Snapshot)" in clean_md
     assert "| `KZ` |" not in clean_md
     assert "| ISO2 | Currency | EUR/L Diesel | Local Diesel | Local 95 | Source | Freshness |" in (
         clean_md
@@ -791,3 +791,195 @@ def test_md06_non_core_promods_snapshot_change_sets_snapshots_changed_without_bu
     )
     assert res_3.any_changed is False
     assert res_3.snapshots_changed is False
+
+
+def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attributions() -> None:
+    from ets2v2.normalize.lockfile import CURATED_TIER3_SOURCES
+
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+
+    # Simulate realistic mix: live EU Tier 1 (DE), live Global Tier 1 (US), live Tier 2 (AE),
+    # and 140+ Tier 3 curated baselines (with 12 overdue >180d) + 100+ extended fallback FX.
+    updated_countries = dict(base_lock.countries)
+    updated_countries["DE"] = updated_countries["DE"].model_copy(
+        update={"source": "ec_weekly_oil_bulletin", "fallback_used": False}
+    )
+    updated_countries["US"] = updated_countries["US"].model_copy(
+        update={"source": "us_eia_v2", "fallback_used": False}
+    )
+    updated_countries["AE"] = updated_countries["AE"].model_copy(
+        update={"source": "ae_moei", "fallback_used": False}
+    )
+
+    t3_iso2s = sorted(
+        iso2 for iso2, entry in updated_countries.items() if entry.source in CURATED_TIER3_SOURCES
+    )
+    assert len(t3_iso2s) == 184  # 186 curated (149 Tier 3 + 37 ProMods) minus live US & AE
+
+    synthetic_alerts = [
+        LockAlert(
+            severity="warning",
+            code="tier2_rate_limited",
+            scope="sa_aramco",
+            detail="HTTP 403 Akamai WAF",
+        ),
+        *[
+            LockAlert(
+                severity="warning",
+                code="stale_tier3_curated",
+                scope=iso2,
+                detail=f"Tier 3 curated baseline for {iso2} is 200 days old (limit=180d).",
+            )
+            for iso2 in t3_iso2s[:12]
+        ],
+    ]
+    mixed_lock = base_lock.model_copy(
+        update={"countries": updated_countries, "alerts": synthetic_alerts}
+    )
+    snap = build_realism_snapshot(
+        registry, bl_countries, bl_locales, "summer", prices_lock=mixed_lock
+    )
+    md = render_edition_changelog(
+        "summer",
+        "1.62-2026.47",
+        "a" * 64,
+        "b" * 64,
+        snap,
+        prices_lock=mixed_lock,
+    ).decode("utf-8")
+
+    # Core table strictly 36 data rows
+    assert "## 36-Country Fuel Price Summary" in md
+    table_start = md.index("| ISO2 | Currency |")
+    table_end = md.index("## Global Snapshot Coverage")
+    table_rows = [line for line in md[table_start:table_end].splitlines() if line.startswith("| `")]
+    assert len(table_rows) == 36
+
+    # Compact Global Snapshot Coverage summary block right before Attribution & Licensing
+    assert "## Global Snapshot Coverage" in md
+    assert md.index("## Global Snapshot Coverage") < md.index("## Attribution & Licensing")
+    assert (
+        "`225`"
+        in md[md.index("## Global Snapshot Coverage") : md.index("## Attribution & Licensing")]
+    )
+    assert "Live Tier 1 EU" in md
+    assert "Live Tier 1 Global" in md
+    assert "Live Tier 2 National Portals" in md
+    assert "Tier 3 Curated Global Baselines:** `184` territories" in md
+
+    # Noise-controlled Tier 3 rollup: 1 summary line instead of 140+ individual ISO-2 codes!
+    expected_t3_summary = (
+        f"- **Tier 3 Curated Global Baselines Retained:** `{len(t3_iso2s)}` territories "
+        "(`12` overdue >180d)"
+    )
+    assert expected_t3_summary in md
+    assert "`stale_tier3_curated`" not in md
+    # Core / Tier 1 / Tier 2 anomalies remain itemized
+    assert "`tier2_rate_limited` (`sa_aramco`)" in md
+    # Large extended fallback FX list summarized concisely instead of printing 140+ codes
+    alerts_section = md[
+        md.index("## Circuit-Breaker & Staleness Alerts") : md.index(
+            "## 36-Country Fuel Price Summary"
+        )
+    ]
+    assert "extended global currencies" in alerts_section
+    assert "`ZW`" not in alerts_section
+
+    # Expanded Global Tier 1 & Tier 2 open-data attributions (D-12)
+    for attr in (
+        "U.S. EIA",
+        "Brazil ANP",
+        "Argentina Energía",
+        "Colombia MinMinas/CREG",
+        "Chile CNE",
+        "Malaysia OpenDOSM CC BY 4.0",
+        "Japan METI",
+        "Korea KNOC Opinet",
+        "Iceland Gasvaktin MIT",
+        "Switzerland BFS",
+        "Moldova ANRE",
+        "North Macedonia ERC",
+        "Russia Rosstat",
+        "Israel MoE",
+        "UAE MOEI",
+        "South Africa DMRE/CEF",
+        "Saudi Aramco",
+        "Nigeria NBS",
+    ):
+        assert attr in md, f"Missing D-12 attribution: {attr!r}"
+
+
+def test_changelog_rolls_up_extended_fx_warning_alerts_while_keeping_core_itemized_hi03() -> None:
+    """HI-03: >5 extended global FX warning alerts roll up into one line; Core FX stays itemized."""
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    ext_fx_alerts = [
+        LockAlert(
+            severity="warning",
+            code="fx_lockfile_retained",
+            scope=ccy,
+            detail=f"Retained previous lockfile rate for {ccy}.",
+        )
+        for ccy in ("AED", "AFN", "AMD", "AOA", "ARS", "BHD", "BND")
+    ]
+    core_fx_alert = LockAlert(
+        severity="warning",
+        code="fx_divergence_warning",
+        scope="PLN",
+        detail="PLN FX divergence 2.5% exceeds 2.0% threshold.",
+    )
+    lock = base_lock.model_copy(update={"alerts": [core_fx_alert, *ext_fx_alerts]})
+    snap = build_realism_snapshot(registry, bl_countries, bl_locales, "summer", prices_lock=lock)
+    md = render_edition_changelog(
+        "summer", "1.62-2026.47", "a" * 64, "b" * 64, snap, prices_lock=lock
+    ).decode("utf-8")
+    alerts_section = md[
+        md.index("## Circuit-Breaker & Staleness Alerts") : md.index(
+            "## 36-Country Fuel Price Summary"
+        )
+    ]
+    assert "`fx_divergence_warning` (`PLN`)" in alerts_section
+    assert "`extended_fx_alerts` (`extended_fx`)" in alerts_section
+    assert "`7` extended global FX warning alerts" in alerts_section
+    assert "`fx_lockfile_retained` (`AED`)" not in alerts_section
+
+
+def test_changelog_neutralizes_markdown_link_image_and_pipe_injection_md06() -> None:
+    """MD-06: Alert detail strings escape [, ], and | to block Markdown image/link injection."""
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    evil_alert = LockAlert(
+        severity="warning",
+        code="tier2_portal_outage",
+        scope="ae_moei",
+        detail="Upstream ![img](https://evil.example/px) [click](https://phish.example) a|b",
+    )
+    lock = base_lock.model_copy(update={"alerts": [evil_alert]})
+    snap = build_realism_snapshot(registry, bl_countries, bl_locales, "summer", prices_lock=lock)
+    md = render_edition_changelog(
+        "summer", "1.62-2026.47", "a" * 64, "b" * 64, snap, prices_lock=lock
+    ).decode("utf-8")
+    assert "![img](" not in md
+    assert "[click](" not in md
+    assert "!\\[img\\](" in md
+    assert "\\[click\\](" in md
+    assert "a\\|b" in md

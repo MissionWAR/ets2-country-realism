@@ -49,6 +49,9 @@ jobs:
       - name: Fetch live European FX & Tier 1 fuel prices
         env:
           TANKERKOENIG_API_KEY: ${{ secrets.TANKERKOENIG_API_KEY }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+          CNE_API_TOKEN: ${{ secrets.CNE_API_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -62,31 +65,81 @@ jobs:
           import os
           import pathlib
 
+          from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
+
           def _sanitize(text: str, limit: int = 240) -> str:
-              cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
-              return cleaned[:limit]
+              cleaned = (
+                  " ".join(text.split())
+                  .replace("`", "'")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+                  .replace("|", "\\|")
+                  .replace("[", "\\[")
+                  .replace("]", "\\]")
+              )
+              return cleaned[:limit].rstrip("\\")
+
+          def _is_ext_fx_warn(alert: dict) -> bool:
+              return (
+                  str(alert.get("severity", "")).lower() == "warning"
+                  and str(alert.get("code", "")).startswith("fx_")
+                  and str(alert.get("scope", "")) in EXTENDED_GLOBAL_CURRENCIES
+              )
 
           step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
           summary_path = pathlib.Path("dist/fetch_summary.json")
           if step_summary and summary_path.is_file():
               fetch_data = json.loads(summary_path.read_text("utf-8"))
               alerts = fetch_data.get("alerts", [])
+              eu_ok = fetch_data.get("eu_tier1_feeds_succeeded", fetch_data.get("tier1_feeds_succeeded", 0))
+              eu_fail = fetch_data.get("eu_tier1_feeds_failed", fetch_data.get("tier1_feeds_failed", 0))
+              global_ok = fetch_data.get("global_tier1_feeds_succeeded", 0)
+              global_fail = fetch_data.get("global_tier1_feeds_failed", 0)
+              tier2_ok = fetch_data.get("tier2_feeds_succeeded", 0)
+              tier2_fail = fetch_data.get("tier2_feeds_failed", 0)
+              tier3_stale = [a for a in alerts if a.get("code") == "stale_tier3_curated"]
+              ext_fx_warnings = [a for a in alerts if _is_ext_fx_warn(a)]
+              roll_up_ext_fx = len(ext_fx_warnings) > 5
+              itemized_alerts = [
+                  a
+                  for a in alerts
+                  if a.get("code") != "stale_tier3_curated"
+                  and not (roll_up_ext_fx and _is_ext_fx_warn(a))
+              ]
               lines = [
                   "### Phase A Fetch Summary",
                   "",
-                  f"- **Tier 1 Feeds Succeeded:** `{fetch_data.get('tier1_feeds_succeeded', 0)}`",
-                  f"- **Tier 1 Feeds Failed:** `{fetch_data.get('tier1_feeds_failed', 0)}`",
+                  f"- **EU Core Tier 1 Feeds Succeeded / Failed:** `{eu_ok}` / `{eu_fail}`",
+                  f"- **Global Tier 1 Feeds Succeeded / Failed:** `{global_ok}` / `{global_fail}`",
+                  f"- **Tier 2 National Portals Succeeded / Failed:** `{tier2_ok}` / `{tier2_fail}`",
                   f"- **Countries Updated / Fallback:** `{fetch_data.get('countries_updated', 0)}` / `{fetch_data.get('countries_fallback', 0)}`",
                   f"- **Alerts:** `{len(alerts)}`",
               ]
-              if alerts:
+              if itemized_alerts or tier3_stale or (roll_up_ext_fx and ext_fx_warnings):
                   lines.extend(["", "#### Circuit-Breaker & Staleness Alerts"])
-                  for alert in alerts:
+                  for alert in itemized_alerts:
                       sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
                       code = _sanitize(str(alert.get("code", "alert")), 64)
                       scope = _sanitize(str(alert.get("scope", "global")), 64)
                       detail = _sanitize(str(alert.get("detail", "")), 240)
                       lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
+                  if roll_up_ext_fx and ext_fx_warnings:
+                      counts: dict[str, int] = {}
+                      for alert in ext_fx_warnings:
+                          c = str(alert.get("code", "fx_alert"))
+                          counts[c] = counts.get(c, 0) + 1
+                      breakdown = ", ".join(
+                          f"`{_sanitize(c, 64)}`={n}" for c, n in sorted(counts.items())
+                      )
+                      lines.append(
+                          f"- **[WARNING] `extended_fx_alerts` (`extended_fx`):** "
+                          f"`{len(ext_fx_warnings)}` extended global FX warning alerts ({breakdown})."
+                      )
+                  if tier3_stale:
+                      lines.append(
+                          f"- **[WARNING] `stale_tier3_curated` (`tier3`):** `{len(tier3_stale)}` "
+                          "Tier 3 curated baseline territories overdue (>180d)."
+                      )
               with pathlib.Path(step_summary).open("a", encoding="utf-8") as fh:
                   fh.write("\n".join(lines) + "\n")
           PY
@@ -223,20 +276,63 @@ jobs:
 
           summary_path = pathlib.Path("dist/fetch_summary.json")
           if summary_path.is_file():
+              from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
+
               def _sanitize(text: str, limit: int = 240) -> str:
-                  cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
-                  return cleaned[:limit]
+                  cleaned = (
+                      " ".join(text.split())
+                      .replace("`", "'")
+                      .replace("<", "&lt;")
+                      .replace(">", "&gt;")
+                      .replace("|", "\\|")
+                      .replace("[", "\\[")
+                      .replace("]", "\\]")
+                  )
+                  return cleaned[:limit].rstrip("\\")
+
+              def _is_ext_fx_warn(alert: dict) -> bool:
+                  return (
+                      str(alert.get("severity", "")).lower() == "warning"
+                      and str(alert.get("code", "")).startswith("fx_")
+                      and str(alert.get("scope", "")) in EXTENDED_GLOBAL_CURRENCIES
+                  )
 
               fetch_data = json.loads(summary_path.read_text("utf-8"))
               alerts = fetch_data.get("alerts", [])
-              if alerts:
+              tier3_stale = [a for a in alerts if a.get("code") == "stale_tier3_curated"]
+              ext_fx_warnings = [a for a in alerts if _is_ext_fx_warn(a)]
+              roll_up_ext_fx = len(ext_fx_warnings) > 5
+              itemized_alerts = [
+                  a
+                  for a in alerts
+                  if a.get("code") != "stale_tier3_curated"
+                  and not (roll_up_ext_fx and _is_ext_fx_warn(a))
+              ]
+              if itemized_alerts or tier3_stale or (roll_up_ext_fx and ext_fx_warnings):
                   lines.extend(["", "### Circuit-Breaker & Staleness Alerts"])
-                  for alert in alerts:
+                  for alert in itemized_alerts:
                       sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
                       code = _sanitize(str(alert.get("code", "alert")), 64)
                       scope = _sanitize(str(alert.get("scope", "global")), 64)
                       detail = _sanitize(str(alert.get("detail", "")), 240)
                       lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
+                  if roll_up_ext_fx and ext_fx_warnings:
+                      counts: dict[str, int] = {}
+                      for alert in ext_fx_warnings:
+                          c = str(alert.get("code", "fx_alert"))
+                          counts[c] = counts.get(c, 0) + 1
+                      breakdown = ", ".join(
+                          f"`{_sanitize(c, 64)}`={n}" for c, n in sorted(counts.items())
+                      )
+                      lines.append(
+                          f"- **[WARNING] `extended_fx_alerts` (`extended_fx`):** "
+                          f"`{len(ext_fx_warnings)}` extended global FX warning alerts ({breakdown})."
+                      )
+                  if tier3_stale:
+                      lines.append(
+                          f"- **[WARNING] `stale_tier3_curated` (`tier3`):** `{len(tier3_stale)}` "
+                          "Tier 3 curated baseline territories overdue (>180d)."
+                      )
 
           print("\n".join(lines))
           PY

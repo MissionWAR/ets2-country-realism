@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
+import os
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
 from datetime import date
 from pathlib import Path
@@ -14,6 +17,14 @@ from typing import cast
 from pydantic import ValidationError
 
 from ets2v2 import __version__
+from ets2v2.audit import (
+    DEFAULT_ALLOWLIST_PATH,
+    DEFAULT_WESTNORDOST_RULES_URL,
+    render_osm_speed_drift_markdown,
+    run_osm_speed_audit,
+    scan_repo_and_artifacts_for_taint,
+    serialize_audit_report_bytes,
+)
 from ets2v2.baseline import (
     BaselineManifest,
     CountriesBaseline,
@@ -22,7 +33,12 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
-from ets2v2.fetch import DEFAULT_TIMEOUT_SECONDS, redact_url_secrets, run_price_fetch
+from ets2v2.fetch import (
+    DEFAULT_TIMEOUT_SECONDS,
+    HttpFetchError,
+    redact_url_secrets,
+    run_price_fetch,
+)
 from ets2v2.merge import ModlistOrder, build_promods_editions, compose_local
 from ets2v2.normalize import PricesLockfile, load_prices_lockfile
 from ets2v2.package import (
@@ -640,6 +656,8 @@ def _handle_fetch(args: argparse.Namespace) -> int:
     allow_jumps = cast(list[str] | None, args.allow_jump) or []
     fx_only = cast(bool, args.fx_only)
     seed_offline = cast(bool, args.seed_offline)
+    no_global = cast(bool, args.no_global)
+    no_tier2 = cast(bool, args.no_tier2)
     timeout = cast(float, args.timeout)
     dry_run = cast(bool, args.dry_run)
     as_json = cast(bool, args.json)
@@ -658,6 +676,8 @@ def _handle_fetch(args: argparse.Namespace) -> int:
             allow_jump_iso2=frozenset(code.strip().upper() for code in allow_jumps if code.strip()),
             fx_only=fx_only,
             seed_offline=seed_offline,
+            include_global=not no_global,
+            include_tier2=not no_tier2,
             timeout=timeout,
             write_lock=not dry_run,
         )
@@ -682,6 +702,9 @@ def _handle_fetch(args: argparse.Namespace) -> int:
         print(
             f"Price fetch {status_label} ({mode_label}): "
             f"tier1={report.tier1_feeds_succeeded} ok/{report.tier1_feeds_failed} failed, "
+            f"global_tier1={report.global_tier1_feeds_succeeded} ok/"
+            f"{report.global_tier1_feeds_failed} failed, "
+            f"tier2={report.tier2_feeds_succeeded} ok/{report.tier2_feeds_failed} failed, "
             f"countries={report.countries_updated} updated/{report.countries_fallback} fallback, "
             f"fx={report.fx_currencies_validated}, alerts={len(report.alerts)}."
         )
@@ -781,6 +804,128 @@ def _handle_compose_local(args: argparse.Namespace) -> int:
         print(f"warning: {warning}", file=sys.stderr)
     for error in report.errors:
         print(f"error: {error}", file=sys.stderr)
+    return 0 if report.ok else 1
+
+
+def _write_bytes_atomic(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            tmp_file.write(data)
+        os.replace(tmp_path, path)
+    except BaseException:
+        if tmp_path is not None:
+            with contextlib.suppress(OSError):
+                tmp_path.unlink()
+        raise
+
+
+def _handle_audit_osm_speeds(args: argparse.Namespace) -> int:
+    iso2_raw = cast(str | None, args.iso2)
+    include_overpass = cast(bool, args.overpass)
+    include_taginfo = cast(bool, args.taginfo)
+    rules_url = cast(str, args.rules_url)
+    rules_file = cast(Path | None, args.rules_file)
+    allowlist_path = cast(Path | None, args.allowlist)
+    laws_dir = cast(Path, args.laws_dir)
+    mappings_path = cast(Path, args.mappings)
+    out_md = cast(Path | None, args.out_md)
+    out_json = cast(Path | None, args.out_json)
+    timeout = cast(float, args.timeout)
+    fail_on_drift = cast(bool, args.fail_on_drift)
+    as_json = cast(bool, args.json)
+
+    if not math.isfinite(timeout) or timeout <= 0.0:
+        print(f"error: --timeout must be finite and > 0, got {timeout!r}", file=sys.stderr)
+        return 1
+
+    iso2_filter: list[str] | None = None
+    if iso2_raw is not None and iso2_raw.strip():
+        iso2_filter = [part.strip().upper() for part in iso2_raw.split(",") if part.strip()]
+
+    try:
+        report = run_osm_speed_audit(
+            laws_dir=laws_dir,
+            mappings_path=mappings_path,
+            allowlist_path=allowlist_path,
+            rules_file=rules_file,
+            rules_url=rules_url,
+            iso2_filter=iso2_filter,
+            include_overpass=include_overpass,
+            include_taginfo=include_taginfo,
+            timeout=timeout,
+        )
+        if out_md is not None:
+            md_text = render_osm_speed_drift_markdown(report)
+            _write_bytes_atomic(out_md, md_text.encode("utf-8"))
+        if out_json is not None:
+            _write_bytes_atomic(out_json, serialize_audit_report_bytes(report))
+    except (OSError, ValueError, ValidationError, HttpFetchError) as exc:
+        print(f"error: audit osm-speeds failed: {redact_url_secrets(str(exc))}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = report.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+    else:
+        print(
+            f"OSM speed audit: checked={report.countries_checked}, "
+            f"matched={report.countries_matched_in_osm}, "
+            f"unacknowledged_drift={report.unacknowledged_drift_count}, "
+            f"acknowledged={report.acknowledged_difference_count}"
+        )
+
+    if fail_on_drift and report.unacknowledged_drift_count > 0:
+        return 1
+    return 0
+
+
+def _handle_audit_taint(args: argparse.Namespace) -> int:
+    repo_root = cast(Path, args.repo_root)
+    snapshots = cast(list[Path] | None, args.snapshot) or []
+    packages = cast(list[Path] | None, args.package) or []
+    as_json = cast(bool, args.json)
+
+    try:
+        report = scan_repo_and_artifacts_for_taint(
+            repo_root,
+            snapshot_paths=snapshots,
+            package_paths=packages,
+        )
+    except (
+        OSError,
+        ValueError,
+        ValidationError,
+        ProtectedPayloadError,
+        UnsupportedCompressionError,
+    ) as exc:
+        print(f"error: audit taint failed: {exc}", file=sys.stderr)
+        return 1
+
+    if as_json:
+        payload: object = report.model_dump(mode="json")
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+    else:
+        status = "PASSED" if report.ok else "FAILED"
+        print(
+            f"License taint scan {status}: files_scanned={report.files_scanned}, "
+            f"snapshots={report.snapshots_scanned}, packages={report.packages_scanned}, "
+            f"violations={report.violation_count}"
+        )
+        for violation in report.violations:
+            print(
+                f"error: [{violation.marker}] {violation.path}:{violation.line_number}: "
+                f"{violation.excerpt}",
+                file=sys.stderr,
+            )
     return 0 if report.ok else 1
 
 
@@ -1437,6 +1582,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Deterministically seed state/prices.lock.json offline from 1.62 baseline.",
     )
     fetch_parser.add_argument(
+        "--no-global",
+        action="store_true",
+        help="Skip non-EU Global Tier 1 fuel collectors (EU Core only).",
+    )
+    fetch_parser.add_argument(
+        "--no-tier2",
+        action="store_true",
+        help="Skip Tier 2 guarded national portal scrapers.",
+    )
+    fetch_parser.add_argument(
         "--timeout",
         type=float,
         default=DEFAULT_TIMEOUT_SECONDS,
@@ -1614,6 +1769,130 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print ComposeReport as deterministic JSON.",
     )
     compose_parser.set_defaults(handler=_handle_compose_local)
+
+    audit_parser = subparsers.add_parser(
+        "audit",
+        help="Quarantined internal OSM speed-limit drift audit and CC BY 4.0 license-taint checks.",
+    )
+    audit_parser.set_defaults(handler=_make_help_handler(audit_parser))
+    audit_subparsers = audit_parser.add_subparsers(
+        dest="audit_command",
+        metavar="SUBCOMMAND",
+    )
+
+    audit_osm_parser = audit_subparsers.add_parser(
+        "osm-speeds",
+        help="Compare data/laws/ statutory limits against westnordost/osm-legal-default-speeds.",
+    )
+    audit_osm_parser.add_argument(
+        "--iso2",
+        type=str,
+        default=None,
+        help="Optional comma-separated ISO-2 country codes to audit (default: all countries).",
+    )
+    audit_osm_parser.add_argument(
+        "--overpass",
+        action="store_true",
+        help="Opt-in Overpass tags-only spot-checks (requires <= 10 selected ISO-2 codes).",
+    )
+    audit_osm_parser.add_argument(
+        "--taginfo",
+        action="store_true",
+        help="Opt-in Taginfo API v4 global maxspeed value distributions.",
+    )
+    audit_osm_parser.add_argument(
+        "--rules-url",
+        type=str,
+        default=DEFAULT_WESTNORDOST_RULES_URL,
+        help=(
+            "HTTPS URL to westnordost legal_default_speeds.json "
+            f"(default: {DEFAULT_WESTNORDOST_RULES_URL})."
+        ),
+    )
+    audit_osm_parser.add_argument(
+        "--rules-file",
+        type=Path,
+        default=None,
+        help="Optional local path to westnordost legal_default_speeds.json (offline mode).",
+    )
+    audit_osm_parser.add_argument(
+        "--allowlist",
+        type=Path,
+        default=DEFAULT_ALLOWLIST_PATH,
+        help=f"Clean-room statutory deviation allowlist JSON (default: {DEFAULT_ALLOWLIST_PATH}).",
+    )
+    audit_osm_parser.add_argument(
+        "--laws-dir",
+        type=Path,
+        default=Path("data/laws"),
+        help="Directory containing countries/<iso2>.json law records (default: data/laws).",
+    )
+    audit_osm_parser.add_argument(
+        "--mappings",
+        type=Path,
+        default=Path("data/mappings/ets2_countries.json"),
+        help="Path to ets2_countries.json mapping file.",
+    )
+    audit_osm_parser.add_argument(
+        "--out-md",
+        type=Path,
+        default=None,
+        help="Optional output path for sanitized Markdown drift report.",
+    )
+    audit_osm_parser.add_argument(
+        "--out-json",
+        type=Path,
+        default=None,
+        help="Optional output path for deterministic sorted JSON drift report.",
+    )
+    audit_osm_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS}).",
+    )
+    audit_osm_parser.add_argument(
+        "--fail-on-drift",
+        action="store_true",
+        help="Exit non-zero if unacknowledged speed-limit drift is detected.",
+    )
+    audit_osm_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print OsmSpeedAuditReport as deterministic sorted JSON.",
+    )
+    audit_osm_parser.set_defaults(handler=_handle_audit_osm_speeds)
+
+    audit_taint_parser = audit_subparsers.add_parser(
+        "taint",
+        help="Scan data/, state/, snapshots, and packages for forbidden license/source markers.",
+    )
+    audit_taint_parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path("."),
+        help="Repository root directory to scan (default: current directory).",
+    )
+    audit_taint_parser.add_argument(
+        "--snapshot",
+        action="append",
+        type=Path,
+        default=None,
+        help="Repeatable realism-snapshot-*.json path to include in taint scan.",
+    )
+    audit_taint_parser.add_argument(
+        "--package",
+        action="append",
+        type=Path,
+        default=None,
+        help="Repeatable unpacked Workshop dir or .zip/.scs package path to scan.",
+    )
+    audit_taint_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print TaintScanReport as deterministic sorted JSON.",
+    )
+    audit_taint_parser.set_defaults(handler=_handle_audit_taint)
 
     return parser
 

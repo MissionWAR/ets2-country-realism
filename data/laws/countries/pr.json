@@ -1,0 +1,169 @@
+{
+  "currency": "USD",
+  "driving_tired_offence": true,
+  "ets2_slug": "puerto_rico",
+  "iana_timezone": "America/Puerto_Rico",
+  "iso2": "PR",
+  "iso3": "pri",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://www.dtop.pr.gov/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Puerto Rico Ley 22 de Vehiculos y Transito: imperial mph limits (25 urban, 45 rural, 65 autopista)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": 45,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 55,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 65,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 65
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 55,
+          "max_limit": 55,
+          "uncommon": null,
+          "urban_limit": 55
+        }
+      ]
+    }
+  }
+}

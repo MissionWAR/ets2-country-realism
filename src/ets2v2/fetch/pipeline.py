@@ -19,6 +19,7 @@ from ets2v2.fetch.ec_bulletin import (
     fetch_fuel_prices_eu,
 )
 from ets2v2.fetch.fx import fetch_all_fx_quotes, run_fx_only_fetch
+from ets2v2.fetch.global_tier1 import fetch_all_global_tier1_feeds
 from ets2v2.fetch.http import DEFAULT_TIMEOUT_SECONDS, create_http_client, redact_url_secrets
 from ets2v2.fetch.models import (
     FetchRunReport,
@@ -27,15 +28,18 @@ from ets2v2.fetch.models import (
     RawFuelFeedResult,
 )
 from ets2v2.fetch.national import fetch_all_national_feeds
+from ets2v2.fetch.tier2_portals import fetch_all_tier2_portals
 from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_TERRITORY_CURRENCIES,
     PROMODS_EXTENDED_ISO2S,
+    load_tier3_fuel_baselines,
 )
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
     MAX_WOW_JUMP_RATIO,
     MIN_EUR_PER_LITER,
+    SEEDED_LOCKFILE_SOURCES,
     compute_secondary_grade_prices,
     normalize_country_fuel_prices,
     normalize_iso2_alias,
@@ -45,7 +49,7 @@ from ets2v2.normalize.fx import FxProviderQuote, cross_validate_fx_rates, round_
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_LICENSE,
     BASELINE_SEEDED_SOURCE,
-    PROMODS_CURATED_SEED_SOURCE,
+    EXTRA_EU_SEED_EUR_PRICES,
     evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
@@ -66,6 +70,16 @@ _NON_EU_PRIMARY_LIVE_ISO2S: Final[frozenset[str]] = _NON_EU_VANILLA_ISO2S | PROM
 _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "fuel_prices_eu": 10,
     "fionnhughes_ec_wob": 20,
+    "is_gasvaktin": 25,
+    "ch_bfs_lik": 25,
+    "md_anre": 25,
+    "mk_erc": 25,
+    "ru_rosstat": 25,
+    "il_moe": 25,
+    "ae_moei": 25,
+    "za_dmre_cef": 25,
+    "sa_aramco": 25,
+    "ng_nbs": 25,
     "ec_weekly_oil_bulletin": 30,
     "uk_desnz": 40,
     "no_ssb_09654": 40,
@@ -74,6 +88,15 @@ _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "es_miteco": 40,
     "it_mimit": 40,
     "nl_cbs_80416ned": 40,
+    "us_eia_v2": 40,
+    "br_anp": 40,
+    "ar_energia": 40,
+    "co_sicom": 40,
+    "co_creg": 40,
+    "cl_cne": 40,
+    "my_opendosm": 40,
+    "jp_meti": 40,
+    "kr_opinet": 40,
 }
 _SEED_PETROL_TO_DIESEL_RATIO: Final[float] = 1.03
 
@@ -121,7 +144,7 @@ def _validate_supplemental_grade(
     rounded_val = round_local_price(local_val)
     if (
         previous_entry is not None
-        and previous_entry.source not in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
+        and previous_entry.source not in SEEDED_LOCKFILE_SOURCES
         and iso2 not in normalized_allow
     ):
         prev_local = previous_entry.local_prices.get(grade)
@@ -176,6 +199,7 @@ def _build_baseline_entry(
     iso2: str,
     *,
     diesel_eur: float,
+    petrol_95_eur: float | None = None,
     fx_entry: FxRateLockEntry,
     data_date: str,
     fetched_at: str,
@@ -184,7 +208,11 @@ def _build_baseline_entry(
 ) -> CountryFuelLockEntry:
     rate = fx_entry.rate_per_eur
     diesel_eur_3dp = round_eur_per_liter(diesel_eur)
-    petrol_95_eur_3dp = round_eur_per_liter(diesel_eur_3dp * _SEED_PETROL_TO_DIESEL_RATIO)
+    petrol_95_eur_3dp = (
+        round_eur_per_liter(petrol_95_eur)
+        if petrol_95_eur is not None
+        else round_eur_per_liter(diesel_eur_3dp * _SEED_PETROL_TO_DIESEL_RATIO)
+    )
     anchors: dict[FuelGrade, float] = {
         "diesel": round_local_price(diesel_eur_3dp * rate),
         "petrol_95": round_local_price(petrol_95_eur_3dp * rate),
@@ -211,10 +239,15 @@ def run_price_fetch(
     allow_jump_iso2: frozenset[str] = frozenset(),
     fx_only: bool = False,
     seed_offline: bool = False,
+    include_global: bool = True,
+    include_tier2: bool = True,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     write_lock: bool = True,
     transport: httpx.BaseTransport | None = None,
     tankerkoenig_api_key: str | None = None,
+    eia_api_key: str | None = None,
+    opinet_api_key: str | None = None,
+    cne_api_token: str | None = None,
     now_utc: datetime | None = None,
     sleep_fn: Callable[[float], None] | None = None,
 ) -> FetchRunReport:
@@ -261,6 +294,7 @@ def run_price_fetch(
         seed_date=now_date_str,
         updated_at=now_iso,
     )
+    tier3_baselines = load_tier3_fuel_baselines().baselines
 
     alerts: list[LockAlert] = []
     provider_statuses: list[ProviderFetchStatus] = []
@@ -320,12 +354,28 @@ def run_price_fetch(
         if not ec_wob.ok or len(ec_wob.quotes) < 27:
             fionnhughes = fetch_fionnhughes_fallback(client, sleep_fn=sleep_fn)
         fuel_prices_eu = fetch_fuel_prices_eu(client, sleep_fn=sleep_fn)
+        global_tier1_results: list[RawFuelFeedResult] = (
+            fetch_all_global_tier1_feeds(
+                client,
+                eia_api_key=eia_api_key,
+                opinet_api_key=opinet_api_key,
+                cne_api_token=cne_api_token,
+                sleep_fn=sleep_fn,
+            )
+            if include_global
+            else []
+        )
+        tier2_results: list[RawFuelFeedResult] = (
+            fetch_all_tier2_portals(client, sleep_fn=sleep_fn) if include_tier2 else []
+        )
 
     all_fuel_results: list[RawFuelFeedResult] = [
         ec_wob,
         *national_results,
         *([fionnhughes] if fionnhughes is not None else []),
         fuel_prices_eu,
+        *global_tier1_results,
+        *tier2_results,
     ]
 
     for feed_res in all_fuel_results:
@@ -334,7 +384,7 @@ def run_price_fetch(
                 ProviderFetchStatus(
                     provider=feed_res.feed_name,
                     ok=True,
-                    detail="skipped (TANKERKOENIG_API_KEY unset; using EC WOB)",
+                    detail=feed_res.skip_reason or "skipped (optional API key unset)",
                     data_date=feed_res.data_date,
                 )
             )
@@ -348,23 +398,49 @@ def run_price_fetch(
             )
         )
         if not feed_res.ok:
+            if feed_res.tier == "tier1" and feed_res.region_scope == "global":
+                default_code = "global_tier1_outage"
+            elif feed_res.tier == "tier2":
+                default_code = "tier2_portal_outage"
+            else:
+                default_code = "feed_outage"
             alerts.append(
                 LockAlert(
                     severity="warning",
-                    code="feed_outage",
+                    code=feed_res.error_code or default_code,
                     scope=feed_res.feed_name,
                     detail=redact_url_secrets(feed_res.error or "fuel feed fetch failed"),
                 )
             )
 
-    tier1_feeds_succeeded = sum(
-        1 for r in all_fuel_results if r.tier == "tier1" and not r.skipped and r.ok
+    eu_tier1_feeds_succeeded = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "eu_core" and not r.skipped and r.ok
     )
-    tier1_feeds_failed = sum(
-        1 for r in all_fuel_results if r.tier == "tier1" and not r.skipped and not r.ok
+    eu_tier1_feeds_failed = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "eu_core" and not r.skipped and not r.ok
+    )
+    global_tier1_feeds_succeeded = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "global" and not r.skipped and r.ok
+    )
+    global_tier1_feeds_failed = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "global" and not r.skipped and not r.ok
+    )
+    tier2_feeds_succeeded = sum(
+        1 for r in all_fuel_results if r.tier == "tier2" and not r.skipped and r.ok
+    )
+    tier2_feeds_failed = sum(
+        1 for r in all_fuel_results if r.tier == "tier2" and not r.skipped and not r.ok
     )
 
-    if tier1_feeds_succeeded == 0:
+    if eu_tier1_feeds_succeeded == 0:
         alerts.append(
             LockAlert(
                 severity="error",
@@ -382,7 +458,13 @@ def run_price_fetch(
             dry_run=not write_lock,
             lock_path=lock_path,
             tier1_feeds_succeeded=0,
-            tier1_feeds_failed=tier1_feeds_failed,
+            tier1_feeds_failed=eu_tier1_feeds_failed,
+            eu_tier1_feeds_succeeded=0,
+            eu_tier1_feeds_failed=eu_tier1_feeds_failed,
+            global_tier1_feeds_succeeded=global_tier1_feeds_succeeded,
+            global_tier1_feeds_failed=global_tier1_feeds_failed,
+            tier2_feeds_succeeded=tier2_feeds_succeeded,
+            tier2_feeds_failed=tier2_feeds_failed,
             countries_updated=0,
             countries_fallback=0,
             fx_currencies_validated=len(fx_validation.rates),
@@ -513,12 +595,24 @@ def run_price_fetch(
                 countries_fallback += 1
             continue
 
-        # No valid live feed covered this territory -> retain lockfile or seed baseline/ProMods.
+        # No valid live feed covered this territory -> retain lockfile or seed baseline/Tier 3.
+        t3_entry = tier3_baselines.get(iso2)
+        extra_seed = EXTRA_EU_SEED_EUR_PRICES.get(iso2)
         if previous_entry is not None:
-            if previous_entry.source in {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}:
+            if previous_entry.source in SEEDED_LOCKFILE_SOURCES:
+                if t3_entry is not None:
+                    curated_diesel = t3_entry.diesel_eur_per_liter
+                    curated_petrol: float | None = t3_entry.petrol_95_eur_per_liter
+                elif extra_seed is not None:
+                    curated_diesel = previous_entry.eur_per_liter
+                    curated_petrol = extra_seed[1]
+                else:
+                    curated_diesel = previous_entry.eur_per_liter
+                    curated_petrol = None
                 countries[iso2] = _build_baseline_entry(
                     iso2,
-                    diesel_eur=previous_entry.eur_per_liter,
+                    diesel_eur=curated_diesel,
+                    petrol_95_eur=curated_petrol,
                     fx_entry=fx_entry,
                     data_date=previous_entry.data_date,
                     fetched_at=now_iso,
@@ -542,11 +636,24 @@ def run_price_fetch(
                     )
         else:
             seed_entry = baseline_seed.countries[iso2]
+            if t3_entry is not None:
+                boot_diesel = t3_entry.diesel_eur_per_liter
+                boot_petrol: float | None = t3_entry.petrol_95_eur_per_liter
+                boot_date = t3_entry.verified_date
+            elif extra_seed is not None:
+                boot_diesel = extra_seed[0]
+                boot_petrol = extra_seed[1]
+                boot_date = now_date_str
+            else:
+                boot_diesel = seed_entry.eur_per_liter
+                boot_petrol = None
+                boot_date = now_date_str
             countries[iso2] = _build_baseline_entry(
                 iso2,
-                diesel_eur=seed_entry.eur_per_liter,
+                diesel_eur=boot_diesel,
+                petrol_95_eur=boot_petrol,
                 fx_entry=fx_entry,
-                data_date=now_date_str,
+                data_date=boot_date,
                 fetched_at=now_iso,
                 source=seed_entry.source,
                 license_name=seed_entry.license,
@@ -574,8 +681,14 @@ def run_price_fetch(
         fx_only=False,
         dry_run=not write_lock,
         lock_path=lock_path,
-        tier1_feeds_succeeded=tier1_feeds_succeeded,
-        tier1_feeds_failed=tier1_feeds_failed,
+        tier1_feeds_succeeded=eu_tier1_feeds_succeeded,
+        tier1_feeds_failed=eu_tier1_feeds_failed,
+        eu_tier1_feeds_succeeded=eu_tier1_feeds_succeeded,
+        eu_tier1_feeds_failed=eu_tier1_feeds_failed,
+        global_tier1_feeds_succeeded=global_tier1_feeds_succeeded,
+        global_tier1_feeds_failed=global_tier1_feeds_failed,
+        tier2_feeds_succeeded=tier2_feeds_succeeded,
+        tier2_feeds_failed=tier2_feeds_failed,
         countries_updated=countries_updated,
         countries_fallback=countries_fallback,
         fx_currencies_validated=len(sorted_fx),

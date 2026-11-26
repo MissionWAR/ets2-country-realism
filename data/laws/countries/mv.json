@@ -1,0 +1,169 @@
+{
+  "currency": "MVR",
+  "driving_tired_offence": true,
+  "ets2_slug": "maldives",
+  "iana_timezone": "Indian/Maldives",
+  "iso2": "MV",
+  "iso3": "mdv",
+  "mass_limit_per_axle_count": [
+    16000,
+    25000,
+    36000,
+    40000
+  ],
+  "sources": [
+    "https://www.transport.gov.mv/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Maldives Land Transport Act: 30 Male urban, 50-60 Sinamale Bridge and link road."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 50,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 60,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 60
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 50,
+          "max_limit": 50,
+          "uncommon": null,
+          "urban_limit": 50
+        }
+      ]
+    }
+  }
+}

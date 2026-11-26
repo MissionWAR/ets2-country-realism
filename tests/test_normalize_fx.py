@@ -642,19 +642,21 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
         ALL_TERRITORY_CURRENCIES,
         EXTENDED_CURRENCY_SANITY_BANDS,
         EXTENDED_ECB_CURRENCIES,
+        EXTENDED_GLOBAL_CURRENCIES,
         EXTENDED_PROMODS_CURRENCIES,
         PROMODS_CURATED_SEED_SOURCE,
         PROMODS_EXTENDED_ISO2S,
     )
 
     assert len(PROMODS_EXTENDED_ISO2S) == 37
-    assert len(ALL_LOCKFILE_TERRITORY_ISO2S) == 76
-    assert len(ALL_TERRITORY_CURRENCIES) == 76
+    assert len(ALL_LOCKFILE_TERRITORY_ISO2S) == 225
+    assert len(ALL_TERRITORY_CURRENCIES) == 225
     assert len(EXTENDED_PROMODS_CURRENCIES) == 24
-    assert frozenset({"CNY", "ILS"}) == EXTENDED_ECB_CURRENCIES
-    assert set(EXTENDED_CURRENCY_SANITY_BANDS) == EXTENDED_PROMODS_CURRENCIES
-    assert len(ALL_CURRENCY_SANITY_BANDS) == 40
-    assert len(ALL_REFERENCE_FX_RATES) == 41
+    assert len(EXTENDED_ECB_CURRENCIES) == 18
+    assert {"CNY", "ILS"} < EXTENDED_ECB_CURRENCIES
+    assert set(EXTENDED_CURRENCY_SANITY_BANDS) == EXTENDED_GLOBAL_CURRENCIES
+    assert len(ALL_CURRENCY_SANITY_BANDS) == len(ALL_REFERENCE_FX_RATES) - 1
+    assert len(ALL_REFERENCE_FX_RATES) == len(EXTENDED_GLOBAL_CURRENCIES) + 17
     assert PROMODS_CURATED_SEED_SOURCE == "promods_curated_seed"
 
     # Exotic outage (SYP, TMT, LBP omitted from all live providers) -> ok=True with warning fallback
@@ -695,7 +697,7 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
     )
     assert res.ok is True
     assert res.missing_currencies == []
-    assert len(res.rates) == 41
+    assert len(res.rates) == len(ALL_REFERENCE_FX_RATES)
     assert res.rates["CNY"].validator_provider == "ecb_xml"
     assert res.rates["ILS"].validator_provider == "ecb_xml"
     assert res.rates["KZT"].rate_per_eur == pytest.approx(540.0)
@@ -731,3 +733,73 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
     assert res_syp.ok is True
     assert res_syp.rates["SYP"].rate_per_eur == pytest.approx(142.0)
     assert res_syp.rates["SYP"].fallback_used is False
+
+
+def test_healthy_global_fx_run_emits_zero_spurious_non_ecb_extended_alerts_hi03() -> None:
+    """HI-03: Healthy Friday FX run emits zero spurious alerts for single-source extended FX."""
+    from ets2v2.normalize.currencies import (
+        ALL_REFERENCE_FX_RATES,
+        CURRENCY_SANITY_BANDS,
+        ECB_COVERED_CURRENCIES,
+        EXTENDED_ECB_CURRENCIES,
+        EXTENDED_GLOBAL_CURRENCIES,
+    )
+
+    all_ecb = ECB_COVERED_CURRENCIES | EXTENDED_ECB_CURRENCIES
+    core_non_eur = set(CURRENCY_SANITY_BANDS)
+    # Realistic healthy Friday FX run:
+    # - frankfurter_v2 covers Core 16 + 18 Extended ECB (omits ~116 non-ECB extended)
+    # - ecb_xml covers all 29 ECB currencies
+    # - cbr_xml covers RUB
+    # - fawazahmed0 covers all 150 non-EUR currencies
+    ff_rates = {c: ALL_REFERENCE_FX_RATES[c] for c in sorted(core_non_eur | all_ecb)}
+    ecb_rates = {c: ALL_REFERENCE_FX_RATES[c] for c in sorted(all_ecb)}
+    fawaz_rates = {c: r for c, r in ALL_REFERENCE_FX_RATES.items() if c != "EUR"}
+
+    quotes = {
+        "frankfurter_v2": FxProviderQuote(
+            provider="frankfurter_v2", data_date="2026-11-20", rates=ff_rates
+        ),
+        "ecb_xml": FxProviderQuote(provider="ecb_xml", data_date="2026-11-20", rates=ecb_rates),
+        "fawazahmed0": FxProviderQuote(
+            provider="fawazahmed0", data_date="2026-11-20", rates=fawaz_rates
+        ),
+        "cbr_xml": FxProviderQuote(
+            provider="cbr_xml",
+            data_date="2026-11-20",
+            rates={"RUB": ALL_REFERENCE_FX_RATES["RUB"]},
+        ),
+    }
+
+    res = cross_validate_fx_rates(
+        quotes,
+        previous_fx=None,
+        fetched_at="2026-11-20T06:00:00Z",
+        include_extended=True,
+    )
+    assert res.ok is True
+    assert len(res.rates) == len(ALL_REFERENCE_FX_RATES)
+    assert res.alerts == []
+    assert all(not entry.fallback_used for entry in res.rates.values())
+    for ccy in sorted(EXTENDED_GLOBAL_CURRENCIES - all_ecb):
+        assert res.rates[ccy].provider == "fawazahmed0"
+        assert res.rates[ccy].fallback_used is False
+
+    # Core European non-EUR currency omitted from frankfurter_v2 STILL emits fx_primary_fallback
+    no_pln_ff = {k: v for k, v in ff_rates.items() if k != "PLN"}
+    res_core_fallback = cross_validate_fx_rates(
+        {
+            **quotes,
+            "frankfurter_v2": FxProviderQuote(
+                provider="frankfurter_v2", data_date="2026-11-20", rates=no_pln_ff
+            ),
+        },
+        previous_fx=None,
+        fetched_at="2026-11-20T06:00:00Z",
+        include_extended=True,
+    )
+    assert res_core_fallback.ok is True
+    assert any(
+        a.scope == "PLN" and a.code == "fx_primary_fallback" for a in res_core_fallback.alerts
+    )
+    assert res_core_fallback.rates["PLN"].fallback_used is True

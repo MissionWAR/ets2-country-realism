@@ -1,0 +1,169 @@
+{
+  "currency": "BSD",
+  "driving_tired_offence": true,
+  "ets2_slug": "bahamas",
+  "iana_timezone": "America/Nassau",
+  "iso2": "BS",
+  "iso3": "bhs",
+  "mass_limit_per_axle_count": [
+    16000,
+    24000,
+    32000,
+    36287
+  ],
+  "sources": [
+    "https://www.bahamas.gov.bs/"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Bahamas Road Traffic Act: imperial mph limits (25 urban / 45 highway)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 45,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 45
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 25
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": 40,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ]
+    }
+  }
+}

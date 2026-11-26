@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from ets2v2.validate.invariants import (
+    FORBIDDEN_LICENSE_TAINT_PATTERNS,
+    check_license_taint_bytes,
     validate_combo_invariants,
     validate_core_realism_invariants,
     validate_promods_locale_modules_consistency,
@@ -35,6 +37,7 @@ __all__ = [
     "ALLOWED_MANIFEST_ATTRS",
     "ALLOWED_SCS_ASSET_EXTENSIONS",
     "FORBIDDEN_EXTENSIONS",
+    "FORBIDDEN_LICENSE_TAINT_PATTERNS",
     "FORBIDDEN_TOTEM_EXTENSIONS",
     "MAX_DESCRIPTION_BYTES",
     "MAX_ICON_BYTES",
@@ -47,6 +50,7 @@ __all__ = [
     "ValidationMode",
     "ValidationReport",
     "ValidationSeverity",
+    "check_license_taint_bytes",
     "validate_combo_invariants",
     "validate_core_realism_invariants",
     "validate_local_zip",

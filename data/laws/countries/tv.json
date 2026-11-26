@@ -1,0 +1,169 @@
+{
+  "currency": "AUD",
+  "driving_tired_offence": true,
+  "ets2_slug": "tuvalu",
+  "iana_timezone": "Pacific/Funafuti",
+  "iso2": "TV",
+  "iso3": "tuv",
+  "mass_limit_per_axle_count": [
+    15000,
+    22500,
+    36500,
+    42500
+  ],
+  "sources": [
+    "https://www.gov.tv/"
+  ],
+  "speed_unit": "kmh",
+  "statutory_notes": [
+    "Tuvalu Traffic Act: 30-40 km/h Funafuti island speed ceiling."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 40,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 40
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 30
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 35,
+          "max_limit": 35,
+          "uncommon": null,
+          "urban_limit": 35
+        }
+      ]
+    }
+  }
+}

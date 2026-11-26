@@ -19,9 +19,12 @@ import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 
 from ets2v2.fetch._parsing import (
+    DEFAULT_OOXML_MAX_ENTRIES,
+    DEFAULT_OOXML_MAX_UNCOMPRESSED_BYTES,
     AnchorExtractor,
     extract_iso_date,
     parse_positive_float,
+    validate_ooxml_zip_safety,
 )
 from ets2v2.fetch.http import (
     HttpFetchError,
@@ -39,14 +42,10 @@ EC_WOB_LANDING_URL: Final[str] = (
 )
 EC_WOB_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({"energy.ec.europa.eu", "ec.europa.eu"})
 EC_WOB_MAX_XLSX_BYTES: Final[int] = 20_971_520  # 20 MiB (T-03-08)
-EC_WOB_MAX_UNCOMPRESSED_BYTES: Final[int] = 67_108_864  # 64 MiB uncompressed ZIP-bomb cap
-EC_WOB_MAX_ZIP_ENTRIES: Final[int] = 256
+EC_WOB_MAX_UNCOMPRESSED_BYTES: Final[int] = DEFAULT_OOXML_MAX_UNCOMPRESSED_BYTES
+EC_WOB_MAX_ZIP_ENTRIES: Final[int] = DEFAULT_OOXML_MAX_ENTRIES
 EC_WOB_MAX_ROWS: Final[int] = 5000  # T-03-08
 
-_XML_FORBIDDEN_DECL_BYTES_RE: Final[re.Pattern[bytes]] = re.compile(
-    rb"<!(?:DOCTYPE|ENTITY)\b",
-    flags=re.IGNORECASE,
-)
 _EX_TAX_LINK_MARKERS: Final[tuple[str, ...]] = (
     "without tax",
     "without_tax",
@@ -179,45 +178,6 @@ def discover_ec_wob_xlsx_url(
     return validate_https_url(resolved, EC_WOB_ALLOWED_HOSTS)
 
 
-def _validate_ooxml_zip_safety(raw_xlsx: bytes) -> None:
-    """Pre-validate OOXML ZIP container against ZIP bombs, encryption, and DOCTYPE/ENTITY."""
-    try:
-        with zipfile.ZipFile(io.BytesIO(raw_xlsx), "r") as zf:
-            infos = zf.infolist()
-            if len(infos) > EC_WOB_MAX_ZIP_ENTRIES:
-                raise ValueError(
-                    f"OOXML archive entry count {len(infos)} exceeds cap {EC_WOB_MAX_ZIP_ENTRIES}"
-                )
-            total_uncompressed = 0
-            for info in infos:
-                if info.flag_bits & 0x41:
-                    raise ValueError(f"Encrypted OOXML entry {info.filename!r} is disallowed")
-                if info.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
-                    raise ValueError(f"Unsupported OOXML compression method {info.compress_type}")
-                if info.file_size > EC_WOB_MAX_UNCOMPRESSED_BYTES:
-                    raise ValueError(
-                        f"OOXML entry {info.filename!r} declared size exceeds uncompressed cap"
-                    )
-                remaining_budget = EC_WOB_MAX_UNCOMPRESSED_BYTES - total_uncompressed
-                with zf.open(info, "r") as member:
-                    # Stream-read with hard cap (do not trust ZipInfo.file_size header alone)
-                    data = member.read(remaining_budget + 1)
-                total_uncompressed += len(data)
-                if total_uncompressed > EC_WOB_MAX_UNCOMPRESSED_BYTES:
-                    raise ValueError(
-                        "OOXML total uncompressed payload exceeds safety cap "
-                        f"({EC_WOB_MAX_UNCOMPRESSED_BYTES} bytes)"
-                    )
-                if info.filename.lower().endswith(
-                    (".xml", ".rels")
-                ) and _XML_FORBIDDEN_DECL_BYTES_RE.search(data):
-                    raise ValueError(
-                        f"Forbidden DOCTYPE/ENTITY declaration in OOXML member {info.filename!r}"
-                    )
-    except zipfile.BadZipFile as exc:
-        raise ValueError(f"Invalid OOXML ZIP archive: {exc}") from exc
-
-
 def _resolve_eu_iso2(cell_value: object) -> str | None:
     if not isinstance(cell_value, str):
         return None
@@ -261,7 +221,11 @@ def parse_ec_wob_xlsx(
         raise ValueError(
             f"EC WOB .xlsx payload size {len(raw_xlsx)} exceeds max {EC_WOB_MAX_XLSX_BYTES} bytes"
         )
-    _validate_ooxml_zip_safety(raw_xlsx)
+    validate_ooxml_zip_safety(
+        raw_xlsx,
+        max_entries=EC_WOB_MAX_ZIP_ENTRIES,
+        max_uncompressed_bytes=EC_WOB_MAX_UNCOMPRESSED_BYTES,
+    )
 
     wb = openpyxl.load_workbook(io.BytesIO(raw_xlsx), read_only=True, data_only=True)
     try:

@@ -17,11 +17,19 @@ from ets2v2.normalize.currencies import (
     ALL_REFERENCE_FX_RATES,
     ALL_TERRITORY_CURRENCIES,
     CORE_REFERENCE_FX_RATES,
+    EXTENDED_GLOBAL_CURRENCIES,
     EXTENDED_PROMODS_CURRENCIES,
-    PROMODS_SEED_EUR_PRICES,
+    PROMODS_EXTENDED_ISO2S,
+    TIER3_CURATED_BASELINE_LICENSE,
+    TIER3_CURATED_BASELINE_SOURCE,
     VANILLA_SLUG_TO_ISO2,
+    load_tier3_fuel_baselines,
 )
-from ets2v2.normalize.fuel import compute_secondary_grade_prices, round_local_price
+from ets2v2.normalize.fuel import (
+    SEEDED_LOCKFILE_SOURCES,
+    compute_secondary_grade_prices,
+    round_local_price,
+)
 from ets2v2.normalize.fx import round_eur_per_liter
 from ets2v2.normalize.models import (
     CountryFuelLockEntry,
@@ -32,11 +40,33 @@ from ets2v2.normalize.models import (
 )
 
 TIER1_STALE_DAYS: Final[int] = 14
+TIER2_MONTHLY_STALE_DAYS: Final[int] = 45
+TIER2_QUARTERLY_STALE_DAYS: Final[int] = 105
 FALLBACK_STALE_DAYS: Final[int] = 30
+TIER3_CURATED_STALE_DAYS: Final[int] = 180
 BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
 BASELINE_SEEDED_LICENSE: Final[str] = "ETS2 1.62 baseline seed"
 PROMODS_CURATED_SEED_SOURCE: Final[str] = "promods_curated_seed"
 PROMODS_CURATED_SEED_LICENSE: Final[str] = "ProMods curated reference seed"
+CURATED_TIER3_SOURCES: Final[frozenset[str]] = frozenset(
+    {TIER3_CURATED_BASELINE_SOURCE, PROMODS_CURATED_SEED_SOURCE}
+)
+
+MONTHLY_LIVE_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        "no_ssb_09654",
+        "co_sicom",
+        "co_creg",
+        "ch_bfs_lik",
+        "mk_erc",
+        "il_moe",
+        "ae_moei",
+        "za_dmre_cef",
+        "sa_aramco",
+        "ng_nbs",
+    }
+)
+QUARTERLY_TIER2_SOURCES: Final[frozenset[str]] = frozenset({"eg_fapc"})
 
 # Deterministic Core reference FX rates (1 EUR = X <CURRENCY>) for backwards compatibility.
 REFERENCE_FX_RATES: Final[dict[str, float]] = CORE_REFERENCE_FX_RATES
@@ -48,9 +78,7 @@ EXTRA_EU_SEED_EUR_PRICES: Final[dict[str, tuple[float, float]]] = {
     "MT": (1.210, 1.340),
 }
 _SEED_PETROL_TO_DIESEL_RATIO: Final[float] = 1.03
-_SEEDED_SOURCES: Final[frozenset[str]] = frozenset(
-    {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
-)
+_SEEDED_SOURCES: Final[frozenset[str]] = SEEDED_LOCKFILE_SOURCES
 
 
 def serialize_lockfile_bytes(lockfile: PricesLockfile) -> bytes:
@@ -97,15 +125,35 @@ def write_prices_lockfile(lockfile: PricesLockfile, path: Path) -> bytes:
 
 
 def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> list[LockAlert]:
-    """Evaluate D-08 staleness thresholds (>14d Tier 1, >30d fallback/seeded) across countries."""
+    """Evaluate D-08 tier/cadence-aware staleness limits (14d/45d/105d/30d/180d)."""
     alerts: list[LockAlert] = []
     for iso2 in sorted(lockfile.countries):
         entry = lockfile.countries[iso2]
         entry_date = date.fromisoformat(entry.data_date)
         age_days = (as_of_date - entry_date).days
-        is_fallback = entry.fallback_used or entry.source in _SEEDED_SOURCES
-        if is_fallback:
-            if age_days > FALLBACK_STALE_DAYS:
+
+        if entry.source in CURATED_TIER3_SOURCES:
+            if age_days > TIER3_CURATED_STALE_DAYS:
+                alerts.append(
+                    LockAlert(
+                        severity="warning",
+                        code="stale_tier3_curated",
+                        scope=iso2,
+                        detail=(
+                            f"Tier 3 curated baseline for {iso2} ({entry.source}) is "
+                            f"{age_days} days old (data_date={entry.data_date}, "
+                            f"limit={TIER3_CURATED_STALE_DAYS}d)."
+                        ),
+                    )
+                )
+        elif entry.fallback_used or entry.source == BASELINE_SEEDED_SOURCE:
+            if entry.source in QUARTERLY_TIER2_SOURCES:
+                fallback_limit = max(FALLBACK_STALE_DAYS, TIER2_QUARTERLY_STALE_DAYS)
+            elif entry.source in MONTHLY_LIVE_SOURCES:
+                fallback_limit = max(FALLBACK_STALE_DAYS, TIER2_MONTHLY_STALE_DAYS)
+            else:
+                fallback_limit = FALLBACK_STALE_DAYS
+            if age_days > fallback_limit:
                 alerts.append(
                     LockAlert(
                         severity="warning",
@@ -114,7 +162,35 @@ def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> l
                         detail=(
                             f"Fallback/seeded fuel entry for {iso2} ({entry.source}) is "
                             f"{age_days} days old (data_date={entry.data_date}, "
-                            f"limit={FALLBACK_STALE_DAYS}d)."
+                            f"limit={fallback_limit}d)."
+                        ),
+                    )
+                )
+        elif entry.source in QUARTERLY_TIER2_SOURCES:
+            if age_days > TIER2_QUARTERLY_STALE_DAYS:
+                alerts.append(
+                    LockAlert(
+                        severity="warning",
+                        code="stale_tier2_quarterly",
+                        scope=iso2,
+                        detail=(
+                            f"Quarterly Tier 2 fuel entry for {iso2} ({entry.source}) is "
+                            f"{age_days} days old (data_date={entry.data_date}, "
+                            f"limit={TIER2_QUARTERLY_STALE_DAYS}d)."
+                        ),
+                    )
+                )
+        elif entry.source in MONTHLY_LIVE_SOURCES:
+            if age_days > TIER2_MONTHLY_STALE_DAYS:
+                alerts.append(
+                    LockAlert(
+                        severity="warning",
+                        code="stale_tier2_monthly",
+                        scope=iso2,
+                        detail=(
+                            f"Monthly fuel entry for {iso2} ({entry.source}) is "
+                            f"{age_days} days old (data_date={entry.data_date}, "
+                            f"limit={TIER2_MONTHLY_STALE_DAYS}d)."
                         ),
                     )
                 )
@@ -137,11 +213,13 @@ def seed_initial_lockfile(
     baseline_countries: CountriesBaseline,
     slug_to_iso2: Mapping[str, str] | None = None,
     *,
-    seed_date: str = "2026-11-20",
+    seed_date: str | None = None,
     updated_at: str = "2026-11-20T06:00:00Z",
 ) -> PricesLockfile:
-    """Deterministically seed a 76-territory / 41-FX v1 lockfile from 1.62 baseline + ProMods."""
+    """Deterministically seed a 225-territory global v1 lockfile from 1.62 baseline + Tier 3."""
     mapping: Mapping[str, str] = slug_to_iso2 if slug_to_iso2 is not None else VANILLA_SLUG_TO_ISO2
+    tier3_baselines = load_tier3_fuel_baselines().baselines
+    effective_seed_date = seed_date if seed_date is not None else "2026-11-20"
 
     fx_rates: dict[str, FxRateLockEntry] = {}
     for currency in sorted(ALL_REFERENCE_FX_RATES):
@@ -155,6 +233,9 @@ def seed_initial_lockfile(
         elif currency in EXTENDED_PROMODS_CURRENCIES:
             provider = "promods_reference_fx"
             fallback_used = True
+        elif currency in EXTENDED_GLOBAL_CURRENCIES:
+            provider = "global_reference_fx"
+            fallback_used = True
         else:
             provider = "baseline_reference_fx"
             fallback_used = True
@@ -165,7 +246,7 @@ def seed_initial_lockfile(
             validator_provider=None,
             validator_rate_per_eur=None,
             divergence_pct=0.0,
-            data_date=seed_date,
+            data_date=effective_seed_date,
             fetched_at=updated_at,
             fallback_used=fallback_used,
         )
@@ -189,15 +270,23 @@ def seed_initial_lockfile(
             petrol_95_eur = round_eur_per_liter(diesel_eur * _SEED_PETROL_TO_DIESEL_RATIO)
             source_name = BASELINE_SEEDED_SOURCE
             license_name = BASELINE_SEEDED_LICENSE
+            entry_data_date = effective_seed_date
         elif iso2 in EXTRA_EU_SEED_EUR_PRICES:
             diesel_eur, petrol_95_eur = EXTRA_EU_SEED_EUR_PRICES[iso2]
             source_name = BASELINE_SEEDED_SOURCE
             license_name = BASELINE_SEEDED_LICENSE
-        elif iso2 in PROMODS_SEED_EUR_PRICES:
-            diesel_eur = round_eur_per_liter(PROMODS_SEED_EUR_PRICES[iso2])
-            petrol_95_eur = round_eur_per_liter(diesel_eur * _SEED_PETROL_TO_DIESEL_RATIO)
-            source_name = PROMODS_CURATED_SEED_SOURCE
-            license_name = PROMODS_CURATED_SEED_LICENSE
+            entry_data_date = effective_seed_date
+        elif iso2 in tier3_baselines:
+            t3_entry = tier3_baselines[iso2]
+            diesel_eur = round_eur_per_liter(t3_entry.diesel_eur_per_liter)
+            petrol_95_eur = round_eur_per_liter(t3_entry.petrol_95_eur_per_liter)
+            if iso2 in PROMODS_EXTENDED_ISO2S:
+                source_name = PROMODS_CURATED_SEED_SOURCE
+                license_name = PROMODS_CURATED_SEED_LICENSE
+            else:
+                source_name = TIER3_CURATED_BASELINE_SOURCE
+                license_name = TIER3_CURATED_BASELINE_LICENSE
+            entry_data_date = seed_date if seed_date is not None else t3_entry.verified_date
         else:
             raise ValueError(f"Missing fuel_price seed for territory {iso2!r}")
 
@@ -214,7 +303,7 @@ def seed_initial_lockfile(
             derived_grades=derived_grades,
             source=source_name,
             license=license_name,
-            data_date=seed_date,
+            data_date=entry_data_date,
             fetched_at=updated_at,
             fallback_used=True,
         )

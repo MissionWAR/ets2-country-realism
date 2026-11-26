@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import pathlib
+from datetime import date
 
 import pytest
 
 from ets2v2.baseline.models import CountriesBaseline
 from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
+    ALL_REFERENCE_FX_RATES,
     ALL_TERRITORY_CURRENCIES,
     BAM_FIXED_PEG_PER_EUR,
+    EUROPEAN_TERRITORY_ISO2S,
     PROMODS_EXTENDED_ISO2S,
+    TIER3_CURATED_BASELINE_SOURCE,
 )
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
@@ -24,7 +28,15 @@ from ets2v2.normalize.fuel import (
 )
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
+    FALLBACK_STALE_DAYS,
+    MONTHLY_LIVE_SOURCES,
     PROMODS_CURATED_SEED_SOURCE,
+    QUARTERLY_TIER2_SOURCES,
+    TIER1_STALE_DAYS,
+    TIER2_MONTHLY_STALE_DAYS,
+    TIER2_QUARTERLY_STALE_DAYS,
+    TIER3_CURATED_STALE_DAYS,
+    evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
     serialize_lockfile_bytes,
@@ -221,7 +233,7 @@ def test_normalize_country_fuel_prices_uses_3dp_round_half_up_for_eur_per_liter(
     assert set(res.entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
 
 
-def test_seed_initial_lockfile_produces_deterministic_76_territory_v1_lockfile(
+def test_seed_initial_lockfile_produces_deterministic_225_territory_v1_lockfile(
     tmp_path: pathlib.Path,
 ) -> None:
     baseline = CountriesBaseline.model_validate_json(BASELINE_COUNTRIES_PATH.read_text("utf-8"))
@@ -231,22 +243,25 @@ def test_seed_initial_lockfile_produces_deterministic_76_territory_v1_lockfile(
     assert lock_a == lock_b
     assert lock_a.schema_version == 1
     assert set(lock_a.countries.keys()) == set(ALL_LOCKFILE_TERRITORY_ISO2S)
-    assert len(lock_a.countries) == 76
-    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL"} <= set(lock_a.countries.keys())
+    assert len(lock_a.countries) == 225
+    assert {"IE", "CY", "MT", "KZ", "UZ", "JO", "SY", "MA", "GL", "US", "BR", "JP", "ID"} <= set(
+        lock_a.countries.keys()
+    )
     assert lock_a.countries["BG"].currency == "EUR"
     assert lock_a.fx_rates["EUR"].rate_per_eur == 1.0
     assert lock_a.fx_rates["BAM"].rate_per_eur == BAM_FIXED_PEG_PER_EUR
-    assert len(lock_a.fx_rates) == 41
+    assert len(lock_a.fx_rates) == len(ALL_REFERENCE_FX_RATES)
 
     for iso2, entry in lock_a.countries.items():
         assert entry.currency == ALL_TERRITORY_CURRENCIES[iso2]
         assert MIN_EUR_PER_LITER <= entry.eur_per_liter <= MAX_EUR_PER_LITER
         assert set(entry.local_prices.keys()) == set(CANONICAL_FUEL_GRADES)
-        expected_source = (
-            PROMODS_CURATED_SEED_SOURCE
-            if iso2 in PROMODS_EXTENDED_ISO2S
-            else BASELINE_SEEDED_SOURCE
-        )
+        if iso2 in EUROPEAN_TERRITORY_ISO2S:
+            expected_source = BASELINE_SEEDED_SOURCE
+        elif iso2 in PROMODS_EXTENDED_ISO2S:
+            expected_source = PROMODS_CURATED_SEED_SOURCE
+        else:
+            expected_source = TIER3_CURATED_BASELINE_SOURCE
         assert entry.source == expected_source
         assert entry.fallback_used is True
 
@@ -311,3 +326,70 @@ def test_anchorless_grade_map_emits_price_anchor_missing_and_holds_previous() ->
         a.code == "price_anchor_missing" and a.severity == "warning" and a.scope == "DE"
         for a in res.alerts
     )
+
+
+@pytest.mark.parametrize(
+    ("iso2", "currency", "source", "fallback_used", "limit_days", "expected_code"),
+    [
+        ("DE", "EUR", "ec_weekly_oil_bulletin", False, 14, "stale_tier1"),
+        ("NO", "NOK", "no_ssb_09654", False, 45, "stale_tier2_monthly"),
+        ("AE", "AED", "ae_moei", False, 45, "stale_tier2_monthly"),
+        ("ZA", "ZAR", "za_dmre_cef", False, 45, "stale_tier2_monthly"),
+        ("EG", "EGP", "eg_fapc", False, 105, "stale_tier2_quarterly"),
+        ("DE", "EUR", "ec_weekly_oil_bulletin", True, 30, "stale_fallback"),
+        ("NO", "NOK", "no_ssb_09654", True, 45, "stale_fallback"),
+        ("AE", "AED", "ae_moei", True, 45, "stale_fallback"),
+        ("EG", "EGP", "eg_fapc", True, 105, "stale_fallback"),
+        ("KE", "KES", TIER3_CURATED_BASELINE_SOURCE, True, 180, "stale_tier3_curated"),
+        ("KZ", "KZT", PROMODS_CURATED_SEED_SOURCE, True, 180, "stale_tier3_curated"),
+    ],
+)
+def test_evaluate_lockfile_staleness_d08_five_tier_boundaries(
+    iso2: str,
+    currency: str,
+    source: str,
+    fallback_used: bool,
+    limit_days: int,
+    expected_code: str,
+) -> None:
+    from datetime import timedelta
+
+    assert TIER1_STALE_DAYS == 14
+    assert TIER2_MONTHLY_STALE_DAYS == 45
+    assert TIER2_QUARTERLY_STALE_DAYS == 105
+    assert FALLBACK_STALE_DAYS == 30
+    assert TIER3_CURATED_STALE_DAYS == 180
+    assert {"no_ssb_09654", "ae_moei", "za_dmre_cef"} <= MONTHLY_LIVE_SOURCES
+    assert "eg_fapc" in QUARTERLY_TIER2_SOURCES
+
+    as_of = date(2026, 11, 26)
+    at_limit_date = (as_of - timedelta(days=limit_days)).isoformat()
+    over_limit_date = (as_of - timedelta(days=limit_days + 1)).isoformat()
+
+    def _make_lock(data_date: str) -> PricesLockfile:
+        entry = CountryFuelLockEntry(
+            iso2=iso2,
+            currency=currency,
+            eur_per_liter=1.500,
+            local_prices={"diesel": 1.5, "petrol_95": 1.6},
+            derived_grades=[],
+            source=source,
+            license="CC BY 4.0",
+            data_date=data_date,
+            fetched_at=f"{data_date}T06:00:00Z",
+            fallback_used=fallback_used,
+        )
+        return PricesLockfile(
+            schema_version=1,
+            updated_at=f"{as_of.isoformat()}T06:00:00Z",
+            fx_rates={"EUR": _fx("EUR", 1.0)},
+            countries={iso2: entry},
+            alerts=[],
+        )
+
+    assert evaluate_lockfile_staleness(_make_lock(at_limit_date), as_of) == []
+    overdue_alerts = evaluate_lockfile_staleness(_make_lock(over_limit_date), as_of)
+    assert len(overdue_alerts) == 1
+    assert overdue_alerts[0].code == expected_code
+    assert overdue_alerts[0].scope == iso2
+    assert overdue_alerts[0].severity == "warning"

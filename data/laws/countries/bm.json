@@ -1,0 +1,170 @@
+{
+  "currency": "BMD",
+  "driving_tired_offence": true,
+  "ets2_slug": "bermuda",
+  "iana_timezone": "Atlantic/Bermuda",
+  "iso2": "BM",
+  "iso3": "bmu",
+  "mass_limit_per_axle_count": [
+    18000,
+    26000,
+    38000,
+    40000,
+    44000
+  ],
+  "sources": [
+    "https://www.gov.bm/department/transport-control"
+  ],
+  "speed_unit": "mph",
+  "statutory_notes": [
+    "Bermuda Road Traffic Act (22 mph / 35 km/h statutory island-wide ceiling)."
+  ],
+  "summer": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ]
+    }
+  },
+  "winter": {
+    "lights_mandatory": false,
+    "speed_limits": {
+      "bus": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ],
+      "car": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": null,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ],
+      "truck": [
+        {
+          "lane_speed_class": "local_road",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "expressway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        },
+        {
+          "lane_speed_class": "motorway",
+          "limit": 22,
+          "max_limit": 22,
+          "uncommon": null,
+          "urban_limit": 22
+        }
+      ]
+    }
+  }
+}

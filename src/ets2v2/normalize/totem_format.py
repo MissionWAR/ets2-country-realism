@@ -62,13 +62,81 @@ INTEGER_CURRENCY_ISO2S: Final[frozenset[str]] = frozenset({"AL", "HU", "IS", "RS
 # Extended ProMods GBP pence Crown Dependencies (GI uses 2-decimal GBP, not pence)
 GBP_PENCE_ISO2S: Final[frozenset[str]] = frozenset({"GB", "GG", "IM", "JE"})
 
-# Extended ProMods high-unit integer currencies (AMD, DZD, IQD, KZT, LBP, MNT, SYP, UAH, UZS)
+# Extended global high-unit integer currencies (ProMods + global high-unit markets)
 EXTENDED_INTEGER_CURRENCY_ISO2S: Final[frozenset[str]] = frozenset(
-    {"AM", "DZ", "IQ", "KZ", "LB", "MN", "SY", "UA", "UZ"}
+    {
+        "AM",
+        "AO",
+        "AR",
+        "BD",
+        "BF",
+        "BI",
+        "BJ",
+        "CD",
+        "CF",
+        "CG",
+        "CI",
+        "CL",
+        "CM",
+        "CO",
+        "CR",
+        "CV",
+        "DJ",
+        "DZ",
+        "ET",
+        "GA",
+        "GN",
+        "GQ",
+        "GW",
+        "GY",
+        "HT",
+        "ID",
+        "IQ",
+        "IR",
+        "JM",
+        "JP",
+        "KE",
+        "KH",
+        "KM",
+        "KP",
+        "KR",
+        "KZ",
+        "LA",
+        "LB",
+        "LK",
+        "LR",
+        "MG",
+        "ML",
+        "MM",
+        "MN",
+        "MW",
+        "NC",
+        "NE",
+        "NG",
+        "NP",
+        "PF",
+        "PK",
+        "PY",
+        "RW",
+        "SD",
+        "SN",
+        "SO",
+        "SS",
+        "SY",
+        "TD",
+        "TG",
+        "TZ",
+        "UA",
+        "UG",
+        "UZ",
+        "VN",
+        "VU",
+        "YE",
+    }
 )
 
-# Extended ProMods 3-decimal dinar markets (JOD, LYD, TND)
-THREE_DEC_NATIONAL_ISO2S: Final[frozenset[str]] = frozenset({"JO", "LY", "TN"})
+# Extended 3-decimal dinar and rial markets (BHD, JOD, KWD, LYD, OMR, TND)
+THREE_DEC_NATIONAL_ISO2S: Final[frozenset[str]] = frozenset({"BH", "JO", "KW", "LY", "OM", "TN"})
 
 # Worst-case deterministic probe strings for Eurozone width-budget routing (never flaps with prices)
 _PROBE_SUP_TEXT: Final[str] = "1.88<sup>9</sup>"

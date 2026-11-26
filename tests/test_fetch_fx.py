@@ -29,6 +29,7 @@ from ets2v2.fetch import (
     validate_https_url,
 )
 from ets2v2.normalize import (
+    ALL_REFERENCE_FX_RATES,
     ECB_COVERED_CURRENCIES,
     FxProviderQuote,
     cross_validate_fx_rates,
@@ -443,9 +444,9 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert report.ok is True
     assert report.fx_only is True
     assert report.dry_run is False
-    assert report.fx_currencies_validated == 41
+    assert report.fx_currencies_validated == len(ALL_REFERENCE_FX_RATES)
     loaded = load_prices_lockfile(lock_path)
-    assert len(loaded.fx_rates) == 41
+    assert len(loaded.fx_rates) == len(ALL_REFERENCE_FX_RATES)
     assert loaded.fx_rates["EUR"].rate_per_eur == 1.0
 
     # End-to-end CLI tracer: ets2v2 fetch --fx-only --dry-run --json
@@ -478,7 +479,7 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert payload["ok"] is True
     assert payload["fx_only"] is True
     assert payload["dry_run"] is True
-    assert payload["fx_currencies_validated"] == 41
+    assert payload["fx_currencies_validated"] == len(ALL_REFERENCE_FX_RATES)
 
     # Total FX outage with no prior lockfile exits non-zero
     def _patched_outage_create(
@@ -596,16 +597,16 @@ def test_http_port_guard_decoding_error_redaction_bom_xml_and_timeout_bounds(
     assert "apikey=***" in err_cap.err
 
 
-def test_hi03_fx_only_fetch_preserves_all_41_extended_promods_currencies(tmp_path: Path) -> None:
-    """HI-03 regression: ets2v2 fetch --fx-only must preserve all 41 FX currencies in lockfile."""
-    from ets2v2.normalize.currencies import ALL_REFERENCE_FX_RATES, EXTENDED_PROMODS_CURRENCIES
+def test_hi03_fx_only_fetch_preserves_all_extended_global_currencies(tmp_path: Path) -> None:
+    """HI-03 regression: ets2v2 fetch --fx-only preserves all global FX currencies in lockfile."""
+    from ets2v2.normalize.currencies import EXTENDED_PROMODS_CURRENCIES
 
     repo_lock = Path(__file__).resolve().parent.parent / "state" / "prices.lock.json"
     lock_copy = tmp_path / "prices.lock.json"
     lock_copy.write_bytes(repo_lock.read_bytes())
 
     before = load_prices_lockfile(lock_copy)
-    assert len(before.fx_rates) == 41
+    assert len(before.fx_rates) == len(ALL_REFERENCE_FX_RATES)
 
     report = run_fx_only_fetch(
         lock_path=lock_copy,
@@ -615,11 +616,43 @@ def test_hi03_fx_only_fetch_preserves_all_41_extended_promods_currencies(tmp_pat
         sleep_fn=lambda _: None,
     )
     assert report.ok is True
-    assert report.fx_currencies_validated == 41
+    assert report.fx_currencies_validated == len(ALL_REFERENCE_FX_RATES)
 
     after = load_prices_lockfile(lock_copy)
     assert set(after.fx_rates.keys()) == set(ALL_REFERENCE_FX_RATES.keys())
-    assert len(after.fx_rates) == 41
+    assert len(after.fx_rates) == len(ALL_REFERENCE_FX_RATES)
     for ext_ccy in EXTENDED_PROMODS_CURRENCIES:
         assert ext_ccy in after.fx_rates
         assert after.fx_rates[ext_ccy].rate_per_eur > 0.0
+
+
+def test_http_retry_and_max_bytes_bounds_validation_lo02() -> None:
+    """LO-02: Negative max_retries and non-positive max_bytes raise ValueError cleanly."""
+    from ets2v2.fetch.http import post_form_bytes_with_retry
+
+    allowed = frozenset({"api.frankfurter.dev"})
+    with create_http_client(transport=httpx.MockTransport(lambda _r: httpx.Response(200))) as c:
+        with pytest.raises(ValueError, match="max_retries"):
+            fetch_bytes_with_retry(
+                c, "https://api.frankfurter.dev/v2/rates", allowed_hosts=allowed, max_retries=-1
+            )
+        with pytest.raises(ValueError, match="max_bytes"):
+            fetch_bytes_with_retry(
+                c, "https://api.frankfurter.dev/v2/rates", allowed_hosts=allowed, max_bytes=0
+            )
+        with pytest.raises(ValueError, match="max_retries"):
+            post_form_bytes_with_retry(
+                c,
+                "https://api.frankfurter.dev/v2/rates",
+                allowed_hosts=allowed,
+                data={"k": "v"},
+                max_retries=-2,
+            )
+        with pytest.raises(ValueError, match="max_bytes"):
+            post_form_bytes_with_retry(
+                c,
+                "https://api.frankfurter.dev/v2/rates",
+                allowed_hosts=allowed,
+                data={"k": "v"},
+                max_bytes=-10,
+            )

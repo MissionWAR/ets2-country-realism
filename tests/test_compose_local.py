@@ -509,9 +509,19 @@ def test_compose_local_default_cli_standalone_snapshot(
         assert not any(n.startswith("def/country.") and n.endswith(".sii") for n in names)
         assert not any(n.endswith((".dds", ".tobj")) for n in names)
         assert "def/country/suppressed_old.sui" not in names
-        # SemEuropa alagoas & EAA brasil unmatched -> never emitted (zero Albania clobber!)
-        assert "def/country/alagoas.sui" not in names
-        assert "def/country/brasil.sui" not in names
+        # SemEuropa alagoas & EAA brasil now resolve to BR (never Albania!) with 80t axles intact
+        assert "def/country/alagoas.sui" in names
+        assert "def/country/brasil.sui" in names
+        alagoas = parse_country_data(zf.read("def/country/alagoas.sui"))
+        assert alagoas.time_zone == -180
+        assert alagoas.time_zone_name == "BRT"
+        assert alagoas.fuel_price == pytest.approx(0.99)
+        assert alagoas.mass_limit_per_axle_count[-1] == 80000
+        brasil = parse_country_data(zf.read("def/country/brasil.sui"))
+        assert brasil.time_zone == -180
+        assert brasil.time_zone_name == "BRT"
+        assert brasil.secondary_time_zone_name == ["AMT"]
+        assert brasil.mass_limit_per_axle_count[-1] == 80000
         # Hardcoded 7RM/JRR boards untouched by default
         assert "def/sign/board/kz_gas_totem_95.sii" not in names
         assert "def/sign/board/indo_gas_totem_01a.sii" not in names
@@ -656,7 +666,7 @@ def test_compose_local_patch_hardcoded_totems(
     assert rc == 0
     rep = ComposeReport.model_validate_json(capsys.readouterr().out)
     assert rep.hardcoded_totems_enabled is True
-    assert rep.hardcoded_totems_patched == 1
+    assert rep.hardcoded_totems_patched == 2
 
     scs_path = out_dir / COMBO_SCS_FILENAMES["summer"]
     assert validate_local_zip(scs_path, baseline_dir=_BASELINE_DIR, profile="combo").ok is True
@@ -664,15 +674,19 @@ def test_compose_local_patch_hardcoded_totems(
         names = set(zf.namelist())
         assert "def/sign/board/kz_gas_totem_95.sii" in names
         assert "def/sign/board/indo_gas_totem_01j.sii" not in names
-        assert "def/sign/board/indo_gas_totem_01a.sii" not in names  # ID not in Phase 4 snapshot
+        assert "def/sign/board/indo_gas_totem_01a.sii" in names  # ID now in 225-territory snapshot
         kz_board = parse_sign_board(zf.read("def/sign/board/kz_gas_totem_95.sii"))
         assert kz_board.text_slots[0].localization_key == "fp_kz_petrol_95_ets2v2"
+        id_board = parse_sign_board(zf.read("def/sign/board/indo_gas_totem_01a.sii"))
+        assert id_board.text_slots[0].localization_key == "fp_id_petrol_98_ets2v2"
         loc_entries = {
             e.key: e.val
             for e in parse_localization_db(zf.read("locale/en_gb/local_module.ets2v2_fuel.sii"))
         }
         assert "fp_kz_petrol_95_ets2v2" in loc_entries
         assert loc_entries["fp_kz_petrol_95_ets2v2"].isdigit()
+        assert "fp_id_petrol_98_ets2v2" in loc_entries
+        assert loc_entries["fp_id_petrol_98_ets2v2"].isdigit()
 
 
 def test_compose_local_no_totems_and_baseline_only_snapshot(

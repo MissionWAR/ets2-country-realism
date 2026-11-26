@@ -67,7 +67,7 @@ def test_active_phase_only_package_layout() -> None:
 
     entries = {entry.name for entry in pkg_root.iterdir() if entry.name != "__pycache__"}
     deferred_phase_dirs: set[str] = set()
-    allowed_phase4_entries = {
+    allowed_phase5_entries = {
         "__init__.py",
         "py.typed",
         "cli.py",
@@ -81,11 +81,12 @@ def test_active_phase_only_package_layout() -> None:
         "validate",
         "merge",
         "publish",
+        "audit",
     }
 
     assert entries.isdisjoint(deferred_phase_dirs)
-    assert entries <= allowed_phase4_entries
-    assert {"__init__.py", "py.typed", "cli.py", "merge"} <= entries
+    assert entries <= allowed_phase5_entries
+    assert {"__init__.py", "py.typed", "cli.py", "merge", "audit"} <= entries
 
 
 def test_pyproject_metadata_and_quality_gates() -> None:
@@ -268,18 +269,20 @@ def _scan_forbidden_imports(
     return violations
 
 
-def test_phase4_ast_dag_isolation_walls() -> None:
-    """Enforce all 6 AST-scanned offline DAG isolation walls (04-PATTERNS.md §1)."""
+def test_phase5_ast_dag_isolation_walls() -> None:
+    """Enforce all 6 offline AST DAG walls plus the Phase 5 audit quarantine wall (D-16)."""
     src_root = REPO_ROOT / "src" / "ets2v2"
     online_third_party = frozenset({"httpx", "openpyxl"})
 
     wall_specs: dict[str, frozenset[str]] = {
-        "validate": frozenset({"package", "merge", "normalize", "fetch", "publish"}),
-        "merge": frozenset({"fetch", "publish"}),
-        "package": frozenset({"fetch", "merge", "validate", "publish"}),
-        "publish": frozenset({"fetch", "merge"}),
-        "normalize": frozenset({"fetch", "registry", "package", "validate", "merge", "publish"}),
-        "registry": frozenset({"fetch", "package", "validate", "merge", "publish"}),
+        "validate": frozenset({"package", "merge", "normalize", "fetch", "publish", "audit"}),
+        "merge": frozenset({"fetch", "publish", "audit"}),
+        "package": frozenset({"fetch", "merge", "validate", "publish", "audit"}),
+        "publish": frozenset({"fetch", "merge", "audit"}),
+        "normalize": frozenset(
+            {"fetch", "registry", "package", "validate", "merge", "publish", "audit"}
+        ),
+        "registry": frozenset({"fetch", "package", "validate", "merge", "publish", "audit"}),
     }
 
     for subpkg, forbidden_subpkgs in wall_specs.items():
@@ -291,3 +294,39 @@ def test_phase4_ast_dag_isolation_walls() -> None:
             forbidden_ets2v2_subpackages=forbidden_subpkgs,
         )
         assert violations == [], f"AST DAG isolation violation in {subpkg}/: {violations}"
+
+    # Universal Phase 5 audit quarantine wall: ZERO of the 10 non-audit subpackages may
+    # ever import ets2v2.audit (D-16).
+    all_non_audit_subpkgs = (
+        "vfs",
+        "sii",
+        "baseline",
+        "normalize",
+        "registry",
+        "fetch",
+        "package",
+        "validate",
+        "merge",
+        "publish",
+    )
+    for subpkg in all_non_audit_subpkgs:
+        pkg_dir = src_root / subpkg
+        assert pkg_dir.is_dir(), f"Expected subpackage directory {pkg_dir}"
+        audit_violations = _scan_forbidden_imports(
+            pkg_dir,
+            forbidden_roots=frozenset(),
+            forbidden_ets2v2_subpackages=frozenset({"audit"}),
+        )
+        assert audit_violations == [], f"Audit quarantine breach in {subpkg}/: {audit_violations}"
+
+    # audit/ itself must never import package, merge, publish, validate, or openpyxl (D-16).
+    audit_dir = src_root / "audit"
+    assert audit_dir.is_dir(), f"Expected subpackage directory {audit_dir}"
+    audit_outbound_violations = _scan_forbidden_imports(
+        audit_dir,
+        forbidden_roots=frozenset({"openpyxl"}),
+        forbidden_ets2v2_subpackages=frozenset({"package", "merge", "publish", "validate"}),
+    )
+    assert audit_outbound_violations == [], (
+        f"Forbidden outbound import in audit/: {audit_outbound_violations}"
+    )

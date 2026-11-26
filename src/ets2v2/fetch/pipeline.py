@@ -33,6 +33,7 @@ from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_TERRITORY_CURRENCIES,
     PROMODS_EXTENDED_ISO2S,
+    load_tier3_fuel_baselines,
 )
 from ets2v2.normalize.fuel import (
     MAX_EUR_PER_LITER,
@@ -48,6 +49,7 @@ from ets2v2.normalize.fx import FxProviderQuote, cross_validate_fx_rates, round_
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_LICENSE,
     BASELINE_SEEDED_SOURCE,
+    EXTRA_EU_SEED_EUR_PRICES,
     evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
@@ -197,6 +199,7 @@ def _build_baseline_entry(
     iso2: str,
     *,
     diesel_eur: float,
+    petrol_95_eur: float | None = None,
     fx_entry: FxRateLockEntry,
     data_date: str,
     fetched_at: str,
@@ -205,7 +208,11 @@ def _build_baseline_entry(
 ) -> CountryFuelLockEntry:
     rate = fx_entry.rate_per_eur
     diesel_eur_3dp = round_eur_per_liter(diesel_eur)
-    petrol_95_eur_3dp = round_eur_per_liter(diesel_eur_3dp * _SEED_PETROL_TO_DIESEL_RATIO)
+    petrol_95_eur_3dp = (
+        round_eur_per_liter(petrol_95_eur)
+        if petrol_95_eur is not None
+        else round_eur_per_liter(diesel_eur_3dp * _SEED_PETROL_TO_DIESEL_RATIO)
+    )
     anchors: dict[FuelGrade, float] = {
         "diesel": round_local_price(diesel_eur_3dp * rate),
         "petrol_95": round_local_price(petrol_95_eur_3dp * rate),
@@ -287,6 +294,7 @@ def run_price_fetch(
         seed_date=now_date_str,
         updated_at=now_iso,
     )
+    tier3_baselines = load_tier3_fuel_baselines().baselines
 
     alerts: list[LockAlert] = []
     provider_statuses: list[ProviderFetchStatus] = []
@@ -588,11 +596,23 @@ def run_price_fetch(
             continue
 
         # No valid live feed covered this territory -> retain lockfile or seed baseline/Tier 3.
+        t3_entry = tier3_baselines.get(iso2)
+        extra_seed = EXTRA_EU_SEED_EUR_PRICES.get(iso2)
         if previous_entry is not None:
             if previous_entry.source in SEEDED_LOCKFILE_SOURCES:
+                if t3_entry is not None:
+                    curated_diesel = t3_entry.diesel_eur_per_liter
+                    curated_petrol: float | None = t3_entry.petrol_95_eur_per_liter
+                elif extra_seed is not None:
+                    curated_diesel = previous_entry.eur_per_liter
+                    curated_petrol = extra_seed[1]
+                else:
+                    curated_diesel = previous_entry.eur_per_liter
+                    curated_petrol = None
                 countries[iso2] = _build_baseline_entry(
                     iso2,
-                    diesel_eur=previous_entry.eur_per_liter,
+                    diesel_eur=curated_diesel,
+                    petrol_95_eur=curated_petrol,
                     fx_entry=fx_entry,
                     data_date=previous_entry.data_date,
                     fetched_at=now_iso,
@@ -616,11 +636,24 @@ def run_price_fetch(
                     )
         else:
             seed_entry = baseline_seed.countries[iso2]
+            if t3_entry is not None:
+                boot_diesel = t3_entry.diesel_eur_per_liter
+                boot_petrol: float | None = t3_entry.petrol_95_eur_per_liter
+                boot_date = t3_entry.verified_date
+            elif extra_seed is not None:
+                boot_diesel = extra_seed[0]
+                boot_petrol = extra_seed[1]
+                boot_date = now_date_str
+            else:
+                boot_diesel = seed_entry.eur_per_liter
+                boot_petrol = None
+                boot_date = now_date_str
             countries[iso2] = _build_baseline_entry(
                 iso2,
-                diesel_eur=seed_entry.eur_per_liter,
+                diesel_eur=boot_diesel,
+                petrol_95_eur=boot_petrol,
                 fx_entry=fx_entry,
-                data_date=now_date_str,
+                data_date=boot_date,
                 fetched_at=now_iso,
                 source=seed_entry.source,
                 license_name=seed_entry.license,

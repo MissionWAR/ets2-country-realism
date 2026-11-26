@@ -205,12 +205,13 @@ def seed_initial_lockfile(
     baseline_countries: CountriesBaseline,
     slug_to_iso2: Mapping[str, str] | None = None,
     *,
-    seed_date: str = "2026-11-20",
+    seed_date: str | None = None,
     updated_at: str = "2026-11-20T06:00:00Z",
 ) -> PricesLockfile:
     """Deterministically seed a 225-territory global v1 lockfile from 1.62 baseline + Tier 3."""
     mapping: Mapping[str, str] = slug_to_iso2 if slug_to_iso2 is not None else VANILLA_SLUG_TO_ISO2
     tier3_baselines = load_tier3_fuel_baselines().baselines
+    effective_seed_date = seed_date if seed_date is not None else "2026-11-20"
 
     fx_rates: dict[str, FxRateLockEntry] = {}
     for currency in sorted(ALL_REFERENCE_FX_RATES):
@@ -237,7 +238,7 @@ def seed_initial_lockfile(
             validator_provider=None,
             validator_rate_per_eur=None,
             divergence_pct=0.0,
-            data_date=seed_date,
+            data_date=effective_seed_date,
             fetched_at=updated_at,
             fallback_used=fallback_used,
         )
@@ -261,10 +262,12 @@ def seed_initial_lockfile(
             petrol_95_eur = round_eur_per_liter(diesel_eur * _SEED_PETROL_TO_DIESEL_RATIO)
             source_name = BASELINE_SEEDED_SOURCE
             license_name = BASELINE_SEEDED_LICENSE
+            entry_data_date = effective_seed_date
         elif iso2 in EXTRA_EU_SEED_EUR_PRICES:
             diesel_eur, petrol_95_eur = EXTRA_EU_SEED_EUR_PRICES[iso2]
             source_name = BASELINE_SEEDED_SOURCE
             license_name = BASELINE_SEEDED_LICENSE
+            entry_data_date = effective_seed_date
         elif iso2 in tier3_baselines:
             t3_entry = tier3_baselines[iso2]
             diesel_eur = round_eur_per_liter(t3_entry.diesel_eur_per_liter)
@@ -275,6 +278,7 @@ def seed_initial_lockfile(
             else:
                 source_name = TIER3_CURATED_BASELINE_SOURCE
                 license_name = TIER3_CURATED_BASELINE_LICENSE
+            entry_data_date = seed_date if seed_date is not None else t3_entry.verified_date
         else:
             raise ValueError(f"Missing fuel_price seed for territory {iso2!r}")
 
@@ -291,7 +295,7 @@ def seed_initial_lockfile(
             derived_grades=derived_grades,
             source=source_name,
             license=license_name,
-            data_date=seed_date,
+            data_date=entry_data_date,
             fetched_at=updated_at,
             fallback_used=True,
         )

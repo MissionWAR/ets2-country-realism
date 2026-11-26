@@ -1522,3 +1522,73 @@ def test_cli_no_tier2_flag_skips_all_tier2_portals(
     assert "ae_moei" not in providers
     assert "is_gasvaktin" not in providers
     assert "za_dmre_cef" not in providers
+
+
+def test_run_price_fetch_preserves_curated_tier3_petrol_and_verified_date_hi01(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """HI-01: Repricing/bootstrapping Tier 3 territories must preserve curated petrol_95 & date."""
+    from ets2v2.normalize.currencies import load_tier3_fuel_baselines
+    from ets2v2.normalize.fuel import round_local_price
+
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    monkeypatch.delenv("EIA_API_KEY", raising=False)
+    monkeypatch.delenv("OPINET_API_KEY", raising=False)
+    baselines = load_tier3_fuel_baselines().baselines
+
+    # 1. Repricing an existing committed lockfile preserves exact curated diesel & petrol_95
+    reprice_lock = tmp_path / "reprice.lock.json"
+    reprice_lock.write_bytes(COMMITTED_LOCK_PATH.read_bytes())
+    res_reprice = run_price_fetch(
+        lock_path=reprice_lock,
+        baseline_dir=BASELINE_DIR,
+        include_global=False,
+        include_tier2=False,
+        write_lock=True,
+        transport=_pipeline_transport(),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_reprice.ok is True
+    after_reprice = load_prices_lockfile(reprice_lock)
+    for iso2 in ("IR", "VE", "US", "BN", "CA", "CG"):
+        t3 = baselines[iso2]
+        entry = after_reprice.countries[iso2]
+        rate = after_reprice.fx_rates[entry.currency].rate_per_eur
+        assert entry.eur_per_liter == pytest.approx(t3.diesel_eur_per_liter)
+        assert entry.local_prices["petrol_95"] == pytest.approx(
+            round_local_price(t3.petrol_95_eur_per_liter * rate)
+        )
+    # US and CA remain petrol-cheaper-than-diesel (never inverted by * 1.03)
+    assert (
+        after_reprice.countries["US"].local_prices["petrol_95"]
+        < after_reprice.countries["US"].local_prices["diesel"]
+    )
+    assert (
+        after_reprice.countries["CA"].local_prices["petrol_95"]
+        < after_reprice.countries["CA"].local_prices["diesel"]
+    )
+
+    # 2. Bootstrapping a fresh lockfile preserves exact curated petrol_95 & verified_date
+    fresh_lock = tmp_path / "fresh.lock.json"
+    res_fresh = run_price_fetch(
+        lock_path=fresh_lock,
+        baseline_dir=BASELINE_DIR,
+        include_global=False,
+        include_tier2=False,
+        write_lock=True,
+        transport=_pipeline_transport(),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_fresh.ok is True
+    after_fresh = load_prices_lockfile(fresh_lock)
+    for iso2 in ("IR", "VE", "US", "BN"):
+        t3 = baselines[iso2]
+        entry = after_fresh.countries[iso2]
+        rate = after_fresh.fx_rates[entry.currency].rate_per_eur
+        assert entry.data_date == t3.verified_date
+        assert entry.local_prices["petrol_95"] == pytest.approx(
+            round_local_price(t3.petrol_95_eur_per_liter * rate)
+        )

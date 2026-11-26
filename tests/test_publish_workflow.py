@@ -9,6 +9,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "phase-a-release.yml"
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+OSM_AUDIT_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "osm-speed-audit.yml"
 
 
 def _extract_run_blocks(yaml_text: str) -> list[str]:
@@ -303,3 +304,80 @@ def test_phase_a_workflow_reports_tier2_counters_and_rolls_up_tier3_staleness() 
     assert len(snippets) >= 3
     for idx, snippet in enumerate(snippets):
         compile(snippet, f"phase-a-release.yml:tier2-snippet-{idx}", "exec")
+
+
+def test_osm_speed_audit_workflow_exists_utf8_lf_and_zero_git_writes() -> None:
+    """Verify .github/workflows/osm-speed-audit.yml hygiene, permissions, and zero Git writes."""
+    assert OSM_AUDIT_WORKFLOW_PATH.is_file(), ".github/workflows/osm-speed-audit.yml must exist"
+    raw = OSM_AUDIT_WORKFLOW_PATH.read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf"), "Workflow must not have a UTF-8 BOM"
+    assert b"\r\n" not in raw, "Workflow must use LF line endings only"
+    assert b"\r" not in raw, "Workflow must not contain bare CR characters"
+    text = raw.decode("utf-8")
+
+    # Monthly 1st-Monday 07:00 UTC schedule + manual workflow_dispatch (iso2, overpass)
+    assert 'cron: "0 7 1-7 * 1"' in text
+    assert "workflow_dispatch:" in text
+    assert "iso2:" in text
+    assert "overpass:" in text
+
+    # Strictly forbid PR triggers on issue-writing workflow (T-05-15)
+    assert re.search(r"^\s*pull_request\s*:", text, re.MULTILINE) is None
+    assert re.search(r"^\s*pull_request_target\s*:", text, re.MULTILINE) is None
+
+    # Least-privilege permissions: contents: read + issues: write (NEVER contents: write!)
+    assert "permissions:" in text
+    assert "contents: read" in text
+    assert "issues: write" in text
+    assert "contents: write" not in text
+
+    # Physically zero Git write commands anywhere in the workflow (D-14)
+    for forbidden_git_cmd in ("git add", "git commit", "git push"):
+        assert forbidden_git_cmd not in text, (
+            f"Forbidden Git write command {forbidden_git_cmd!r} in osm-speed-audit.yml"
+        )
+
+
+def test_osm_speed_audit_workflow_injection_safety_actions_and_rolling_issue() -> None:
+    """Verify env-only inputs, zero ${{ in run:, pinned actions, artifacts, and rolling issue."""
+    text = OSM_AUDIT_WORKFLOW_PATH.read_text("utf-8")
+
+    required_fragments = (
+        "runs-on: ubuntu-latest",
+        "actions/checkout@v4",
+        "astral-sh/setup-uv@v5",
+        "actions/upload-artifact@v4",
+        "uv sync --locked",
+        "AUDIT_ISO2: ${{ inputs.iso2 }}",
+        "AUDIT_OVERPASS: ${{ inputs.overpass }}",
+        "GH_TOKEN: ${{ github.token }}",
+        "ets2v2 audit osm-speeds",
+        "dist/audit/osm_speed_drift_report.md",
+        "dist/audit/osm_speed_drift_report.json",
+        "osm-speed-drift-report",
+        "GITHUB_STEP_SUMMARY",
+        "osm-audit",
+        "gh issue list",
+        "gh issue edit",
+        "gh issue create",
+        "unacknowledged_drift_count",
+        "def _sanitize(",
+    )
+    for fragment in required_fragments:
+        assert fragment in text, f"Missing required osm-speed-audit.yml fragment: {fragment!r}"
+
+    # Zero third-party GitHub Issue actions (T-05-SC)
+    assert "actions/github-script" not in text
+    assert "JasonEtco/create-an-issue" not in text
+
+    # Zero GitHub Actions expression interpolation inside any run: block (T-05-15)
+    run_blocks = _extract_run_blocks(text)
+    assert len(run_blocks) >= 3
+    for block in run_blocks:
+        assert "${{" not in block, f"Unsafe GitHub Actions expression inside run: block:\n{block}"
+
+    # Every embedded Python snippet compiles cleanly
+    snippets = _extract_embedded_python_snippets(run_blocks)
+    assert len(snippets) >= 1
+    for idx, snippet in enumerate(snippets):
+        compile(snippet, f"osm-speed-audit.yml:snippet-{idx}", "exec")

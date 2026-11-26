@@ -1,0 +1,165 @@
+name: Monthly OSM Speed-Limit Drift Audit
+
+on:
+  schedule:
+    - cron: "0 7 1-7 * 1"
+  workflow_dispatch:
+    inputs:
+      iso2:
+        description: "Optional comma-separated ISO-2 country codes to audit (default: all)"
+        required: false
+        type: string
+        default: ""
+      overpass:
+        description: "Run opt-in Overpass spot-checks (requires <=10 ISO-2 codes)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: osm-speed-audit
+  cancel-in-progress: false
+
+jobs:
+  osm-speed-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AUDIT_ISO2: ${{ inputs.iso2 }}
+      AUDIT_OVERPASS: ${{ inputs.overpass }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv and Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Install locked dependencies
+        run: uv sync --locked
+
+      - name: Run internal OSM speed-limit drift audit (read-only, zero Git writes)
+        id: audit
+        run: |
+          set -euo pipefail
+          mkdir -p dist/audit
+          args=(
+            --out-md dist/audit/osm_speed_drift_report.md
+            --out-json dist/audit/osm_speed_drift_report.json
+          )
+          if [ -n "${AUDIT_ISO2:-}" ]; then
+            args+=(--iso2 "$AUDIT_ISO2")
+          fi
+          if [ "${AUDIT_OVERPASS:-false}" = "true" ]; then
+            args+=(--overpass)
+          fi
+          uv run --offline ets2v2 audit osm-speeds "${args[@]}"
+          uv run --offline python - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          report = json.loads(
+              pathlib.Path("dist/audit/osm_speed_drift_report.json").read_text("utf-8")
+          )
+          out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a", encoding="utf-8") as fh:
+              fh.write(
+                  f"unacknowledged_drift_count={int(report.get('unacknowledged_drift_count', 0))}\n"
+              )
+              fh.write(
+                  f"acknowledged_difference_count={int(report.get('acknowledged_difference_count', 0))}\n"
+              )
+          PY
+
+      - name: Upload OSM speed-limit drift audit report artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osm-speed-drift-report
+          if-no-files-found: error
+          path: |
+            dist/audit/osm_speed_drift_report.md
+            dist/audit/osm_speed_drift_report.json
+
+      - name: Publish sanitized OSM speed drift summary to step summary
+        run: |
+          set -euo pipefail
+          uv run --offline python - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          def _sanitize(text: str, limit: int = 240) -> str:
+              cleaned = (
+                  " ".join(text.split())
+                  .replace("`", "'")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+              )
+              return cleaned[:limit]
+
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          json_path = pathlib.Path("dist/audit/osm_speed_drift_report.json")
+          if step_summary and json_path.is_file():
+              report = json.loads(json_path.read_text("utf-8"))
+              unack = report.get("unacknowledged_drifts", [])
+              ack_count = int(report.get("acknowledged_difference_count", 0))
+              lines = [
+                  "### Monthly OSM Speed-Limit Drift Audit Summary",
+                  "",
+                  f"- **Countries Checked / Matched:** `{report.get('countries_checked', 0)}` / `{report.get('countries_matched_in_osm', 0)}`",
+                  f"- **Unacknowledged Drift Findings:** `{int(report.get('unacknowledged_drift_count', 0))}`",
+                  f"- **Acknowledged Statutory Differences:** `{ack_count}`",
+              ]
+              if unack:
+                  lines.extend(["", "#### Top Unacknowledged Drift Items (verify against official statutes)"])
+                  for item in unack[:30]:
+                      iso2 = _sanitize(str(item.get("iso2", "")), 8)
+                      vehicle = _sanitize(str(item.get("vehicle_class", "")), 16)
+                      lane = _sanitize(str(item.get("lane_speed_class", "")), 24)
+                      field = _sanitize(str(item.get("field", "")), 24)
+                      law_val = _sanitize(str(item.get("law_value", "")), 16)
+                      osm_val = _sanitize(str(item.get("osm_value", "")), 16)
+                      lines.append(
+                          f"- `{iso2}` `{vehicle}`.`{lane}`.`{field}`: law=`{law_val}` vs osm=`{osm_val}`"
+                      )
+              with pathlib.Path(step_summary).open("a", encoding="utf-8") as fh:
+                  fh.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upsert rolling maintainer osm-audit GitHub Issue on unacknowledged drift
+        if: steps.audit.outputs.unacknowledged_drift_count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ISSUE_TITLE="Monthly OSM Speed-Limit Drift Review"
+          ISSUE_BODY_FILE="dist/audit/osm_speed_drift_report.md"
+
+          gh label create osm-audit \
+            --description "Automated monthly internal OSM speed-limit drift advisory" \
+            --color "fbca04" \
+            --force || true
+
+          EXISTING_ISSUE=$(gh issue list \
+            --label osm-audit \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_ISSUE" ]; then
+            gh issue edit "$EXISTING_ISSUE" \
+              --title "$ISSUE_TITLE" \
+              --body-file "$ISSUE_BODY_FILE"
+          else
+            gh issue create \
+              --label osm-audit \
+              --title "$ISSUE_TITLE" \
+              --body-file "$ISSUE_BODY_FILE"
+          fi

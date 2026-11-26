@@ -640,6 +640,7 @@ def _handle_fetch(args: argparse.Namespace) -> int:
     allow_jumps = cast(list[str] | None, args.allow_jump) or []
     fx_only = cast(bool, args.fx_only)
     seed_offline = cast(bool, args.seed_offline)
+    no_global = cast(bool, args.no_global)
     timeout = cast(float, args.timeout)
     dry_run = cast(bool, args.dry_run)
     as_json = cast(bool, args.json)
@@ -658,6 +659,7 @@ def _handle_fetch(args: argparse.Namespace) -> int:
             allow_jump_iso2=frozenset(code.strip().upper() for code in allow_jumps if code.strip()),
             fx_only=fx_only,
             seed_offline=seed_offline,
+            include_global=not no_global,
             timeout=timeout,
             write_lock=not dry_run,
         )
@@ -1435,6 +1437,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--seed-offline",
         action="store_true",
         help="Deterministically seed state/prices.lock.json offline from 1.62 baseline.",
+    )
+    fetch_parser.add_argument(
+        "--no-global",
+        action="store_true",
+        help="Skip non-EU Global Tier 1 fuel collectors (EU Core only).",
     )
     fetch_parser.add_argument(
         "--timeout",

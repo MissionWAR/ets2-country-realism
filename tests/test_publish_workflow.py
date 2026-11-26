@@ -265,3 +265,24 @@ def test_phase_a_workflow_verifies_and_publishes_rolling_snapshots_latest_releas
     # Verify snapshot-verify runs BEFORE snapshots-latest GitHub Release upload
     assert text.index(verify_summer) < text.index('TAG="snapshots-latest"')
     assert text.index(verify_winter) < text.index('TAG="snapshots-latest"')
+
+
+def test_phase_a_workflow_wires_optional_global_tier1_secrets_and_eu_vs_global_counters() -> None:
+    text = WORKFLOW_PATH.read_text("utf-8")
+
+    # Optional non-EU Tier 1 secrets passed strictly via step-level env: (D-01)
+    assert "EIA_API_KEY: ${{ secrets.EIA_API_KEY }}" in text
+    assert "OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}" in text
+    assert "CNE_API_TOKEN: ${{ secrets.CNE_API_TOKEN }}" in text
+
+    # Step summary reports separated EU Core Tier 1 vs Global Tier 1 counters (D-02)
+    assert "eu_tier1_feeds_succeeded" in text
+    assert "eu_tier1_feeds_failed" in text
+    assert "global_tier1_feeds_succeeded" in text
+    assert "global_tier1_feeds_failed" in text
+
+    # ci.yml remains strictly free of global API secrets
+    ci_text = CI_WORKFLOW_PATH.read_text("utf-8")
+    assert "EIA_API_KEY" not in ci_text
+    assert "OPINET_API_KEY" not in ci_text
+    assert "CNE_API_TOKEN" not in ci_text

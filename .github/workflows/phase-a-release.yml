@@ -49,6 +49,9 @@ jobs:
       - name: Fetch live European FX & Tier 1 fuel prices
         env:
           TANKERKOENIG_API_KEY: ${{ secrets.TANKERKOENIG_API_KEY }}
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+          OPINET_API_KEY: ${{ secrets.OPINET_API_KEY }}
+          CNE_API_TOKEN: ${{ secrets.CNE_API_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -71,11 +74,15 @@ jobs:
           if step_summary and summary_path.is_file():
               fetch_data = json.loads(summary_path.read_text("utf-8"))
               alerts = fetch_data.get("alerts", [])
+              eu_ok = fetch_data.get("eu_tier1_feeds_succeeded", fetch_data.get("tier1_feeds_succeeded", 0))
+              eu_fail = fetch_data.get("eu_tier1_feeds_failed", fetch_data.get("tier1_feeds_failed", 0))
+              global_ok = fetch_data.get("global_tier1_feeds_succeeded", 0)
+              global_fail = fetch_data.get("global_tier1_feeds_failed", 0)
               lines = [
                   "### Phase A Fetch Summary",
                   "",
-                  f"- **Tier 1 Feeds Succeeded:** `{fetch_data.get('tier1_feeds_succeeded', 0)}`",
-                  f"- **Tier 1 Feeds Failed:** `{fetch_data.get('tier1_feeds_failed', 0)}`",
+                  f"- **EU Core Tier 1 Feeds Succeeded / Failed:** `{eu_ok}` / `{eu_fail}`",
+                  f"- **Global Tier 1 Feeds Succeeded / Failed:** `{global_ok}` / `{global_fail}`",
                   f"- **Countries Updated / Fallback:** `{fetch_data.get('countries_updated', 0)}` / `{fetch_data.get('countries_fallback', 0)}`",
                   f"- **Alerts:** `{len(alerts)}`",
               ]

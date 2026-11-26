@@ -19,6 +19,7 @@ from ets2v2.fetch.ec_bulletin import (
     fetch_fuel_prices_eu,
 )
 from ets2v2.fetch.fx import fetch_all_fx_quotes, run_fx_only_fetch
+from ets2v2.fetch.global_tier1 import fetch_all_global_tier1_feeds
 from ets2v2.fetch.http import DEFAULT_TIMEOUT_SECONDS, create_http_client, redact_url_secrets
 from ets2v2.fetch.models import (
     FetchRunReport,
@@ -74,6 +75,15 @@ _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "es_miteco": 40,
     "it_mimit": 40,
     "nl_cbs_80416ned": 40,
+    "us_eia_v2": 40,
+    "br_anp": 40,
+    "ar_energia": 40,
+    "co_sicom": 40,
+    "co_creg": 40,
+    "cl_cne": 40,
+    "my_opendosm": 40,
+    "jp_meti": 40,
+    "kr_opinet": 40,
 }
 _SEED_PETROL_TO_DIESEL_RATIO: Final[float] = 1.03
 
@@ -211,10 +221,14 @@ def run_price_fetch(
     allow_jump_iso2: frozenset[str] = frozenset(),
     fx_only: bool = False,
     seed_offline: bool = False,
+    include_global: bool = True,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     write_lock: bool = True,
     transport: httpx.BaseTransport | None = None,
     tankerkoenig_api_key: str | None = None,
+    eia_api_key: str | None = None,
+    opinet_api_key: str | None = None,
+    cne_api_token: str | None = None,
     now_utc: datetime | None = None,
     sleep_fn: Callable[[float], None] | None = None,
 ) -> FetchRunReport:
@@ -320,12 +334,24 @@ def run_price_fetch(
         if not ec_wob.ok or len(ec_wob.quotes) < 27:
             fionnhughes = fetch_fionnhughes_fallback(client, sleep_fn=sleep_fn)
         fuel_prices_eu = fetch_fuel_prices_eu(client, sleep_fn=sleep_fn)
+        global_tier1_results: list[RawFuelFeedResult] = (
+            fetch_all_global_tier1_feeds(
+                client,
+                eia_api_key=eia_api_key,
+                opinet_api_key=opinet_api_key,
+                cne_api_token=cne_api_token,
+                sleep_fn=sleep_fn,
+            )
+            if include_global
+            else []
+        )
 
     all_fuel_results: list[RawFuelFeedResult] = [
         ec_wob,
         *national_results,
         *([fionnhughes] if fionnhughes is not None else []),
         fuel_prices_eu,
+        *global_tier1_results,
     ]
 
     for feed_res in all_fuel_results:
@@ -334,7 +360,7 @@ def run_price_fetch(
                 ProviderFetchStatus(
                     provider=feed_res.feed_name,
                     ok=True,
-                    detail="skipped (TANKERKOENIG_API_KEY unset; using EC WOB)",
+                    detail=feed_res.skip_reason or "skipped (optional API key unset)",
                     data_date=feed_res.data_date,
                 )
             )
@@ -348,23 +374,48 @@ def run_price_fetch(
             )
         )
         if not feed_res.ok:
+            default_code = (
+                "global_tier1_outage"
+                if (feed_res.tier == "tier1" and feed_res.region_scope == "global")
+                else "feed_outage"
+            )
             alerts.append(
                 LockAlert(
                     severity="warning",
-                    code="feed_outage",
+                    code=feed_res.error_code or default_code,
                     scope=feed_res.feed_name,
                     detail=redact_url_secrets(feed_res.error or "fuel feed fetch failed"),
                 )
             )
 
-    tier1_feeds_succeeded = sum(
-        1 for r in all_fuel_results if r.tier == "tier1" and not r.skipped and r.ok
+    eu_tier1_feeds_succeeded = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "eu_core" and not r.skipped and r.ok
     )
-    tier1_feeds_failed = sum(
-        1 for r in all_fuel_results if r.tier == "tier1" and not r.skipped and not r.ok
+    eu_tier1_feeds_failed = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "eu_core" and not r.skipped and not r.ok
+    )
+    global_tier1_feeds_succeeded = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "global" and not r.skipped and r.ok
+    )
+    global_tier1_feeds_failed = sum(
+        1
+        for r in all_fuel_results
+        if r.tier == "tier1" and r.region_scope == "global" and not r.skipped and not r.ok
+    )
+    tier2_feeds_succeeded = sum(
+        1 for r in all_fuel_results if r.tier == "tier2" and not r.skipped and r.ok
+    )
+    tier2_feeds_failed = sum(
+        1 for r in all_fuel_results if r.tier == "tier2" and not r.skipped and not r.ok
     )
 
-    if tier1_feeds_succeeded == 0:
+    if eu_tier1_feeds_succeeded == 0:
         alerts.append(
             LockAlert(
                 severity="error",
@@ -382,7 +433,13 @@ def run_price_fetch(
             dry_run=not write_lock,
             lock_path=lock_path,
             tier1_feeds_succeeded=0,
-            tier1_feeds_failed=tier1_feeds_failed,
+            tier1_feeds_failed=eu_tier1_feeds_failed,
+            eu_tier1_feeds_succeeded=0,
+            eu_tier1_feeds_failed=eu_tier1_feeds_failed,
+            global_tier1_feeds_succeeded=global_tier1_feeds_succeeded,
+            global_tier1_feeds_failed=global_tier1_feeds_failed,
+            tier2_feeds_succeeded=tier2_feeds_succeeded,
+            tier2_feeds_failed=tier2_feeds_failed,
             countries_updated=0,
             countries_fallback=0,
             fx_currencies_validated=len(fx_validation.rates),
@@ -574,8 +631,14 @@ def run_price_fetch(
         fx_only=False,
         dry_run=not write_lock,
         lock_path=lock_path,
-        tier1_feeds_succeeded=tier1_feeds_succeeded,
-        tier1_feeds_failed=tier1_feeds_failed,
+        tier1_feeds_succeeded=eu_tier1_feeds_succeeded,
+        tier1_feeds_failed=eu_tier1_feeds_failed,
+        eu_tier1_feeds_succeeded=eu_tier1_feeds_succeeded,
+        eu_tier1_feeds_failed=eu_tier1_feeds_failed,
+        global_tier1_feeds_succeeded=global_tier1_feeds_succeeded,
+        global_tier1_feeds_failed=global_tier1_feeds_failed,
+        tier2_feeds_succeeded=tier2_feeds_succeeded,
+        tier2_feeds_failed=tier2_feeds_failed,
         countries_updated=countries_updated,
         countries_fallback=countries_fallback,
         fx_currencies_validated=len(sorted_fx),

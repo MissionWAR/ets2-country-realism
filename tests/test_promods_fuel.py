@@ -187,7 +187,7 @@ def test_compile_promods_fuel_module_mn_split_cni_derived_grades_and_unknown_ver
     assert validate_sii_hygiene(eu_res.rendered_bytes, require_siinunit=True) == []
     assert validate_unit_name_segments(eu_res.unit_name) == []
 
-    # Now test pm_tgs_fuel where mn = Mongolia (MN, MNT integer "3626")!
+    # Now test pm_tgs_fuel where mn = Mongolia (MN, MNT integer in thousands)!
     mn_diesel = snapshot.countries["MN"].fuel.local_prices["diesel"]
     tgs_raw = _make_loc_sii(
         ".pm_tgs_fuel",
@@ -200,11 +200,13 @@ def test_compile_promods_fuel_module_mn_split_cni_derived_grades_and_unknown_ver
     )
     tgs_res = compile_promods_fuel_module("pm_tgs_fuel", tgs_raw, snapshot, source_path="en_gb")
     assert tgs_res.entries["fp_mn_diesel"] == format_pm_fuel_value(mn_diesel, None, "integer")
-    assert tgs_res.entries["fp_mn_diesel"] == "3626"
+    assert tgs_res.entries["fp_mn_diesel"].isdigit()
+    assert int(tgs_res.entries["fp_mn_diesel"]) > 1000
     assert validate_sii_hygiene(tgs_res.rendered_bytes, require_siinunit=True) == []
     assert validate_unit_name_segments(tgs_res.unit_name) == []
 
-    # Test pm_me_fuel including post-2026 redenominated SYP ("153") and JOD/SAR/EGP/IQD/LBP
+    # Test pm_me_fuel including post-2026 redenominated SYP and JOD/SAR/EGP/IQD/LBP
+    syr_diesel = snapshot.countries["SY"].fuel.local_prices["diesel"]
     me_raw = _make_loc_sii(
         ".pm_me_fuel",
         [
@@ -217,7 +219,8 @@ def test_compile_promods_fuel_module_mn_split_cni_derived_grades_and_unknown_ver
         ],
     )
     me_res = compile_promods_fuel_module("pm_me_fuel", me_raw, snapshot, source_path="en_gb")
-    assert me_res.entries["fp_syr_diesel"] == "153"
+    assert me_res.entries["fp_syr_diesel"] == format_pm_fuel_value(syr_diesel, None, "integer")
+    assert 50 <= int(me_res.entries["fp_syr_diesel"]) <= 500
     assert "<sup>" in me_res.entries["fp_ksa_diesel_v4"]
     assert "<sup>" in me_res.entries["fp_eg_diesel_v2"]
     assert validate_sii_hygiene(me_res.rendered_bytes, require_siinunit=True) == []

@@ -477,6 +477,15 @@ def test_ultra_subsidized_floor_clamping_vs_live_bounds_enforcement() -> None:
         ("KH", 4150.6, "4151"),
         ("LA", 22500.4, "22500"),
         ("MM", 2750.5, "2751"),
+        ("AR", 1207.5, "1208"),
+        ("NG", 1425.5, "1426"),
+        ("GN", 11997.0, "11997"),
+        ("BI", 4032.4, "4032"),
+        ("CD", 3596.6, "3597"),
+        ("SN", 754.4, "754"),
+        ("CM", 826.5, "827"),
+        ("NC", 171.84, "172"),
+        ("VU", 175.44, "175"),
         ("KW", 0.1154, "0.115"),
         ("BH", 0.1805, "0.181"),
         ("OM", 0.2584, "0.258"),
@@ -492,6 +501,18 @@ def test_global_totem_formatting_integer_and_three_decimal_markets(
     else:
         assert iso2 in THREE_DEC_NATIONAL_ISO2S
     assert format_national_pump_price(iso2, local_price) == expected
+
+
+def test_all_high_unit_global_territories_format_as_integers_in01() -> None:
+    """IN-01: Zero high-unit (>=100 local/L) territories emit fractional decimals on totems."""
+    lock = load_prices_lockfile(PRICES_LOCK_PATH)
+    for iso2, entry in sorted(lock.countries.items()):
+        diesel = entry.local_prices["diesel"]
+        if diesel >= 100.0:
+            formatted = format_national_pump_price(iso2, diesel)
+            assert "." not in formatted, (
+                f"{iso2} ({entry.currency}={diesel}) formatted as {formatted!r}"
+            )
 
 
 def test_global_225_territory_law_registry_and_alias_completeness() -> None:

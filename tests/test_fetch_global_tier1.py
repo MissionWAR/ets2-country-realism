@@ -11,7 +11,7 @@ import httpx
 import openpyxl
 import pytest
 
-from ets2v2.fetch._parsing import validate_ooxml_zip_safety
+from ets2v2.fetch._parsing import extract_iso_date, validate_ooxml_zip_safety
 from ets2v2.fetch.global_tier1 import (
     AR_ENERGIA_CKAN_FALLBACK_URL,
     AR_ENERGIA_CKAN_PRIMARY_URL,
@@ -970,3 +970,159 @@ def test_fetch_all_global_tier1_feeds_returns_8_isolated_results_in_order(
     assert by_name["ar_energia"].ok is False
     assert by_name["co_sicom"].ok is False
     assert by_name["jp_meti"].ok is False
+
+
+def _build_corrupt_deflate_xlsx() -> bytes:
+    """Create a valid ZIP header whose compressed member bytes trigger zlib.error on inflate."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("xl/workbook.xml", b"<workbook>" + b"A" * 256 + b"</workbook>")
+    raw = bytearray(buf.getvalue())
+    # Local file header ends at 30 + filename_len + extra_len
+    name_len = int.from_bytes(raw[26:28], "little")
+    extra_len = int.from_bytes(raw[28:30], "little")
+    data_offset = 30 + name_len + extra_len
+    # 0x06 sets deflate BTYPE=11 (reserved/invalid), reliably raising zlib.error
+    raw[data_offset] = 0x06
+    return bytes(raw)
+
+
+def test_ooxml_safety_catches_corrupt_deflate_and_utf16_doctype_hi02() -> None:
+    """HI-02: Corrupt deflate streams raise ValueError (not zlib.error) & UTF-16 XXE is blocked."""
+    corrupt_zip = _build_corrupt_deflate_xlsx()
+    with pytest.raises(ValueError, match="OOXML"):
+        validate_ooxml_zip_safety(corrupt_zip)
+
+    # Also isolated cleanly inside fetch_jp_meti without crashing pipeline
+    xlsx_url = (
+        "https://www.enecho.meti.go.jp/statistics/petroleum_and_lpgas/pl007/corrupt_20261116.xlsx"
+    )
+
+    def _jp_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == JP_METI_LANDING_URL:
+            return httpx.Response(200, text=f'<a href="{xlsx_url}">Weekly .xlsx</a>')
+        if str(request.url) == xlsx_url:
+            return httpx.Response(200, content=corrupt_zip)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_jp_handler)) as client:
+        jp_res = fetch_jp_meti(client, sleep_fn=lambda _: None)
+    assert jp_res.ok is False
+    assert jp_res.error is not None
+
+    # UTF-16LE and UTF-16BE DOCTYPE/ENTITY payloads (both .xml and extensionless XML member)
+    xml_payload = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE foo [<!ENTITY x "a">]><wb/>'
+    for encoding, member_name in (
+        ("utf-16", "xl/workbook.xml"),
+        ("utf-16-le", "xl/workbook.xml"),
+        ("utf-16-be", "xl/workbook.xml"),
+        ("utf-16", "xl/custom_part"),
+    ):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(member_name, xml_payload.encode(encoding))
+        with pytest.raises(ValueError, match=r"DOCTYPE|ENTITY"):
+            validate_ooxml_zip_safety(buf.getvalue())
+
+
+def test_extract_iso_date_handles_t_separated_iso8601_timestamps_hi04() -> None:
+    """HI-04: ISO-8601 T-separated timestamps extract real dates across CO, AR, and CL."""
+    assert extract_iso_date("2026-11-20T00:00:00.000") == "2026-11-20"
+    assert extract_iso_date("2026-11-20T15:00:00Z") == "2026-11-20"
+    assert extract_iso_date("2026-11-20T15:00:00-05:00") == "2026-11-20"
+    # Embedded digits must NOT falsely match
+    assert extract_iso_date("92026-11-201") is None
+
+    # 1. CO SICOM Socrata SODA floating timestamp format ("YYYY-MM-DDT00:00:00.000")
+    def _co_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == CO_SICOM_CATALOG_URL:
+            return httpx.Response(
+                200,
+                json={
+                    "results": [
+                        {
+                            "resource": {
+                                "id": "ab12-cd34",
+                                "name": "Precios de combustibles SICOM",
+                            },
+                            "permalink": "https://www.datos.gov.co/d/ab12-cd34",
+                        }
+                    ]
+                },
+            )
+        if url.startswith("https://www.datos.gov.co/resource/ab12-cd34.json"):
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "producto": "GASOLINA MOTOR CORRIENTE",
+                        "precio": "15900",
+                        "fecha_precio": "2026-11-18T00:00:00.000",
+                    },
+                    {
+                        "producto": "BIODIESEL EXTRA",
+                        "precio": "10400",
+                        "fecha_precio": "2026-11-18T00:00:00.000",
+                    },
+                ],
+            )
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_co_handler)) as client:
+        co_res = fetch_co_sicom(client, sleep_fn=lambda _: None)
+    assert co_res.ok is True
+    assert co_res.data_date == "2026-11-18"
+
+    # 2. AR Energia CSV with T-separated ISO-8601 fecha_vigencia
+    ar_csv_url = "https://datos.energia.gob.ar/dataset/precios-en-surtidor/precios_2026.csv"
+    ar_csv = (
+        "producto,precio,fecha_vigencia\n"
+        "Nafta (súper) entre 92 y 95 Ron,1150.0,2026-11-17T08:00:00Z\n"
+        "Gas Oil Grado 2,1180.0,2026-11-17T08:00:00Z\n"
+    )
+
+    def _ar_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == AR_ENERGIA_CKAN_PRIMARY_URL:
+            return httpx.Response(
+                200,
+                json={
+                    "success": True,
+                    "result": {
+                        "resources": [
+                            {"format": "CSV", "name": "Precios vigentes", "url": ar_csv_url}
+                        ]
+                    },
+                },
+            )
+        if url == ar_csv_url:
+            return httpx.Response(200, content=ar_csv.encode("utf-8"))
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_ar_handler)) as client:
+        ar_res = fetch_ar_energia(client, sleep_fn=lambda _: None)
+    assert ar_res.ok is True
+    assert ar_res.data_date == "2026-11-17"
+
+    # 3. CL CNE v4 JSON with T-separated ISO-8601 fecha_hora_actualizacion
+    def _cl_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == CL_CNE_V4_URL:
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "fecha_hora_actualizacion": "2026-11-16T14:30:00Z",
+                        "precios": {
+                            "95": {"precio": 1280.0},
+                            "DI": {"precio": 1020.0},
+                        },
+                    }
+                ],
+            )
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_cl_handler)) as client:
+        cl_res = fetch_cl_cne(client, api_token="dummy-token", sleep_fn=lambda _: None)
+    assert cl_res.ok is True
+    assert cl_res.data_date == "2026-11-16"

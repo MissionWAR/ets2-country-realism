@@ -6,6 +6,7 @@ import io
 import math
 import re
 import zipfile
+import zlib
 from datetime import date, datetime
 from html.parser import HTMLParser
 from typing import Final
@@ -13,10 +14,14 @@ from typing import Final
 DEFAULT_OOXML_MAX_ENTRIES: Final[int] = 256
 DEFAULT_OOXML_MAX_UNCOMPRESSED_BYTES: Final[int] = 67_108_864  # 64 MiB uncompressed ZIP-bomb cap
 
-_ISO_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+_ISO_DATE_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)")
 _DMY_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 _XML_FORBIDDEN_DECL_BYTES_RE: Final[re.Pattern[bytes]] = re.compile(
     rb"<!(?:DOCTYPE|ENTITY)\b",
+    flags=re.IGNORECASE,
+)
+_XML_FORBIDDEN_DECL_TEXT_RE: Final[re.Pattern[str]] = re.compile(
+    r"<!(?:DOCTYPE|ENTITY)\b",
     flags=re.IGNORECASE,
 )
 
@@ -110,6 +115,27 @@ def parse_positive_float(value: object) -> float | None:
     return num if math.isfinite(num) and num > 0.0 else None
 
 
+def _looks_like_xml_member(filename: str, data: bytes) -> bool:
+    if filename.lower().endswith((".xml", ".rels")):
+        return True
+    head = data[:64].lstrip(b" \t\r\n\x00\xef\xbb\xbf\xff\xfe\xfe\xff")
+    return head.startswith((b"<", b"<\x00"))
+
+
+def _contains_forbidden_xml_decl(data: bytes) -> bool:
+    if _XML_FORBIDDEN_DECL_BYTES_RE.search(data):
+        return True
+    if data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" in data[:64]:
+        for enc in ("utf-16", "utf-16-le", "utf-16-be"):
+            try:
+                decoded = data.decode(enc)
+            except UnicodeDecodeError:
+                continue
+            if _XML_FORBIDDEN_DECL_TEXT_RE.search(decoded):
+                return True
+    return False
+
+
 def validate_ooxml_zip_safety(
     raw_xlsx: bytes,
     *,
@@ -144,11 +170,11 @@ def validate_ooxml_zip_safety(
                         "OOXML total uncompressed payload exceeds safety cap "
                         f"({max_uncompressed_bytes} bytes)"
                     )
-                if info.filename.lower().endswith(
-                    (".xml", ".rels")
-                ) and _XML_FORBIDDEN_DECL_BYTES_RE.search(data):
+                if _looks_like_xml_member(info.filename, data) and _contains_forbidden_xml_decl(
+                    data
+                ):
                     raise ValueError(
                         f"Forbidden DOCTYPE/ENTITY declaration in OOXML member {info.filename!r}"
                     )
-    except zipfile.BadZipFile as exc:
-        raise ValueError(f"Invalid OOXML ZIP archive: {exc}") from exc
+    except (zipfile.BadZipFile, zlib.error, RuntimeError, EOFError) as exc:
+        raise ValueError(f"Invalid or corrupt OOXML ZIP archive: {exc}") from exc

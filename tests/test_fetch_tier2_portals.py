@@ -733,3 +733,70 @@ def test_fetch_all_tier2_portals_exact_10_feeds_and_excludes_tier3_waf_portals()
     for excluded in ("ke_epra", "id_pertamina", "jo_memr", "eg_fapc"):
         assert excluded not in feed_names
     assert all(r.tier == "tier2" and r.region_scope == "global" and not r.ok for r in results)
+
+
+def test_tier2_corrupt_deflate_and_utf16_xxe_isolated_by_circuit_breaker_hi02() -> None:
+    """HI-02: Corrupt deflate stream (zlib.error) and UTF-16 XXE never crash Tier 2 guarded run."""
+    ago_url = "https://nigerianstat.gov.ng/downloads/ago_diesel_watch_nov2026.xlsx"
+    pms_url = "https://nigerianstat.gov.ng/downloads/pms_petrol_watch_nov2026.xlsx"
+
+    # Build corrupt deflate archive
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("xl/workbook.xml", b"<workbook>" + b"Z" * 256 + b"</workbook>")
+    raw = bytearray(buf.getvalue())
+    offset = 30 + int.from_bytes(raw[26:28], "little") + int.from_bytes(raw[28:30], "little")
+    raw[offset] = 0x06
+    corrupt_zip = bytes(raw)
+
+    def _corrupt_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == NG_NBS_URL:
+            return httpx.Response(
+                200,
+                request=request,
+                text=(
+                    f'<a href="{ago_url}">AGO Diesel Watch</a>'
+                    f'<a href="{pms_url}">PMS Petrol Watch</a>'
+                ),
+            )
+        if url in {ago_url, pms_url}:
+            return httpx.Response(200, request=request, content=corrupt_zip)
+        return httpx.Response(404, request=request)
+
+    with _mock_client(httpx.MockTransport(_corrupt_handler)) as client:
+        res_corrupt = fetch_ng_nbs(client, sleep_fn=_no_sleep)
+    assert res_corrupt.ok is False
+    assert res_corrupt.error is not None
+
+    # Build UTF-16 XXE workbook
+    xxe_buf = io.BytesIO()
+    with zipfile.ZipFile(xxe_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "xl/workbook.xml",
+            '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE a [<!ENTITY b "c">]><wb/>'.encode(
+                "utf-16"
+            ),
+        )
+    utf16_xxe = xxe_buf.getvalue()
+
+    def _xxe_handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == NG_NBS_URL:
+            return httpx.Response(
+                200,
+                request=request,
+                text=(
+                    f'<a href="{ago_url}">AGO Diesel Watch</a>'
+                    f'<a href="{pms_url}">PMS Petrol Watch</a>'
+                ),
+            )
+        if url in {ago_url, pms_url}:
+            return httpx.Response(200, request=request, content=utf16_xxe)
+        return httpx.Response(404, request=request)
+
+    with _mock_client(httpx.MockTransport(_xxe_handler)) as client:
+        res_xxe = fetch_ng_nbs(client, sleep_fn=_no_sleep)
+    assert res_xxe.ok is False
+    assert res_xxe.error is not None
+    assert "DOCTYPE" in res_xxe.error or "ENTITY" in res_xxe.error

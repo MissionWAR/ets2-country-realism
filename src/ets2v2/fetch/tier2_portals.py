@@ -111,7 +111,6 @@ TIER2_PORTAL_FEED_NAMES: Final[frozenset[str]] = frozenset(
 )
 
 _HTTP_RATE_LIMIT_RE: Final[re.Pattern[str]] = re.compile(r"\bHTTP\s+(?:403|429)\b")
-_ISO_PREFIX_DATE_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)")
 _DMY_DOT_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
 _PXWEB_MONTH_RE: Final[re.Pattern[str]] = re.compile(r"^(\d{4})[Mm-](\d{2})$")
 _NUM_TOKEN_RE: Final[re.Pattern[str]] = re.compile(r"\d+(?:[.,]\d+)?")
@@ -154,12 +153,6 @@ def _extract_portal_date(text: str) -> str | None:
     iso = extract_iso_date(text)
     if iso is not None:
         return iso
-    iso_prefix = _ISO_PREFIX_DATE_RE.search(text)
-    if iso_prefix is not None:
-        try:
-            return date.fromisoformat(iso_prefix.group(1)).isoformat()
-        except ValueError:
-            pass
     dot_match = _DMY_DOT_DATE_RE.search(text)
     if dot_match is not None:
         day_s, month_s, year_s = dot_match.groups()

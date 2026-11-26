@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import time
 from collections import Counter
@@ -73,8 +74,8 @@ def fetch_overpass_speed_spot_checks(
     sleep_seconds: float = DEFAULT_OVERPASS_SLEEP_SECONDS,
 ) -> list[OverpassSpotCheck]:
     """Run opt-in tags-only Overpass spot-checks with strict ISO-2 validation and <=10 cap."""
-    if sleep_seconds < 0.0:
-        raise ValueError(f"sleep_seconds must be >= 0.0, got {sleep_seconds!r}")
+    if not math.isfinite(sleep_seconds) or sleep_seconds < 0.0:
+        raise ValueError(f"sleep_seconds must be finite and >= 0.0, got {sleep_seconds!r}")
 
     normalized: list[str] = []
     seen: set[str] = set()
@@ -180,6 +181,8 @@ def fetch_taginfo_maxspeed_distributions(
     """Fetch opt-in Taginfo API v4 way value distributions for maxspeed tag keys."""
     if rp < 1 or rp > 100:
         raise ValueError(f"Taginfo rp must be in 1..100, got {rp}")
+    if not math.isfinite(sleep_seconds) or sleep_seconds < 0.0:
+        raise ValueError(f"sleep_seconds must be finite and >= 0.0, got {sleep_seconds!r}")
 
     sleeper = sleep_fn if sleep_fn is not None else time.sleep
     results: list[TaginfoDistribution] = []
@@ -224,11 +227,14 @@ def fetch_taginfo_maxspeed_distributions(
                     continue
                 if isinstance(frac_obj, bool) or not isinstance(frac_obj, (int, float)):
                     continue
+                frac_val = float(frac_obj)
+                if not math.isfinite(frac_val) or frac_val < 0.0:
+                    continue
                 entries.append(
                     TaginfoValueEntry(
                         value=val_obj.strip(),
                         count=cnt_obj,
-                        fraction=float(frac_obj),
+                        fraction=frac_val,
                     )
                 )
 

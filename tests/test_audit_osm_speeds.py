@@ -566,3 +566,89 @@ def test_cli_audit_osm_speeds_and_taint_end_to_end(
     assert taint_payload["ok"] is True
     assert taint_payload["violation_count"] == 0
     assert taint_payload["violations"] == []
+
+
+def test_osm_rule_parser_negated_filters_conditionals_specificity_nan_and_allowlist_md02(
+    tmp_path: pathlib.Path,
+) -> None:
+    """MD-02: Negated filters, weather/night conditionals, specific rules, NaN/Inf, missing file."""
+    from ets2v2.audit.osm_speeds import (
+        _classify_rule_bucket,
+        _extract_osm_country_speeds,
+        _parse_osm_speed_value,
+    )
+
+    # 1. NaN / Inf never crash with ValueError/OverflowError
+    assert _parse_osm_speed_value(float("nan"), target_unit="kmh") is None
+    assert _parse_osm_speed_value(float("inf"), target_unit="kmh") is None
+    assert _parse_osm_speed_value(float("-inf"), target_unit="mph") is None
+
+    # 2. Weather/night conditionals rejected; weight-class conditional accepted
+    assert _parse_osm_speed_value("70 @ (wet)", target_unit="kmh") is None
+    assert _parse_osm_speed_value("110 @ (22:00-06:00)", target_unit="kmh") is None
+    assert _parse_osm_speed_value("60 @ (night)", target_unit="kmh") is None
+    assert _parse_osm_speed_value("80 @ (weight>3.5)", target_unit="kmh") == (
+        80,
+        "80 @ (weight>3.5)",
+    )
+
+    # 3. Negated filter preserves valid urban rule
+    assert _classify_rule_bucket({"filter": "highway != living_street and urban=true"}) == "urban"
+    assert _classify_rule_bucket({"filter": "highway=living_street"}) is None
+
+    # 4. Specific unpaved/narrow sub-rules do not hijack local_road; dual_carriageway -> expressway
+    rules: list[object] = [
+        {"filter": "urban=false and surface=unpaved", "tags": {"maxspeed": "50"}},
+        {"filter": "urban=false and dual_carriageway=yes", "tags": {"maxspeed": "110"}},
+        {"filter": "urban=false and width<5", "tags": {"maxspeed": "70"}},
+        {"filter": "urban=false", "tags": {"maxspeed": "90"}},
+        {
+            "filter": "highway=motorway",
+            "tags": {"maxspeed": "130", "maxspeed:hgv:conditional": "70 @ (wet)"},
+        },
+    ]
+    extracted = _extract_osm_country_speeds(rules, target_unit="kmh")
+    assert extracted[("local_road", "car")] == (90, "90")
+    assert extracted[("expressway", "car")] == (110, "110")
+    assert ("motorway", "truck") not in extracted
+
+    # 5. Explicitly supplied non-existent --allowlist raises FileNotFoundError
+    rules_path = tmp_path / "rules.json"
+    rules_path.write_text(json.dumps(_sample_westnordost_payload()) + "\n", encoding="utf-8")
+    missing_allowlist = tmp_path / "does_not_exist.json"
+    with pytest.raises(FileNotFoundError):
+        run_osm_speed_audit(
+            laws_dir=LAWS_DIR,
+            mappings_path=MAPPINGS_PATH,
+            allowlist_path=missing_allowlist,
+            rules_file=rules_path,
+            iso2_filter=["DE"],
+        )
+
+
+def test_overpass_nan_sleep_and_taginfo_malformed_fraction_lo02() -> None:
+    """LO-02: Overpass rejects NaN/Inf sleep_seconds; Taginfo skips negative/NaN fraction rows."""
+    with create_http_client(transport=httpx.MockTransport(lambda _r: httpx.Response(200))) as c:
+        for bad_sleep in (float("nan"), float("inf"), -0.1):
+            with pytest.raises(ValueError, match="sleep_seconds"):
+                fetch_overpass_speed_spot_checks(c, ["DE"], sleep_seconds=bad_sleep)
+            with pytest.raises(ValueError, match="sleep_seconds"):
+                fetch_taginfo_maxspeed_distributions(c, keys=("maxspeed",), sleep_seconds=bad_sleep)
+
+    # One malformed negative fraction row must be skipped without aborting valid rows
+    def _taginfo_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "data": [
+                    {"value": "bad_neg", "count": 10, "fraction": -0.5},
+                    {"value": "50", "count": 1000, "fraction": 0.42},
+                ]
+            },
+        )
+
+    with create_http_client(transport=httpx.MockTransport(_taginfo_handler)) as c:
+        dists = fetch_taginfo_maxspeed_distributions(c, keys=("maxspeed",), sleep_fn=lambda _: None)
+    assert len(dists) == 1
+    assert dists[0].ok is True
+    assert [v.value for v in dists[0].values] == ["50"]

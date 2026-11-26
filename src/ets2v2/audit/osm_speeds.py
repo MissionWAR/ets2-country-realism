@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -53,6 +54,48 @@ _KMH_SPEED_RE: Final[re.Pattern[str]] = re.compile(
     r"^\s*(\d+(?:\.\d+)?)(?:\s*(?:km/h|kmh|kph))?\s*(?:@.*)?$",
     re.IGNORECASE,
 )
+_CONDITIONAL_NON_GENERAL_RE: Final[re.Pattern[str]] = re.compile(
+    r"\b(?:wet|snow|rain|fog|ice|winter|summer|night|dusk|dawn|sunrise|sunset|school|"
+    r"mo|tu|we|th|fr|sa|su)\b|\b\d{1,2}:\d{2}\b",
+    re.IGNORECASE,
+)
+_NEGATED_CLAUSE_RE: Final[re.Pattern[str]] = re.compile(
+    r"\b[a-z0-9_:-]+\s*(?:!=|!~)\s*(?:'[^']*'|\"[^\"]*\"|[^\s)&|]+)"
+)
+_SKIP_SUBRULE_TOKENS: Final[tuple[str, ...]] = (
+    "living_street",
+    "pedestrian",
+    "cycleway",
+    "footway",
+    "service",
+    "track",
+    "surface=",
+    "unpaved",
+    "gravel",
+    "dirt",
+    "lanes=",
+    "zone",
+    "school",
+)
+_GENERAL_FILTERS: Final[frozenset[str]] = frozenset(
+    {
+        "",
+        "urban=true",
+        "urban=yes",
+        "urban=false",
+        "urban=no",
+        "rural=true",
+        "rural=false",
+        "roadtype=urban",
+        "roadtype=rural",
+        "highway=motorway",
+        "highway=trunk",
+        "motorroad=yes",
+        "expressway=yes",
+        "dual_carriageway=yes",
+        "dual_carriageway=true",
+    }
+)
 _VEHICLE_ORDER: Final[tuple[VehicleSpeedClass, ...]] = ("car", "truck", "bus")
 _LANE_ORDER: Final[tuple[LaneSpeedClass, ...]] = ("local_road", "expressway", "motorway")
 
@@ -96,7 +139,7 @@ def _parse_osm_speed_value(
         return None
     if isinstance(raw_value, (int, float)):
         numeric = float(raw_value)
-        if numeric < 0:
+        if not math.isfinite(numeric) or numeric < 0:
             return None
         converted = round(numeric) if target_unit == "kmh" else round(numeric / _KMH_PER_MPH)
         return (converted, str(raw_value))
@@ -106,27 +149,53 @@ def _parse_osm_speed_value(
     text = raw_value.strip()
     if not text:
         return None
-    head = text.split("@", 1)[0].strip()
-    lowered = head.lower()
 
-    if lowered in {"walk", "living_street", "implicit", "signals", "variable", "national"}:
-        return None
-    if lowered in {"none", "unlimited"}:
-        return (0, text)
+    for raw_clause in text.split(";"):
+        clause = raw_clause.strip()
+        if not clause:
+            continue
+        if "@" in clause:
+            head, condition = clause.split("@", 1)
+            head = head.strip()
+            if _CONDITIONAL_NON_GENERAL_RE.search(condition) is not None:
+                continue
+        else:
+            head = clause
 
-    mph_match = _MPH_SPEED_RE.match(head)
-    if mph_match is not None:
-        mph_val = float(mph_match.group(1))
-        converted = round(mph_val) if target_unit == "mph" else round(mph_val * _KMH_PER_MPH)
-        return (converted, text)
+        lowered = head.lower()
+        if lowered in {"walk", "living_street", "implicit", "signals", "variable", "national"}:
+            continue
+        if lowered in {"none", "unlimited"}:
+            return (0, text)
 
-    kmh_match = _KMH_SPEED_RE.match(head)
-    if kmh_match is not None:
-        kmh_val = float(kmh_match.group(1))
-        converted = round(kmh_val) if target_unit == "kmh" else round(kmh_val / _KMH_PER_MPH)
-        return (converted, text)
+        mph_match = _MPH_SPEED_RE.match(head)
+        if mph_match is not None:
+            mph_val = float(mph_match.group(1))
+            if not math.isfinite(mph_val):
+                continue
+            converted = round(mph_val) if target_unit == "mph" else round(mph_val * _KMH_PER_MPH)
+            return (converted, text)
+
+        kmh_match = _KMH_SPEED_RE.match(head)
+        if kmh_match is not None:
+            kmh_val = float(kmh_match.group(1))
+            if not math.isfinite(kmh_val):
+                continue
+            converted = round(kmh_val) if target_unit == "kmh" else round(kmh_val / _KMH_PER_MPH)
+            return (converted, text)
 
     return None
+
+
+def _rule_specificity(rule: dict[str, object]) -> int:
+    """Return 0 for unqualified general rules and 1 for rules with additional filter clauses."""
+    raw_filter = rule.get("filter")
+    flt = " ".join(raw_filter.strip().lower().split()) if isinstance(raw_filter, str) else ""
+    positive_flt = " ".join(_NEGATED_CLAUSE_RE.sub("", flt).split())
+    cleaned = re.sub(r"^(?:and|or)\b|\b(?:and|or)$", "", positive_flt).strip()
+    if cleaned in _GENERAL_FILTERS:
+        return 0
+    return 1
 
 
 def _classify_rule_bucket(rule: dict[str, object]) -> RoadBucket | None:
@@ -135,27 +204,27 @@ def _classify_rule_bucket(rule: dict[str, object]) -> RoadBucket | None:
     name = raw_name.strip().lower() if isinstance(raw_name, str) else ""
     raw_filter = rule.get("filter")
     flt = raw_filter.strip().lower() if isinstance(raw_filter, str) else ""
-    combined = f"{name} {flt}"
+    positive_flt = _NEGATED_CLAUSE_RE.sub("", flt)
+    combined = f"{name} {positive_flt}"
 
-    if any(
-        skip_tok in combined
-        for skip_tok in ("living_street", "pedestrian", "cycleway", "footway", "service", "track")
-    ):
+    if any(skip_tok in combined for skip_tok in _SKIP_SUBRULE_TOKENS):
         return None
 
-    is_motorway = name == "motorway" or "highway=motorway" in flt or "motorway" in name
+    is_motorway = name == "motorway" or "highway=motorway" in positive_flt or "motorway" in name
     is_expressway = (
         name in {"trunk", "motorroad", "expressway", "dual_carriageway"}
-        or "highway=trunk" in flt
-        or "motorroad=yes" in flt
-        or "expressway=yes" in flt
+        or "highway=trunk" in positive_flt
+        or "motorroad=yes" in positive_flt
+        or "expressway=yes" in positive_flt
+        or "dual_carriageway=yes" in positive_flt
+        or "dual_carriageway=true" in positive_flt
     )
     is_urban = (
         name in {"urban", "built_up", "built-up", "city"}
-        or "urban=true" in flt
-        or "urban=yes" in flt
-        or "rural=false" in flt
-        or "roadtype=urban" in flt
+        or "urban=true" in positive_flt
+        or "urban=yes" in positive_flt
+        or "rural=false" in positive_flt
+        or "roadtype=urban" in positive_flt
     )
 
     if is_urban and not is_motorway and not is_expressway:
@@ -166,12 +235,12 @@ def _classify_rule_bucket(rule: dict[str, object]) -> RoadBucket | None:
         return "expressway"
     if (
         name in {"rural", "local_road", "nonurban", "non-urban", "default"}
-        or "urban=false" in flt
-        or "urban=no" in flt
-        or "rural=true" in flt
-        or "roadtype=rural" in flt
+        or "urban=false" in positive_flt
+        or "urban=no" in positive_flt
+        or "rural=true" in positive_flt
+        or "roadtype=rural" in positive_flt
         or any(
-            hw in flt
+            hw in positive_flt
             for hw in (
                 "highway=primary",
                 "highway=secondary",
@@ -180,7 +249,7 @@ def _classify_rule_bucket(rule: dict[str, object]) -> RoadBucket | None:
                 "highway=road",
             )
         )
-        or (not name and not flt)
+        or (not name and not positive_flt.strip())
     ):
         return "local_road"
     return None
@@ -200,6 +269,7 @@ def _extract_osm_country_speeds(
 ) -> dict[tuple[RoadBucket, VehicleSpeedClass], tuple[int, str]]:
     """Extract normalized OSM speed limits per (road_bucket, vehicle_class) from rule objects."""
     extracted: dict[tuple[RoadBucket, VehicleSpeedClass], tuple[int, str]] = {}
+    extracted_specificity: dict[tuple[RoadBucket, VehicleSpeedClass], int] = {}
 
     for rule_obj in rules:
         if not isinstance(rule_obj, dict):
@@ -209,6 +279,7 @@ def _extract_osm_country_speeds(
         if bucket is None:
             continue
 
+        specificity = _rule_specificity(rule)
         tags = _extract_rule_tags(rule)
         tag_candidates: dict[VehicleSpeedClass, tuple[str, ...]] = {
             "car": ("maxspeed",),
@@ -217,14 +288,17 @@ def _extract_osm_country_speeds(
         }
 
         for vehicle_cls in _VEHICLE_ORDER:
-            if (bucket, vehicle_cls) in extracted:
+            key = (bucket, vehicle_cls)
+            prev_spec = extracted_specificity.get(key)
+            if prev_spec is not None and specificity >= prev_spec:
                 continue
             for tag_key in tag_candidates[vehicle_cls]:
                 if tag_key not in tags:
                     continue
                 parsed = _parse_osm_speed_value(tags[tag_key], target_unit=target_unit)
                 if parsed is not None:
-                    extracted[(bucket, vehicle_cls)] = parsed
+                    extracted[key] = parsed
+                    extracted_specificity[key] = specificity
                     break
 
     return extracted
@@ -387,7 +461,9 @@ def run_osm_speed_audit(
         SpeedAuditAllowlistEntry,
     ] = {}
     resolved_allowlist_str: str | None = None
-    if allowlist_path is not None and allowlist_path.is_file():
+    if allowlist_path is not None:
+        if not allowlist_path.is_file():
+            raise FileNotFoundError(f"Speed audit allowlist file does not exist: {allowlist_path}")
         allowlist = load_speed_audit_allowlist(allowlist_path)
         allowlist_entries = {entry.match_key(): entry for entry in allowlist.entries}
         resolved_allowlist_str = allowlist_path.as_posix()

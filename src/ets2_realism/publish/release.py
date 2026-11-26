@@ -40,7 +40,6 @@ from ets2_realism.registry.snapshot import (
     write_realism_snapshot,
     write_sha256sums,
 )
-from ets2_realism.registry.timezone import DEFAULT_ANCHOR_YEAR
 from ets2_realism.validate.models import ValidationReport
 from ets2_realism.validate.workshop import validate_local_zip, validate_workshop_package
 
@@ -134,13 +133,14 @@ def run_phase_a_release(
     icons_dir: Path = Path("assets/icons"),
     build_date: date | None = None,
     author: str = DEFAULT_AUTHOR,
-    anchor_year: int = DEFAULT_ANCHOR_YEAR,
+    anchor_year: int | None = None,
     write_state: bool = False,
     force_run: bool = False,
     previous_snapshots: Mapping[Season, RealismSnapshot] | None = None,
 ) -> PhaseAReleaseSummary:
     """Run the full Phase A build -> validate -> diff-gate -> snapshot -> changelog pipeline."""
     effective_build_date = build_date if build_date is not None else datetime.now(UTC).date()
+    effective_anchor_year = anchor_year if anchor_year is not None else effective_build_date.year
     resolved_lock = (
         prices_lock if prices_lock is not None else load_prices_lockfile(prices_lock_path)
     )
@@ -176,7 +176,7 @@ def run_phase_a_release(
             bl_countries,
             bl_locales,
             edition,
-            anchor_year=anchor_year,
+            anchor_year=effective_anchor_year,
             baseline_game_version=game_version,
             prices_lock=resolved_lock,
         )
@@ -198,7 +198,7 @@ def run_phase_a_release(
             prices_lock=resolved_lock,
             package_version=initial_version,
             author=author,
-            anchor_year=anchor_year,
+            anchor_year=effective_anchor_year,
         )
         canonical_sha256 = compute_workshop_canonical_sha256(built.workshop_dir)
         final_version, changed = resolve_next_package_version(
@@ -219,7 +219,7 @@ def run_phase_a_release(
                 prices_lock=resolved_lock,
                 package_version=final_version,
                 author=author,
-                anchor_year=anchor_year,
+                anchor_year=effective_anchor_year,
             )
             restamped_sha256 = compute_workshop_canonical_sha256(built.workshop_dir)
             if restamped_sha256 != canonical_sha256:

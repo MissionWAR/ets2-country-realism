@@ -408,7 +408,10 @@ def test_fetch_ch_bfs_lik_json_stat2_and_csv() -> None:
     }
 
     def json_handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
         assert str(request.url) == CH_BFS_LIK_URL
+        body = json.loads(request.content.decode("utf-8"))
+        assert body == {"query": [], "response": {"format": "json-stat2"}}
         return httpx.Response(200, request=request, text=json.dumps(json_stat2))
 
     with _mock_client(httpx.MockTransport(json_handler)) as client:
@@ -429,6 +432,7 @@ def test_fetch_ch_bfs_lik_json_stat2_and_csv() -> None:
     csv_body = "Monat;Bleifrei 95;Diesel\n2026-10;1.77;1.85\n2026-11;1.82;1.91\n"
 
     def csv_handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
         assert str(request.url) == csv_url
         return httpx.Response(200, request=request, text=csv_body)
 

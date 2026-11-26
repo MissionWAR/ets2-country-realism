@@ -423,6 +423,25 @@ def test_assert_out_dir_not_tracked_refuses_all_repo_subdirs(tmp_path: pathlib.P
     assert_out_dir_not_tracked(tmp_path / "safe_out", repo_root=REPO_ROOT)
 
 
+def test_assert_out_dir_not_tracked_allows_non_repo_external_cwd(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Non-repo CWD (e.g. ETS2 user data dir) must allow ./mod without false positives
+    ets2_user_dir = tmp_path / "ets2_user_data"
+    ets2_user_dir.mkdir()
+    monkeypatch.chdir(ets2_user_dir)
+    assert_out_dir_not_tracked(pathlib.Path("mod"))
+
+    # A second checkout with .git or pyproject.toml IS still protected when CWD
+    alt_repo = tmp_path / "alt_checkout"
+    (alt_repo / ".git").mkdir(parents=True)
+    monkeypatch.chdir(alt_repo)
+    with pytest.raises(ValueError, match="tracked"):
+        assert_out_dir_not_tracked(pathlib.Path("mod"))
+    assert_out_dir_not_tracked(pathlib.Path("dist/promods"))
+
+
 def test_promods_builder_synthetic_full_summer_and_winter_repo_fallback(
     tmp_path: pathlib.Path,
 ) -> None:

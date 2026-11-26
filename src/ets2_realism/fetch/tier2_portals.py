@@ -34,6 +34,7 @@ from ets2_realism.fetch._parsing import (
 from ets2_realism.fetch.http import (
     HttpFetchError,
     fetch_bytes_with_retry,
+    post_json_bytes_with_retry,
     redact_url_secrets,
     validate_https_url,
 )
@@ -56,6 +57,10 @@ CH_BFS_LIK_URL: Final[str] = (
 CH_BFS_LIK_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset(
     {"www.pxweb.bfs.admin.ch", "dam-api.bfs.admin.ch"}
 )
+CH_BFS_PXWEB_QUERY: Final[dict[str, object]] = {
+    "query": [],
+    "response": {"format": "json-stat2"},
+}
 
 # --- MD ANRE ---
 MD_ANRE_URL: Final[str] = "https://anre.md/"
@@ -638,12 +643,21 @@ def fetch_ch_bfs_lik(
     """Fetch Switzerland BFS/LIK monthly fuel prices (PxWeb JSON-stat2 or CSV) in CHF/L."""
 
     def _run() -> tuple[list[RawCountryFuelQuote], str | None]:
-        raw = fetch_bytes_with_retry(
-            client,
-            url,
-            allowed_hosts=CH_BFS_LIK_ALLOWED_HOSTS,
-            sleep_fn=sleep_fn,
-        )
+        if urlsplit(url).path.lower().endswith(".px"):
+            raw = post_json_bytes_with_retry(
+                client,
+                url,
+                allowed_hosts=CH_BFS_LIK_ALLOWED_HOSTS,
+                json_body=CH_BFS_PXWEB_QUERY,
+                sleep_fn=sleep_fn,
+            )
+        else:
+            raw = fetch_bytes_with_retry(
+                client,
+                url,
+                allowed_hosts=CH_BFS_LIK_ALLOWED_HOSTS,
+                sleep_fn=sleep_fn,
+            )
         text = decode_with_fallbacks(raw, encodings=("utf-8-sig",))
         stripped = text.lstrip()
         if stripped.startswith("{"):

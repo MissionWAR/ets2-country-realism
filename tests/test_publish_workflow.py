@@ -224,6 +224,10 @@ def test_phase_a_workflow_d03_d05_d08_fetch_step_and_prices_lock_pr_staging() ->
 def test_phase_a_workflow_verifies_and_publishes_rolling_snapshots_latest_release() -> None:
     text = WORKFLOW_PATH.read_text("utf-8")
 
+    # Verify best-effort prior snapshot download wired into --previous-snapshots-dir
+    assert "gh release download snapshots-latest" in text
+    assert "--previous-snapshots-dir /tmp/prev-snapshots" in text
+
     # Verify v1 snapshots against SHA256SUMS.txt before upload/publish
     verify_summer = (
         "uv run --offline ets2-realism registry snapshot-verify "

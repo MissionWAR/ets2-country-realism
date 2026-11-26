@@ -54,6 +54,7 @@ from ets2_realism.registry import (
     Season,
     build_realism_snapshot,
     load_law_registry,
+    load_realism_snapshot,
     validate_law_registry,
     verify_snapshot_file,
     write_realism_snapshot,
@@ -576,7 +577,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
     icons_dir = cast(Path, args.icons_dir)
     raw_build_date = cast(str | None, args.build_date)
     author = cast(str, args.author)
-    anchor_year = cast(int, args.anchor_year)
+    anchor_year = cast(int | None, args.anchor_year)
     write_state = cast(bool, args.write_state)
     force_run = cast(bool, args.force)
     previous_snapshots_dir = cast(Path | None, args.previous_snapshots_dir)
@@ -600,9 +601,7 @@ def _handle_publish_release(args: argparse.Namespace) -> int:
             for edition_name in ("summer", "winter"):
                 snap_file = previous_snapshots_dir / f"realism-snapshot-{edition_name}.json"
                 if snap_file.is_file():
-                    loaded_prev[edition_name] = RealismSnapshot.model_validate_json(
-                        snap_file.read_text("utf-8")
-                    )
+                    loaded_prev[edition_name] = load_realism_snapshot(snap_file)
             if loaded_prev:
                 previous_snapshots = loaded_prev
 
@@ -1520,8 +1519,8 @@ def build_parser() -> argparse.ArgumentParser:
     publish_release.add_argument(
         "--anchor-year",
         type=int,
-        default=DEFAULT_ANCHOR_YEAR,
-        help=f"Anchor year for seasonal DST resolution (default: {DEFAULT_ANCHOR_YEAR}).",
+        default=None,
+        help="Anchor year for seasonal DST resolution (default: build date year).",
     )
     publish_release.add_argument(
         "--write-state",

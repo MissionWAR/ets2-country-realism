@@ -144,6 +144,18 @@ jobs:
                   fh.write("\n".join(lines) + "\n")
           PY
 
+      - name: Download previous snapshots for structured changelog diff (best-effort)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prev-snapshots
+          gh release download snapshots-latest \
+            --pattern 'realism-snapshot-summer.json' \
+            --pattern 'realism-snapshot-winter.json' \
+            --dir /tmp/prev-snapshots \
+            --clobber || true
+
       - name: Run Phase A diff-gated release build
         id: release
         run: |
@@ -155,6 +167,9 @@ jobs:
             --changelogs-dir .
             --write-state
           )
+          if [ -f /tmp/prev-snapshots/realism-snapshot-summer.json ] || [ -f /tmp/prev-snapshots/realism-snapshot-winter.json ]; then
+            args+=(--previous-snapshots-dir /tmp/prev-snapshots)
+          fi
           if [ "${FORCE_RUN:-false}" = "true" ]; then
             args+=(--force)
           fi

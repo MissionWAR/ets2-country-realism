@@ -76,6 +76,7 @@ from ets2_realism.fetch.http import (
     fetch_bytes_with_retry,
     parse_xml_safe,
     post_form_bytes_with_retry,
+    post_json_bytes_with_retry,
     redact_url_secrets,
     validate_https_url,
 )
@@ -247,6 +248,7 @@ __all__ = [
     "parse_jp_meti_xlsx",
     "parse_xml_safe",
     "post_form_bytes_with_retry",
+    "post_json_bytes_with_retry",
     "redact_url_secrets",
     "run_fx_only_fetch",
     "run_price_fetch",

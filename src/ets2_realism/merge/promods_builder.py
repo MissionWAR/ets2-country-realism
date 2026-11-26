@@ -79,6 +79,10 @@ class ProModsBuildReport(BaseModel):
     validation_ok: bool
 
 
+def _is_repo_root(path: Path) -> bool:
+    return (path / ".git").exists() or (path / "pyproject.toml").is_file()
+
+
 def _candidate_repo_roots(explicit_root: Path | None) -> list[Path]:
     roots: list[Path] = []
     if explicit_root is not None:
@@ -88,7 +92,7 @@ def _candidate_repo_roots(explicit_root: Path | None) -> list[Path]:
     package_root = Path(__file__).resolve().parents[3]
     roots.append(package_root)
     cwd = Path.cwd().resolve()
-    if cwd != package_root:
+    if cwd != package_root and _is_repo_root(cwd):
         roots.append(cwd)
     return roots
 

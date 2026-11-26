@@ -187,38 +187,48 @@ def fetch_bytes_with_retry(
     raise last_error
 
 
-def post_form_bytes_with_retry(
+def _post_bytes_with_retry(
     client: httpx.Client,
     url: str,
     *,
     allowed_hosts: frozenset[str],
-    data: Mapping[str, str],
+    form_data: Mapping[str, str] | None = None,
+    json_body: object | None = None,
     headers: Mapping[str, str] | None = None,
     max_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
     max_retries: int = DEFAULT_MAX_RETRIES,
     backoff_seconds: float = 0.5,
     sleep_fn: Callable[[float], None] | None = None,
 ) -> bytes:
-    """Perform a hardened form-encoded POST with allowlist checking, byte cap, and retries."""
+    """Shared hardened POST helper with allowlist checking, byte cap, and retries."""
     if max_retries < 0:
         raise ValueError(f"max_retries must be >= 0, got {max_retries!r}")
     if max_bytes <= 0:
         raise ValueError(f"max_bytes must be > 0, got {max_bytes!r}")
     validate_https_url(url, allowed_hosts)
     sleeper = sleep_fn if sleep_fn is not None else time.sleep
-    form_data = dict(data)
+    normalized_form = dict(form_data) if form_data is not None else None
 
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
         current_url = url
         try:
             for _redirect_hop in range(_MAX_REDIRECTS + 1):
-                with client.stream(
-                    "POST",
-                    current_url,
-                    data=form_data,
-                    headers=headers,
-                ) as response:
+                if normalized_form is not None:
+                    stream_cm = client.stream(
+                        "POST",
+                        current_url,
+                        data=normalized_form,
+                        headers=headers,
+                    )
+                else:
+                    stream_cm = client.stream(
+                        "POST",
+                        current_url,
+                        json=json_body,
+                        headers=headers,
+                    )
+                with stream_cm as response:
                     status = response.status_code
                     if status in {307, 308}:
                         location = response.headers.get("location")
@@ -269,6 +279,58 @@ def post_form_bytes_with_retry(
 
     assert last_error is not None
     raise last_error
+
+
+def post_form_bytes_with_retry(
+    client: httpx.Client,
+    url: str,
+    *,
+    allowed_hosts: frozenset[str],
+    data: Mapping[str, str],
+    headers: Mapping[str, str] | None = None,
+    max_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    backoff_seconds: float = 0.5,
+    sleep_fn: Callable[[float], None] | None = None,
+) -> bytes:
+    """Perform a hardened form-encoded POST with allowlist checking, byte cap, and retries."""
+    return _post_bytes_with_retry(
+        client,
+        url,
+        allowed_hosts=allowed_hosts,
+        form_data=data,
+        headers=headers,
+        max_bytes=max_bytes,
+        max_retries=max_retries,
+        backoff_seconds=backoff_seconds,
+        sleep_fn=sleep_fn,
+    )
+
+
+def post_json_bytes_with_retry(
+    client: httpx.Client,
+    url: str,
+    *,
+    allowed_hosts: frozenset[str],
+    json_body: object,
+    headers: Mapping[str, str] | None = None,
+    max_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
+    max_retries: int = DEFAULT_MAX_RETRIES,
+    backoff_seconds: float = 0.5,
+    sleep_fn: Callable[[float], None] | None = None,
+) -> bytes:
+    """Perform a hardened JSON POST with allowlist checking, byte cap, and retries."""
+    return _post_bytes_with_retry(
+        client,
+        url,
+        allowed_hosts=allowed_hosts,
+        json_body=json_body,
+        headers=headers,
+        max_bytes=max_bytes,
+        max_retries=max_retries,
+        backoff_seconds=backoff_seconds,
+        sleep_fn=sleep_fn,
+    )
 
 
 def parse_xml_safe(

@@ -983,3 +983,77 @@ def test_changelog_neutralizes_markdown_link_image_and_pipe_injection_md06() -> 
     assert "!\\[img\\](" in md
     assert "\\[click\\](" in md
     assert "a\\|b" in md
+
+
+def test_cli_previous_snapshots_dir_uses_bounded_hygiene_loader_and_dynamic_anchor_year(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Previous snapshots use load_realism_snapshot (no BOM) & anchor_year tracks build_date."""
+    state_path = tmp_path / "state" / "published.json"
+    out_dir = tmp_path / "dist"
+    changelogs_dir = tmp_path / "changelogs"
+    prev_dir = tmp_path / "prev_snapshots"
+    prev_dir.mkdir(parents=True)
+    write_published_ledger(PublishedLedger(), state_path)
+
+    # Leading UTF-8 BOM in previous snapshot must be rejected by load_realism_snapshot()
+    (prev_dir / "realism-snapshot-summer.json").write_bytes(b"\xef\xbb\xbf{}")
+    exit_bom = main(
+        [
+            "publish",
+            "release",
+            "--state",
+            str(state_path),
+            "--out-dir",
+            str(out_dir),
+            "--changelogs-dir",
+            str(changelogs_dir),
+            "--laws-dir",
+            str(LAWS_DIR),
+            "--mappings",
+            str(MAPPINGS_PATH),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--icons-dir",
+            str(ICONS_DIR),
+            "--build-date",
+            "2027-01-15",
+            "--previous-snapshots-dir",
+            str(prev_dir),
+        ]
+    )
+    bom_out = capsys.readouterr()
+    assert exit_bom == 1
+    assert "BOM" in bom_out.err
+
+    # Without --anchor-year, build_date=2027-01-15 resolves snapshots anchored to 2027
+    exit_2027 = main(
+        [
+            "publish",
+            "release",
+            "--state",
+            str(state_path),
+            "--out-dir",
+            str(out_dir),
+            "--changelogs-dir",
+            str(changelogs_dir),
+            "--laws-dir",
+            str(LAWS_DIR),
+            "--mappings",
+            str(MAPPINGS_PATH),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--icons-dir",
+            str(ICONS_DIR),
+            "--build-date",
+            "2027-01-15",
+            "--json",
+        ]
+    )
+    out_2027 = capsys.readouterr()
+    assert exit_2027 == 0, out_2027.err
+    summer_snap = RealismSnapshot.model_validate_json(
+        (out_dir / "snapshots" / "realism-snapshot-summer.json").read_text("utf-8")
+    )
+    assert summer_snap.anchor_date == "2027-07-15"

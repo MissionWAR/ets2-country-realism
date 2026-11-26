@@ -1175,10 +1175,23 @@ def test_jp_meti_locks_headers_prefers_layout_a_date_and_parses_reiwa_md08_in03(
     assert quote.prices_by_grade["petrol_98"] == pytest.approx(186.0)
     assert quote.prices_by_grade["diesel"] == pytest.approx(154.9)
 
-    # Also verify Reiwa 元年 (year 1 -> 2019) and NUL CSV rejection (IN-02)
-    from ets2v2.fetch.global_tier1 import _decode_csv_bytes, _parse_jp_date
+    # Also verify Reiwa 元年 (year 1 -> 2019) via parse_jp_meti_xlsx and NUL CSV via fetch_br_anp
+    wb2 = openpyxl.Workbook()
+    ws2 = wb2.active
+    assert ws2 is not None
+    ws2.append(["調査日", "令和元年5月1日"])
+    ws2.append(["都道府県", "レギュラー", "軽油"])
+    ws2.append(["全国平均", 150.0, 130.0])
+    buf2 = io.BytesIO()
+    wb2.save(buf2)
+    _, reiwa1_date = parse_jp_meti_xlsx(buf2.getvalue())
+    assert reiwa1_date == "2019-05-01"
 
-    assert _parse_jp_date("令和元年5月1日") == "2019-05-01"
-    assert _parse_jp_date("令和8年11月16日") == "2026-11-16"
-    with pytest.raises(ValueError, match="NUL"):
-        _decode_csv_bytes(b"a,b\x00c")
+    def _nul_csv_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"a;b\x00c\n")
+
+    with create_http_client(transport=httpx.MockTransport(_nul_csv_handler)) as client:
+        br_nul = fetch_br_anp(client, sleep_fn=lambda _: None)
+    assert br_nul.ok is False
+    assert br_nul.error is not None
+    assert "NUL" in br_nul.error

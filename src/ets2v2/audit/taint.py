@@ -34,18 +34,17 @@ _MAX_EXCERPT_CHARS: Final[int] = 160
 MAX_TAINT_TEXT_BYTES: Final[int] = 64 * 1024 * 1024  # 64 MiB bounded text read cap
 
 
-def _read_bounded_text_bytes(path: Path, *, max_bytes: int = MAX_TAINT_TEXT_BYTES) -> bytes:
+def _read_bounded_text_bytes(path: Path, *, max_bytes: int | None = None) -> bytes:
+    limit = max_bytes if max_bytes is not None else MAX_TAINT_TEXT_BYTES
     size = path.stat().st_size
-    if size > max_bytes:
+    if size > limit:
         raise ValueError(
-            f"File {path} size ({size} bytes) exceeds taint scanner limit ({max_bytes} bytes)"
+            f"File {path} size ({size} bytes) exceeds taint scanner limit ({limit} bytes)"
         )
     with path.open("rb") as fh:
-        data = fh.read(max_bytes + 1)
-    if len(data) > max_bytes:
-        raise ValueError(
-            f"File {path} exceeded taint scanner limit ({max_bytes} bytes) while reading"
-        )
+        data = fh.read(limit + 1)
+    if len(data) > limit:
+        raise ValueError(f"File {path} exceeded taint scanner limit ({limit} bytes) while reading")
     return data
 
 

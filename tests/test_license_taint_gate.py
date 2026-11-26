@@ -236,12 +236,14 @@ def test_taint_catches_multiline_underscore_changelogs_and_enforces_size_cap_md0
         v.marker == "OpenStreetMap" and v.path == "CHANGELOG_SUMMER.md" for v in cl_rep.violations
     )
 
-    # 3. Bounded text read cap rejects oversized files cleanly
+    # 3. Bounded text read cap rejects oversized files cleanly via public API
     big_file = tmp_path / "oversized.json"
     big_file.write_bytes(b"x" * 256)
+    empty_repo = tmp_path / "empty_for_cap"
+    empty_repo.mkdir()
     monkeypatch.setattr(taint_mod, "MAX_TAINT_TEXT_BYTES", 128)
     with pytest.raises(ValueError, match="taint scanner limit"):
-        taint_mod._read_bounded_text_bytes(big_file, max_bytes=128)
+        scan_repo_and_artifacts_for_taint(empty_repo, snapshot_paths=[big_file])
     monkeypatch.undo()
 
     # 4. Protected encrypted .scs archive in `ets2v2 audit taint` exits 1 cleanly (no traceback)

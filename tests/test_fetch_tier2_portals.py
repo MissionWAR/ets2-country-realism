@@ -814,17 +814,30 @@ def test_table_extractor_flushes_unclosed_table_on_close_md07() -> None:
 
 def test_tier2_empty_row_cap_ng_yoy_ago_boundary_ch_multidim_and_md_anre_md03_lo01() -> None:
     """MD-03 & LO-01: Empty-row cap, NG YoY/AGO boundary, CH multi-dim reject, MD ANRE row[1:]."""
-    from ets2v2.fetch.tier2_portals import TIER2_MAX_XLSX_ROWS, _iter_xlsx_rows
+    from ets2v2.fetch.tier2_portals import TIER2_MAX_XLSX_ROWS
 
-    # 1. Empty-row XLSX cap: rows past TIER2_MAX_XLSX_ROWS empty rows are NOT scanned
+    # 1. Empty-row XLSX cap: National Average past TIER2_MAX_XLSX_ROWS empty rows is NOT scanned
     wb = openpyxl.Workbook()
     ws = wb.active
     assert ws is not None
-    # Sparse cell beyond cap creates TIER2_MAX_XLSX_ROWS + 5 empty rows before it
-    ws.cell(row=TIER2_MAX_XLSX_ROWS + 10, column=1, value="Beyond Cap")
+    ws.cell(row=TIER2_MAX_XLSX_ROWS + 10, column=1, value="National Average")
+    ws.cell(row=TIER2_MAX_XLSX_ROWS + 10, column=2, value=1425.5)
     buf = io.BytesIO()
     wb.save(buf)
-    assert _iter_xlsx_rows(buf.getvalue()) == []
+    sparse_xlsx = buf.getvalue()
+    sparse_url = "https://nigerianstat.gov.ng/downloads/ago_sparse_watch.xlsx"
+
+    def _sparse_handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == NG_NBS_URL:
+            return httpx.Response(200, request=request, text=f'<a href="{sparse_url}">AGO</a>')
+        if str(request.url) == sparse_url:
+            return httpx.Response(200, request=request, content=sparse_xlsx)
+        return httpx.Response(404, request=request)
+
+    with _mock_client(httpx.MockTransport(_sparse_handler)) as client:
+        sparse_res = fetch_ng_nbs(client, sleep_fn=_no_sleep)
+    assert sparse_res.ok is False
+    assert sparse_res.error_code == "tier2_selector_drift"
 
     # 2. Nigeria NBS: skips MoM (%)/YoY (%) rightmost columns & rejects "lagos"/"pages" for AGO
     ago_url = "https://nigerianstat.gov.ng/downloads/ago_watch_nov2026.xlsx"

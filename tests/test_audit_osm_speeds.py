@@ -572,49 +572,66 @@ def test_osm_rule_parser_negated_filters_conditionals_specificity_nan_and_allowl
     tmp_path: pathlib.Path,
 ) -> None:
     """MD-02: Negated filters, weather/night conditionals, specific rules, NaN/Inf, missing file."""
-    from ets2v2.audit.osm_speeds import (
-        _classify_rule_bucket,
-        _extract_osm_country_speeds,
-        _parse_osm_speed_value,
+    # FR statutory limits: car urban=50, local=80, expressway=110, motorway=130;
+    # truck motorway=90, bus motorway=100.
+    rules_payload: dict[str, object] = {
+        "speedLimitsByCountryCode": {
+            "FR": [
+                # Negated filter preserves valid urban rule (50 km/h)
+                {
+                    "filter": "highway != living_street and urban=true",
+                    "tags": {"maxspeed": "50", "maxspeed:hgv": "50", "maxspeed:bus": "50"},
+                },
+                # Positive living_street rule must be skipped (never overwrites urban)
+                {"filter": "highway=living_street", "tags": {"maxspeed": "20"}},
+                # Specific unpaved & narrow sub-rules must NOT hijack local_road (80 km/h)
+                {"filter": "urban=false and surface=unpaved", "tags": {"maxspeed": "50"}},
+                {"filter": "urban=false and width<5", "tags": {"maxspeed": "60"}},
+                # dual_carriageway=yes routes to expressway (110 km/h), not local_road
+                {
+                    "filter": "urban=false and dual_carriageway=yes",
+                    "tags": {"maxspeed": "110", "maxspeed:hgv": "80", "maxspeed:bus": "90"},
+                },
+                # General rural fallback wins local_road over narrower width<5 rule above
+                {
+                    "filter": "urban=false",
+                    "tags": {"maxspeed": "80", "maxspeed:hgv": "80", "maxspeed:bus": "80"},
+                },
+                # Motorway: wet/night conditionals rejected, weight>3.5 conditional accepted,
+                # and JSON NaN/Infinity never crash
+                {
+                    "filter": "highway=motorway",
+                    "tags": {
+                        "maxspeed": "130",
+                        "maxspeed:hgv:conditional": "70 @ (wet); 90 @ (weight>3.5)",
+                        "maxspeed:bus:conditional": "60 @ (22:00-06:00)",
+                    },
+                },
+            ],
+            "DE": [
+                # NaN / Infinity numeric tags must not crash with ValueError/OverflowError
+                {
+                    "filter": "urban=true",
+                    "tags": {"maxspeed": float("nan"), "maxspeed:hgv": float("inf")},
+                }
+            ],
+        }
+    }
+    rules_path = tmp_path / "md02_rules.json"
+    rules_path.write_text(json.dumps(rules_payload, allow_nan=True) + "\n", encoding="utf-8")
+
+    rep = run_osm_speed_audit(
+        laws_dir=LAWS_DIR,
+        mappings_path=MAPPINGS_PATH,
+        allowlist_path=ALLOWLIST_PATH,
+        rules_file=rules_path,
+        iso2_filter=["FR", "DE"],
     )
+    assert rep.countries_checked == 2
+    assert rep.countries_matched_in_osm == 2
+    assert rep.unacknowledged_drift_count == 0, rep.unacknowledged_drifts
 
-    # 1. NaN / Inf never crash with ValueError/OverflowError
-    assert _parse_osm_speed_value(float("nan"), target_unit="kmh") is None
-    assert _parse_osm_speed_value(float("inf"), target_unit="kmh") is None
-    assert _parse_osm_speed_value(float("-inf"), target_unit="mph") is None
-
-    # 2. Weather/night conditionals rejected; weight-class conditional accepted
-    assert _parse_osm_speed_value("70 @ (wet)", target_unit="kmh") is None
-    assert _parse_osm_speed_value("110 @ (22:00-06:00)", target_unit="kmh") is None
-    assert _parse_osm_speed_value("60 @ (night)", target_unit="kmh") is None
-    assert _parse_osm_speed_value("80 @ (weight>3.5)", target_unit="kmh") == (
-        80,
-        "80 @ (weight>3.5)",
-    )
-
-    # 3. Negated filter preserves valid urban rule
-    assert _classify_rule_bucket({"filter": "highway != living_street and urban=true"}) == "urban"
-    assert _classify_rule_bucket({"filter": "highway=living_street"}) is None
-
-    # 4. Specific unpaved/narrow sub-rules do not hijack local_road; dual_carriageway -> expressway
-    rules: list[object] = [
-        {"filter": "urban=false and surface=unpaved", "tags": {"maxspeed": "50"}},
-        {"filter": "urban=false and dual_carriageway=yes", "tags": {"maxspeed": "110"}},
-        {"filter": "urban=false and width<5", "tags": {"maxspeed": "70"}},
-        {"filter": "urban=false", "tags": {"maxspeed": "90"}},
-        {
-            "filter": "highway=motorway",
-            "tags": {"maxspeed": "130", "maxspeed:hgv:conditional": "70 @ (wet)"},
-        },
-    ]
-    extracted = _extract_osm_country_speeds(rules, target_unit="kmh")
-    assert extracted[("local_road", "car")] == (90, "90")
-    assert extracted[("expressway", "car")] == (110, "110")
-    assert ("motorway", "truck") not in extracted
-
-    # 5. Explicitly supplied non-existent --allowlist raises FileNotFoundError
-    rules_path = tmp_path / "rules.json"
-    rules_path.write_text(json.dumps(_sample_westnordost_payload()) + "\n", encoding="utf-8")
+    # Explicitly supplied non-existent --allowlist raises FileNotFoundError
     missing_allowlist = tmp_path / "does_not_exist.json"
     with pytest.raises(FileNotFoundError):
         run_osm_speed_audit(

@@ -9,14 +9,14 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.baseline.models import (
+from ets2_realism.baseline.models import (
     BaselineCountry,
     BaselineSpeedLimit,
     CountriesBaseline,
     SpeedLimitsBaseline,
 )
-from ets2v2.cli import main
-from ets2v2.registry import (
+from ets2_realism.cli import main
+from ets2_realism.registry import (
     CountryLawRecord,
     CountryMappingEntry,
     CountryMappingRegistry,
@@ -26,7 +26,7 @@ from ets2v2.registry import (
     serialize_registry_json_bytes,
     validate_law_registry,
 )
-from ets2v2.sii.speed_limits import LaneSpeedRule, VehicleSpeedLimitBlock
+from ets2_realism.sii.speed_limits import LaneSpeedRule, VehicleSpeedLimitBlock
 
 
 def _make_seasonal_ruleset(

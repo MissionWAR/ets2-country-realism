@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from ets2v2.sii.hygiene import serialize_sii_text
-from ets2v2.sii.speed_limits import (
+from ets2_realism.sii.hygiene import serialize_sii_text
+from ets2_realism.sii.speed_limits import (
     LaneSpeedRule,
     SpeedLimitsFile,
     VehicleSpeedLimitBlock,

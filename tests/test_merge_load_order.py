@@ -8,22 +8,22 @@ import zipfile
 
 import pytest
 
-from ets2v2.merge.load_order import (
-    ETS2V2_MANIFEST_MARKER,
+from ets2_realism.merge.load_order import (
+    MANAGED_MANIFEST_MARKER,
     MAX_TEXT_INPUT_BYTES,
     BaselineVirtualArchive,
     EncryptedProfileError,
     LoadOrderEntry,
     build_combo_vfs_stack,
-    is_ets2v2_self_package,
+    is_managed_self_package,
     parse_game_log,
     parse_modlist,
     parse_profile_sii,
     resolve_workshop_dir,
     resolve_workshop_package_path,
 )
-from ets2v2.vfs.hashfs import open_archive
-from ets2v2.vfs.types import VfsArchive
+from ets2_realism.vfs.hashfs import open_archive
+from ets2_realism.vfs.types import VfsArchive
 
 
 def _write_zip(dest: pathlib.Path, files: dict[str, bytes]) -> pathlib.Path:
@@ -261,14 +261,16 @@ def test_self_exclusion_skips_filename_patterns_and_renamed_manifest_marker(
     mod_dir = tmp_path / "mod"
     mod_dir.mkdir()
 
-    combo_scs = _write_zip(mod_dir / "zz_ETS2V2_ComboPatch_Summer.scs", {"def/x.sii": b"a"})
-    core_zip = _write_zip(mod_dir / "ETS2V2_Core_Summer.zip", {"def/x.sii": b"a"})
-    promods_zip = _write_zip(mod_dir / "ETS2V2_ProMods_Winter.zip", {"def/x.sii": b"a"})
+    combo_scs = _write_zip(mod_dir / "zz_ETS2_Realism_ComboPatch_Summer.scs", {"def/x.sii": b"a"})
+    core_zip = _write_zip(mod_dir / "ETS2_Country_Realism_Core_Summer.zip", {"def/x.sii": b"a"})
+    promods_zip = _write_zip(
+        mod_dir / "ETS2_Country_Realism_ProMods_Winter.zip", {"def/x.sii": b"a"}
+    )
     renamed_self = _write_zip(
         mod_dir / "my_custom_patch.scs",
         {
             "manifest.sii": (
-                f"SiiNunit\n{{\n{ETS2V2_MANIFEST_MARKER} kind=combo\n"
+                f"SiiNunit\n{{\n{MANAGED_MANIFEST_MARKER} kind=combo\n"
                 'mod_package : .package_name\n{\n\tauthor: "ETS2"\n}\n}\n'
             ).encode()
         },
@@ -279,7 +281,7 @@ def test_self_exclusion_skips_filename_patterns_and_renamed_manifest_marker(
     )
 
     with open_archive(renamed_self) as arch:
-        is_self, reason = is_ets2v2_self_package(renamed_self, arch)
+        is_self, reason = is_managed_self_package(renamed_self, arch)
         assert is_self is True
         assert reason == "manifest_marker"
 
@@ -292,9 +294,9 @@ def test_self_exclusion_skips_filename_patterns_and_renamed_manifest_marker(
         assert len(res.resolved_entries) == 1
         assert res.resolved_entries[0].package_name == "real_map"
         assert {ex.package_name for ex in res.excluded_self_packages} == {
-            "ETS2V2_Core_Summer",
-            "ETS2V2_ProMods_Winter",
-            "zz_ETS2V2_ComboPatch_Summer",
+            "ETS2_Country_Realism_Core_Summer",
+            "ETS2_Country_Realism_ProMods_Winter",
+            "zz_ETS2_Realism_ComboPatch_Summer",
             "my_custom_patch",
         }
         renamed_rec = next(
@@ -582,7 +584,7 @@ def test_hi01_unc_nul_and_modlist_relative_traversal_rejected(tmp_path: pathlib.
 
 
 def test_hi02_combo_scoped_archive_exposes_nested_wrapper_includes(tmp_path: pathlib.Path) -> None:
-    from ets2v2.merge.scanner import scan_active_countries
+    from ets2_realism.merge.scanner import scan_active_countries
 
     mod_dir = tmp_path / "mod"
     mod_dir.mkdir()

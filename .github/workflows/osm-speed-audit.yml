@@ -59,7 +59,7 @@ jobs:
           if [ "${AUDIT_OVERPASS:-false}" = "true" ]; then
             args+=(--overpass)
           fi
-          uv run --offline ets2v2 audit osm-speeds "${args[@]}"
+          uv run --offline ets2-realism audit osm-speeds "${args[@]}"
           uv run --offline python - <<'PY'
           import json
           import os
@@ -148,7 +148,7 @@ jobs:
           uv run --offline python - <<'PY'
           import pathlib
 
-          from ets2v2.audit import truncate_markdown_for_github_issue
+          from ets2_realism.audit import truncate_markdown_for_github_issue
 
           full_md = pathlib.Path("dist/audit/osm_speed_drift_report.md").read_text("utf-8")
           capped = truncate_markdown_for_github_issue(

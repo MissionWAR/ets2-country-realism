@@ -1,4 +1,4 @@
-"""Unit tests for offline ets2v2.normalize currency map, FX validation, and lockfile I/O."""
+"""Unit tests for offline ets2_realism.normalize currency map, FX validation, and lockfile I/O."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.normalize import (
+from ets2_realism.normalize import (
     BAM_FIXED_PEG_PER_EUR,
     CANONICAL_FUEL_GRADES,
     CURRENCY_SANITY_BANDS,
@@ -578,7 +578,7 @@ def test_calendar_date_validation_and_atomic_lockfile_cleanup(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from ets2v2.fetch.models import RawCountryFuelQuote, RawFxProviderQuote
+    from ets2_realism.fetch.models import RawCountryFuelQuote, RawFxProviderQuote
 
     for bad_date in ("2026-99-01", "2026-02-30", "2026-13-01"):
         with pytest.raises(ValidationError):
@@ -628,14 +628,14 @@ def test_calendar_date_validation_and_atomic_lockfile_cleanup(
     def _boom_replace(_src: object, _dst: object) -> None:
         raise OSError("Simulated replace failure")
 
-    monkeypatch.setattr("ets2v2.normalize.lockfile.os.replace", _boom_replace)
+    monkeypatch.setattr("ets2_realism.normalize.lockfile.os.replace", _boom_replace)
     with pytest.raises(OSError, match="Simulated replace failure"):
         write_prices_lockfile(lockfile, lock_path)
     assert list(tmp_path.iterdir()) == []
 
 
 def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation() -> None:
-    from ets2v2.normalize import (
+    from ets2_realism.normalize import (
         ALL_CURRENCY_SANITY_BANDS,
         ALL_LOCKFILE_TERRITORY_ISO2S,
         ALL_REFERENCE_FX_RATES,
@@ -737,7 +737,7 @@ def test_extended_promods_currencies_syp_redenomination_and_ci_outage_isolation(
 
 def test_healthy_global_fx_run_emits_zero_spurious_non_ecb_extended_alerts_hi03() -> None:
     """HI-03: Healthy Friday FX run emits zero spurious alerts for single-source extended FX."""
-    from ets2v2.normalize.currencies import (
+    from ets2_realism.normalize.currencies import (
         ALL_REFERENCE_FX_RATES,
         CURRENCY_SANITY_BANDS,
         ECB_COVERED_CURRENCIES,

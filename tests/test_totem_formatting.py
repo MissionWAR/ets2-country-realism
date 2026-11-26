@@ -7,10 +7,10 @@ from typing import Literal
 
 import pytest
 
-from ets2v2.baseline.models import FuelBoardsBaseline
-from ets2v2.normalize.lockfile import load_prices_lockfile
-from ets2v2.normalize.totem_catalog import classify_all_fuel_boards
-from ets2v2.normalize.totem_format import (
+from ets2_realism.baseline.models import FuelBoardsBaseline
+from ets2_realism.normalize.lockfile import load_prices_lockfile
+from ets2_realism.normalize.totem_catalog import classify_all_fuel_boards
+from ets2_realism.normalize.totem_format import (
     EUROZONE_3DEC_ISO2S,
     EUROZONE_TENTH_CENT_ISO2S,
     GAS_FONT_METRICS,
@@ -205,11 +205,11 @@ def test_exhaustive_460_board_routing_and_width_budget_compliance() -> None:
         board_tokens[item.board_name] = token_key
 
         if item.iso2 in EUROZONE_TENTH_CENT_ISO2S:
-            if token_key.endswith("_3_ets2v2"):
+            if token_key.endswith("_3_ets2r"):
                 ez_3dec_count += 1
                 assert "<sup>" not in display_value
                 assert len(display_value.split(".")[1]) == 3
-            elif token_key.endswith("_c_ets2v2"):
+            elif token_key.endswith("_c_ets2r"):
                 ez_compact_count += 1
                 assert "<sup>" not in display_value
                 assert len(display_value.split(".")[1]) == 2
@@ -226,38 +226,41 @@ def test_exhaustive_460_board_routing_and_width_budget_compliance() -> None:
 
     # Explicit D-09 & D-10 spot assertions across currency & width groups
     gb_tok = board_tokens["gas_bi_beldon_diesel"]
-    assert gb_tok == "fp_gb_diesel_ets2v2"
+    assert gb_tok == "fp_gb_diesel_ets2r"
     assert float(token_values[gb_tok]) > 50.0  # UK pence/L (e.g. 142.9), not GBP/L
     assert len(token_values[gb_tok].split(".")[1]) == 1
 
     ie_tok = board_tokens["gas_ie_cloveroil_95"]
-    assert ie_tok == "fp_ie_petrol_95_3_ets2v2"
+    assert ie_tok == "fp_ie_petrol_95_3_ets2r"
     assert "<sup>" not in token_values[ie_tok]
 
     bg_tok = board_tokens["gas_bg_gryf_diesel"]
-    assert bg_tok == "fp_bg_diesel_ets2v2"
+    assert bg_tok == "fp_bg_diesel_ets2r"
     assert "<sup>" not in token_values[bg_tok]
     assert len(token_values[bg_tok].split(".")[1]) == 2
 
-    assert board_tokens["gas_dortmund_98"] == "fp_de_petrol_98_c_ets2v2"
-    assert board_tokens["gas_it_ini_diesel"] == "fp_it_diesel_c_ets2v2"
-    assert board_tokens["gas_de_enz_diesel"] == "fp_de_diesel_3_ets2v2"
-    assert board_tokens["gas_de_big_diesel"] == "fp_de_diesel_ets2v2"
-    assert "<sup>" in token_values["fp_de_diesel_ets2v2"]
+    assert board_tokens["gas_dortmund_98"] == "fp_de_petrol_98_c_ets2r"
+    assert board_tokens["gas_it_ini_diesel"] == "fp_it_diesel_c_ets2r"
+    assert board_tokens["gas_de_enz_diesel"] == "fp_de_diesel_3_ets2r"
+    assert board_tokens["gas_de_big_diesel"] == "fp_de_diesel_ets2r"
+    assert "<sup>" in token_values["fp_de_diesel_ets2r"]
 
     for is_board, expected_tok in (
-        ("gas_is_yokull_95", "fp_is_petrol_95_ets2v2"),
-        ("gas_is_yokull_diesel", "fp_is_diesel_ets2v2"),
-        ("gas_is_ip1_98", "fp_is_petrol_98_ets2v2"),
+        ("gas_is_yokull_95", "fp_is_petrol_95_ets2r"),
+        ("gas_is_yokull_diesel", "fp_is_diesel_ets2r"),
+        ("gas_is_ip1_98", "fp_is_petrol_98_ets2r"),
     ):
         assert board_tokens[is_board] == expected_tok
         assert token_values[expected_tok].isdigit()
 
 
 def test_all_460_boards_width_budget_under_elevated_fx_sanity_bands() -> None:
-    from ets2v2.normalize.currencies import ALL_CURRENCY_SANITY_BANDS, ALL_TERRITORY_CURRENCIES
-    from ets2v2.normalize.fuel import compute_secondary_grade_prices
-    from ets2v2.normalize.models import CountryFuelLockEntry
+    from ets2_realism.normalize.currencies import (
+        ALL_CURRENCY_SANITY_BANDS,
+        ALL_TERRITORY_CURRENCIES,
+    )
+    from ets2_realism.normalize.fuel import compute_secondary_grade_prices
+    from ets2_realism.normalize.models import CountryFuelLockEntry
 
     fuel_boards = _load_committed_boards()
     prices_lock = load_prices_lockfile(PRICES_LOCK_PATH)

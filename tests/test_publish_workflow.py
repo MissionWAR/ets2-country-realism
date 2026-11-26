@@ -93,9 +93,9 @@ def test_phase_a_workflow_pinned_actions_commands_and_persistent_pr() -> None:
         "astral-sh/setup-uv@v5",
         "actions/upload-artifact@v4",
         "uv sync --locked",
-        "ets2v2 publish release",
-        "ets2v2 validate workshop",
-        "ets2v2 validate local",
+        "ets2-realism publish release",
+        "ets2-realism validate workshop",
+        "ets2-realism validate local",
         "release/phase-a-weekly",
         "github-actions[bot]",
         "gh pr list",
@@ -189,8 +189,10 @@ def test_phase_a_workflow_d03_d05_d08_fetch_step_and_prices_lock_pr_staging() ->
     text = WORKFLOW_PATH.read_text("utf-8")
 
     # Online fetch step runs BEFORE offline publish release (D-05)
-    fetch_cmd = "ets2v2 fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json"
-    release_cmd = "ets2v2 publish release"
+    fetch_cmd = (
+        "ets2-realism fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json"
+    )
+    release_cmd = "ets2-realism publish release"
     assert fetch_cmd in text
     assert release_cmd in text
     assert text.index(fetch_cmd) < text.index(release_cmd)
@@ -212,9 +214,9 @@ def test_phase_a_workflow_d03_d05_d08_fetch_step_and_prices_lock_pr_staging() ->
     assert text.count("def _sanitize(") >= 2
     assert 'replace("<", "&lt;")' in text
 
-    # ci.yml remains read-only and never runs ets2v2 fetch or reads live API secrets
+    # ci.yml remains read-only and never runs ets2-realism fetch or reads live API secrets
     ci_text = CI_WORKFLOW_PATH.read_text("utf-8")
-    assert "ets2v2 fetch" not in ci_text
+    assert "ets2-realism fetch" not in ci_text
     assert "TANKERKOENIG_API_KEY" not in ci_text
     assert "uv run pytest" in ci_text
 
@@ -224,12 +226,12 @@ def test_phase_a_workflow_verifies_and_publishes_rolling_snapshots_latest_releas
 
     # Verify v1 snapshots against SHA256SUMS.txt before upload/publish
     verify_summer = (
-        "uv run --offline ets2v2 registry snapshot-verify "
+        "uv run --offline ets2-realism registry snapshot-verify "
         "dist/snapshots/realism-snapshot-summer.json "
         "--checksums dist/snapshots/SHA256SUMS.txt --expected-edition summer"
     )
     verify_winter = (
-        "uv run --offline ets2v2 registry snapshot-verify "
+        "uv run --offline ets2-realism registry snapshot-verify "
         "dist/snapshots/realism-snapshot-winter.json "
         "--checksums dist/snapshots/SHA256SUMS.txt --expected-edition winter"
     )
@@ -353,7 +355,7 @@ def test_osm_speed_audit_workflow_injection_safety_actions_and_rolling_issue() -
         "AUDIT_ISO2: ${{ inputs.iso2 }}",
         "AUDIT_OVERPASS: ${{ inputs.overpass }}",
         "GH_TOKEN: ${{ github.token }}",
-        "ets2v2 audit osm-speeds",
+        "ets2-realism audit osm-speeds",
         "dist/audit/osm_speed_drift_report.md",
         "dist/audit/osm_speed_drift_report.json",
         "dist/audit/osm_issue_body.md",

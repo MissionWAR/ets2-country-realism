@@ -6,15 +6,15 @@ import pathlib
 
 import pytest
 
-from ets2v2.merge.aliases import (
+from ets2_realism.merge.aliases import (
     CountryResolution,
     CountryResolver,
     merge_alias_registries,
 )
-from ets2v2.registry.loader import load_country_aliases
-from ets2v2.registry.models import CountryAliasEntry, CountryAliasRegistry
-from ets2v2.registry.snapshot import RealismSnapshot, load_or_build_snapshot
-from ets2v2.sii.country import CountryDataModel
+from ets2_realism.registry.loader import load_country_aliases
+from ets2_realism.registry.models import CountryAliasEntry, CountryAliasRegistry
+from ets2_realism.registry.snapshot import RealismSnapshot, load_or_build_snapshot
+from ets2_realism.sii.country import CountryDataModel
 
 
 @pytest.fixture(scope="module")

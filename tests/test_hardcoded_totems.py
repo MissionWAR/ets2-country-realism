@@ -5,23 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 from zipfile import ZipFile
 
-from ets2v2.baseline.models import FuelBoardsBaseline
-from ets2v2.merge.hardcoded_totems import (
+from ets2_realism.baseline.models import FuelBoardsBaseline
+from ets2_realism.merge.hardcoded_totems import (
     JRR_NUMERIC_BOARD_SIGNATURES,
     HardcodedTotemResult,
     patch_hardcoded_numeric_totems,
 )
-from ets2v2.registry.models import LaneSpeedOverride
-from ets2v2.registry.snapshot import (
+from ets2_realism.registry.models import LaneSpeedOverride
+from ets2_realism.registry.snapshot import (
     RealismSnapshot,
     RealismSnapshotCountry,
     RealismSnapshotFuel,
     load_or_build_snapshot,
 )
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.sign_board import parse_sign_board
-from ets2v2.vfs.hashfs import open_archive
-from ets2v2.vfs.stack import VfsStack
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.sign_board import parse_sign_board
+from ets2_realism.vfs.hashfs import open_archive
+from ets2_realism.vfs.stack import VfsStack
 
 _BASELINE_DIR = Path("data/baselines/ets2_1.62_def")
 
@@ -154,10 +154,10 @@ def test_jrr_numeric_boards_rewrite_when_id_in_snapshot_and_skip_when_absent(
 
     assert len(res.board_files) == 8
     assert res.extra_locale_tokens == {
-        "fp_id_diesel_ets2v2": "6800",
-        "fp_id_petrol_92_ets2v2": "13300",
-        "fp_id_petrol_95_ets2v2": "10000",
-        "fp_id_petrol_98_ets2v2": "15100",
+        "fp_id_diesel_ets2r": "6800",
+        "fp_id_petrol_92_ets2r": "13300",
+        "fp_id_petrol_95_ets2r": "10000",
+        "fp_id_petrol_98_ets2r": "15100",
     }
     for name, (_, grade) in JRR_NUMERIC_BOARD_SIGNATURES.items():
         path = f"def/sign/board/{name}.sii"
@@ -166,7 +166,7 @@ def test_jrr_numeric_boards_rewrite_when_id_in_snapshot_and_skip_when_absent(
         assert validate_sii_hygiene(raw, require_siinunit=True) == []
         parsed = parse_sign_board(raw)
         assert parsed.text_slots[0].font_face == "/font/sign/dot_matrix.font"
-        assert parsed.text_slots[0].localization_key == f"fp_id_{grade}_ets2v2"
+        assert parsed.text_slots[0].localization_key == f"fp_id_{grade}_ets2r"
 
     # 2. Against Phase 5 225-territory snapshot (where ID is now canonical!) -> all 8 patched
     snap_global = load_or_build_snapshot("summer")
@@ -282,19 +282,19 @@ def test_7rm_numeric_boards_and_ambiguous_or_localized_boards(tmp_path: Path) ->
         "def/sign/board/uz_gas_diesel.sii",
     }
     assert set(res.extra_locale_tokens) == {
-        "fp_kz_petrol_95_ets2v2",
-        "fp_uz_diesel_ets2v2",
+        "fp_kz_petrol_95_ets2r",
+        "fp_uz_diesel_ets2r",
     }
     # Native integer KZT & UZS strings (no decimals)
-    assert res.extra_locale_tokens["fp_kz_petrol_95_ets2v2"].isdigit()
-    assert res.extra_locale_tokens["fp_uz_diesel_ets2v2"].isdigit()
+    assert res.extra_locale_tokens["fp_kz_petrol_95_ets2r"].isdigit()
+    assert res.extra_locale_tokens["fp_uz_diesel_ets2r"].isdigit()
 
     kz_parsed = parse_sign_board(res.board_files["def/sign/board/kz_gas_totem_95.sii"])
-    assert kz_parsed.text_slots[0].localization_key == "fp_kz_petrol_95_ets2v2"
+    assert kz_parsed.text_slots[0].localization_key == "fp_kz_petrol_95_ets2r"
     assert kz_parsed.text_slots[0].font_face == "/font/sign/dot_matrix.font"
 
     uz_parsed = parse_sign_board(res.board_files["def/sign/board/uz_gas_diesel.sii"])
-    assert uz_parsed.text_slots[0].localization_key == "fp_uz_diesel_ets2v2"
+    assert uz_parsed.text_slots[0].localization_key == "fp_uz_diesel_ets2r"
 
     by_name = {a.board_name: a.status for a in res.actions}
     assert by_name["kz_gas_totem_95"] == "patched"

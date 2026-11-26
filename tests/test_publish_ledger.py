@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.package.builder import build_core_edition
-from ets2v2.publish.ledger import (
+from ets2_realism.package.builder import build_core_edition
+from ets2_realism.publish.ledger import (
     CANONICAL_VERSION_SENTINEL,
     PublishedEditionState,
     PublishedLedger,

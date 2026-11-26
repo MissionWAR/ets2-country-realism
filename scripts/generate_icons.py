@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ets2v2.package.icons import generate_all_icons
+from ets2_realism.package.icons import generate_all_icons, generate_promods_icons
 
 if __name__ == "__main__":
-    generate_all_icons(Path(__file__).resolve().parent.parent / "assets" / "icons")
+    icons_dir = Path(__file__).resolve().parent.parent / "assets" / "icons"
+    generate_all_icons(icons_dir)
+    generate_promods_icons(icons_dir)

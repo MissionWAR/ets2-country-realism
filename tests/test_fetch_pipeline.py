@@ -11,20 +11,20 @@ import httpx
 import openpyxl
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline
-from ets2v2.cli import main
-from ets2v2.fetch.ec_bulletin import (
+from ets2_realism.baseline.models import CountriesBaseline
+from ets2_realism.cli import main
+from ets2_realism.fetch.ec_bulletin import (
     EC_WOB_LANDING_URL,
     FIONNHUGHES_CSV_URL,
     FUEL_PRICES_EU_URL,
 )
-from ets2v2.fetch.fx import (
+from ets2_realism.fetch.fx import (
     CBR_DAILY_XML_URL,
     ECB_DAILY_XML_URL,
     FAWAZ_CLOUDFLARE_URL,
     FAWAZ_JSDELIVR_URL,
 )
-from ets2v2.fetch.global_tier1 import (
+from ets2_realism.fetch.global_tier1 import (
     AR_ENERGIA_CKAN_PRIMARY_URL,
     BR_ANP_DIESEL_GNV_URL,
     BR_ANP_GASOLINA_ETANOL_URL,
@@ -36,7 +36,7 @@ from ets2v2.fetch.global_tier1 import (
     US_EIA_V2_URL,
     gallon_to_liter,
 )
-from ets2v2.fetch.national import (
+from ets2_realism.fetch.national import (
     DE_TANKERKOENIG_URL,
     ES_MITECO_URL,
     FR_ECONOMIE_URL,
@@ -45,8 +45,8 @@ from ets2v2.fetch.national import (
     NO_SSB_09654_URL,
     UK_DESNZ_LANDING_URL,
 )
-from ets2v2.fetch.pipeline import run_price_fetch
-from ets2v2.fetch.tier2_portals import (
+from ets2_realism.fetch.pipeline import run_price_fetch
+from ets2_realism.fetch.tier2_portals import (
     AE_MOEI_URL,
     CH_BFS_LIK_URL,
     IL_MOE_URL,
@@ -58,20 +58,20 @@ from ets2v2.fetch.tier2_portals import (
     SA_ARAMCO_URL,
     ZA_DMRE_CEF_URL,
 )
-from ets2v2.normalize.currencies import (
+from ets2_realism.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_REFERENCE_FX_RATES,
     ALL_TERRITORY_CURRENCIES,
     ECB_COVERED_CURRENCIES,
 )
-from ets2v2.normalize.lockfile import (
+from ets2_realism.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
     PROMODS_CURATED_SEED_SOURCE,
     load_prices_lockfile,
     seed_initial_lockfile,
     write_prices_lockfile,
 )
-from ets2v2.normalize.models import CANONICAL_FUEL_GRADES
+from ets2_realism.normalize.models import CANONICAL_FUEL_GRADES
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
@@ -483,7 +483,7 @@ def test_run_price_fetch_circuit_breaker_and_allow_jump_cli_override(
     assert load_prices_lockfile(lock_path).countries["DE"].eur_per_liter == pytest.approx(1.640)
 
     # CLI with --allow-jump DE --allow-jump PL --json accepts DE jump
-    import ets2v2.fetch.pipeline as pipeline_mod
+    import ets2_realism.fetch.pipeline as pipeline_mod
 
     orig_create = pipeline_mod.create_http_client
 
@@ -655,7 +655,7 @@ def test_run_price_fetch_anchorless_quote_retains_previous_live_entry(
     tmp_path: pathlib.Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from ets2v2.fetch.models import RawCountryFuelQuote, RawFuelFeedResult
+    from ets2_realism.fetch.models import RawCountryFuelQuote, RawFuelFeedResult
 
     monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
     lock_path = tmp_path / "prices.lock.json"
@@ -696,7 +696,7 @@ def test_run_price_fetch_anchorless_quote_retains_previous_live_entry(
             data_date="2026-11-21",
         )
 
-    monkeypatch.setattr("ets2v2.fetch.pipeline.fetch_fuel_prices_eu", _anchorless_feed)
+    monkeypatch.setattr("ets2_realism.fetch.pipeline.fetch_fuel_prices_eu", _anchorless_feed)
     res = run_price_fetch(
         lock_path=lock_path,
         baseline_dir=BASELINE_DIR,
@@ -1227,7 +1227,7 @@ def test_run_price_fetch_keyless_skip_reasons_are_feed_specific_and_no_global_cl
     assert "TANKERKOENIG" not in status_by_provider["cl_cne"].detail
 
     # CLI --no-global skips all 8 Global Tier 1 feeds cleanly
-    import ets2v2.fetch.pipeline as pipeline_mod
+    import ets2_realism.fetch.pipeline as pipeline_mod
 
     orig_create = pipeline_mod.create_http_client
 
@@ -1489,7 +1489,7 @@ def test_cli_no_tier2_flag_skips_all_tier2_portals(
     monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
     lock_path = tmp_path / "prices.lock.json"
 
-    import ets2v2.fetch.pipeline as pipeline_mod
+    import ets2_realism.fetch.pipeline as pipeline_mod
 
     orig_create = pipeline_mod.create_http_client
 
@@ -1529,8 +1529,8 @@ def test_run_price_fetch_preserves_curated_tier3_petrol_and_verified_date_hi01(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """HI-01: Repricing/bootstrapping Tier 3 territories must preserve curated petrol_95 & date."""
-    from ets2v2.normalize.currencies import load_tier3_fuel_baselines
-    from ets2v2.normalize.fuel import round_local_price
+    from ets2_realism.normalize.currencies import load_tier3_fuel_baselines
+    from ets2_realism.normalize.fuel import round_local_price
 
     monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
     monkeypatch.delenv("EIA_API_KEY", raising=False)
@@ -1599,9 +1599,9 @@ def test_cli_fetch_human_output_includes_global_tier1_and_tier2_counts_in02(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """IN-02: Human-readable `ets2v2 fetch` stdout includes global_tier1= and tier2= counters."""
+    """IN-02: Human-readable fetch stdout includes global_tier1= and tier2= counters."""
     monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
-    import ets2v2.fetch.pipeline as pipeline_mod
+    import ets2_realism.fetch.pipeline as pipeline_mod
 
     orig_create = pipeline_mod.create_http_client
 

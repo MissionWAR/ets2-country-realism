@@ -175,7 +175,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ets2-world-realism"
+name = "ets2-country-realism"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

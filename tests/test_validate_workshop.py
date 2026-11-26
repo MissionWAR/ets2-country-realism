@@ -13,9 +13,9 @@ from typing import cast
 import pytest
 from PIL import Image
 
-from ets2v2.cli import main
-from ets2v2.package import BuiltEditionPaths, build_core_editions
-from ets2v2.validate import (
+from ets2_realism.cli import main
+from ets2_realism.package import BuiltEditionPaths, build_core_editions
+from ets2_realism.validate import (
     FORBIDDEN_TOTEM_EXTENSIONS,
     MAX_DESCRIPTION_BYTES,
     MAX_ICON_BYTES,
@@ -32,7 +32,7 @@ BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
 LAWS_DIR = REPO_ROOT / "data" / "laws"
 MAPPINGS_PATH = REPO_ROOT / "data" / "mappings" / "ets2_countries.json"
 ICONS_DIR = REPO_ROOT / "assets" / "icons"
-VALIDATE_PKG_DIR = REPO_ROOT / "src" / "ets2v2" / "validate"
+VALIDATE_PKG_DIR = REPO_ROOT / "src" / "ets2_realism" / "validate"
 
 
 @pytest.fixture(scope="module")
@@ -85,10 +85,10 @@ def _issue_codes(report: ValidationReport) -> set[str]:
     return {issue.code for issue in report.issues}
 
 
-def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
+def test_validate_package_has_zero_imports_from_ets2r_package() -> None:
     """Enforce Layer 8 isolation: validate NEVER imports package/merge/normalize/fetch/pub/audit."""
     py_files = sorted(VALIDATE_PKG_DIR.rglob("*.py"))
-    assert py_files, "Expected Python modules under src/ets2v2/validate/"
+    assert py_files, "Expected Python modules under src/ets2_realism/validate/"
 
     forbidden_subpkgs = ("package", "merge", "normalize", "fetch", "publish", "audit")
     forbidden_roots = ("httpx", "openpyxl")
@@ -99,7 +99,9 @@ def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     for sub in forbidden_subpkgs:
-                        if alias.name == f"ets2v2.{sub}" or alias.name.startswith(f"ets2v2.{sub}."):
+                        if alias.name == f"ets2_realism.{sub}" or alias.name.startswith(
+                            f"ets2_realism.{sub}."
+                        ):
                             violations.append(f"{py_file.name}: import {alias.name}")
                     for root in forbidden_roots:
                         if alias.name == root or alias.name.startswith(f"{root}."):
@@ -120,19 +122,21 @@ def test_validate_package_has_zero_imports_from_ets2v2_package() -> None:
                                     )
                 else:
                     for sub in forbidden_subpkgs:
-                        if module == f"ets2v2.{sub}" or module.startswith(f"ets2v2.{sub}."):
+                        if module == f"ets2_realism.{sub}" or module.startswith(
+                            f"ets2_realism.{sub}."
+                        ):
                             violations.append(f"{py_file.name}: from {module} import ...")
                     for root in forbidden_roots:
                         if module == root or module.startswith(f"{root}."):
                             violations.append(f"{py_file.name}: from {module} import ...")
-                    if module == "ets2v2":
+                    if module == "ets2_realism":
                         for alias in node.names:
                             if alias.name in forbidden_subpkgs:
                                 violations.append(
-                                    f"{py_file.name}: from ets2v2 import {alias.name}"
+                                    f"{py_file.name}: from ets2_realism import {alias.name}"
                                 )
 
-    assert violations == [], f"Forbidden imports in ets2v2.validate: {violations}"
+    assert violations == [], f"Forbidden imports in ets2_realism.validate: {violations}"
 
 
 def test_valid_scs_categories_has_all_18_official_entries() -> None:
@@ -510,7 +514,7 @@ def test_scs_00005_missing_mp_optional_invalid_category_and_missing_author(
 
     ws_auth = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_auth")
     m_auth = ws_auth / "universal" / "manifest.sii"
-    m_auth.write_bytes(m_auth.read_bytes().replace(b'\tauthor: "ETS2 World Realism"\n', b""))
+    m_auth.write_bytes(m_auth.read_bytes().replace(b'\tauthor: "MissionWAR"\n', b""))
     r_auth = validate_workshop_package(ws_auth)
     assert r_auth.ok is False
     assert "00005" in _issue_codes(r_auth)
@@ -694,8 +698,8 @@ def test_scs_warn_00001_display_name_in_workshop_and_excess_categories(
     m_dn = ws_dn / "universal" / "manifest.sii"
     m_dn.write_bytes(
         m_dn.read_bytes().replace(
-            b'\tauthor: "ETS2 World Realism"\n',
-            b'\tdisplay_name: "Should Fail In Workshop"\n\tauthor: "ETS2 World Realism"\n',
+            b'\tauthor: "MissionWAR"\n',
+            b'\tdisplay_name: "Should Fail In Workshop"\n\tauthor: "MissionWAR"\n',
         )
     )
     r_dn = validate_workshop_package(ws_dn)
@@ -745,9 +749,9 @@ def test_scs_additional_edge_cases_hashfs_bzip2_braces_include_and_country_suffi
     assert r_bz.ok is False
     assert "00007" in _issue_codes(r_bz)
 
-    # Unbalanced brace + non-column-0 @include -> 00004, def/country.ets2v2.sii -> 00003
+    # Unbalanced brace + non-column-0 @include -> 00004, def/country.ets2r.sii -> 00003
     ws_edge = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_edge")
-    (ws_edge / "universal" / "def" / "country.ets2v2.sii").write_bytes(b"SiiNunit\n{\n}\n")
+    (ws_edge / "universal" / "def" / "country.ets2r.sii").write_bytes(b"SiiNunit\n{\n}\n")
     (ws_edge / "universal" / "def" / "bad_inc.sii").write_bytes(
         b'SiiNunit\n{\n  @include "foo.sui"\n'
     )
@@ -803,12 +807,12 @@ def test_hi03_pkg_zip_mount_errors_root_links_and_duplicate_noncanonical_zip_ent
     def _raise_val(_path: pathlib.Path) -> object:
         raise ValueError("Simulated pkg_zip corruption")
 
-    monkeypatch.setattr("ets2v2.validate.workshop.ZipArchive", _raise_perm)
+    monkeypatch.setattr("ets2_realism.validate.workshop.ZipArchive", _raise_perm)
     r_perm = validate_workshop_package(ws_zip)
     assert r_perm.ok is False
     assert "00006" in _issue_codes(r_perm)
 
-    monkeypatch.setattr("ets2v2.validate.workshop.ZipArchive", _raise_val)
+    monkeypatch.setattr("ets2_realism.validate.workshop.ZipArchive", _raise_val)
     r_val = validate_workshop_package(ws_zip)
     assert r_val.ok is False
     assert "00008" in _issue_codes(r_val)
@@ -879,7 +883,7 @@ def test_hi04_unquoted_strings_category_rules_stray_units_and_icon_checks(
     m_unq = ws_unq / "universal" / "manifest.sii"
     m_unq.write_bytes(
         m_unq.read_bytes()
-        .replace(b'author: "ETS2 World Realism"', b"author: ETS2_Unquoted")
+        .replace(b'author: "MissionWAR"', b"author: ETS2_Unquoted")
         .replace(b'category[]: "other"', b'category: "other"')
     )
     r_unq = validate_workshop_package(ws_unq)
@@ -960,7 +964,7 @@ def test_hi04_unquoted_strings_category_rules_stray_units_and_icon_checks(
 
 
 # ---------------------------------------------------------------------------
-# D-12: Zero-DDS Hard Gate (ETS2V2-INV-ZERO-DDS)
+# D-12: Zero-DDS Hard Gate (ETS2R-INV-ZERO-DDS)
 # ---------------------------------------------------------------------------
 
 
@@ -980,11 +984,11 @@ def test_d12_zero_dds_hard_gate_workshop_and_local_zip(
 
     r_no_bl = validate_workshop_package(ws)
     assert r_no_bl.ok is False
-    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(r_no_bl)
+    assert "ETS2R-INV-ZERO-DDS" in _issue_codes(r_no_bl)
 
     r_with_bl = validate_workshop_package(ws, baseline_dir=BASELINE_DIR)
     assert r_with_bl.ok is False
-    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(r_with_bl)
+    assert "ETS2R-INV-ZERO-DDS" in _issue_codes(r_with_bl)
 
     # 2. Local ZIP without baseline_dir AND with baseline_dir
     bad_zip = _rebuild_zip_with_mutations(
@@ -1002,11 +1006,11 @@ def test_d12_zero_dds_hard_gate_workshop_and_local_zip(
     )
     rz_no_bl = validate_local_zip(bad_zip)
     assert rz_no_bl.ok is False
-    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(rz_no_bl)
+    assert "ETS2R-INV-ZERO-DDS" in _issue_codes(rz_no_bl)
 
     rz_with_bl = validate_local_zip(bad_zip, baseline_dir=BASELINE_DIR)
     assert rz_with_bl.ok is False
-    assert "ETS2V2-INV-ZERO-DDS" in _issue_codes(rz_with_bl)
+    assert "ETS2R-INV-ZERO-DDS" in _issue_codes(rz_with_bl)
 
 
 @pytest.mark.parametrize(
@@ -1112,7 +1116,7 @@ def test_profile_promods_accepts_valid_promods_package_and_rejects_faults(
     )
     r_no_uk = validate_workshop_package(ws_no_uk_reg, baseline_dir=BASELINE_DIR, profile="promods")
     assert r_no_uk.ok is False
-    assert "ETS2V2-INV-REGIONS" in _issue_codes(r_no_uk)
+    assert "ETS2R-INV-REGIONS" in _issue_codes(r_no_uk)
 
     # Stray def/country.promods.sii registration file fails
     ws_reg = _make_promods_workshop_clone(
@@ -1138,7 +1142,7 @@ def test_profile_promods_accepts_valid_promods_package_and_rejects_faults(
     (fr_qc / "local_module.pm_fuel.sii").write_bytes(de_pm.read_bytes())
     r_loc = validate_workshop_package(ws_bad_loc, baseline_dir=BASELINE_DIR, profile="promods")
     assert r_loc.ok is False
-    assert "ETS2V2-INV-LOCALE-SYNC" in _issue_codes(r_loc)
+    assert "ETS2R-INV-LOCALE-SYNC" in _issue_codes(r_loc)
 
 
 def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
@@ -1149,10 +1153,10 @@ def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
     # omitted time_zone + time_zone_name, 1-road-block speed_limits.sii, and no totems.
     icon_bytes = (ICONS_DIR / "summer.jpg").read_bytes()
     manifest_bytes = (
-        b"SiiNunit\n{\n# ets2v2:managed-package kind=combo\nmod_package : .package_name\n{\n"
+        b"SiiNunit\n{\n# ets2-realism:managed-package kind=combo\nmod_package : .package_name\n{\n"
         b'\tpackage_version: "1.62-2026.47"\n'
-        b'\tdisplay_name: "ETS2V2 Combo Patch"\n'
-        b'\tauthor: "ETS2 World Realism"\n'
+        b'\tdisplay_name: "ETS2 Country Realism Combo Patch"\n'
+        b'\tauthor: "MissionWAR"\n'
         b'\tcategory[]: "other"\n'
         b'\ticon: "mod_icon.jpg"\n'
         b'\tdescription_file: "description.txt"\n'
@@ -1258,9 +1262,9 @@ def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
     assert r_bad.ok is False
     codes = _issue_codes(r_bad)
     assert "00003" in codes
-    assert "ETS2V2-INV-ZERO-DDS" in codes
-    assert "ETS2V2-INV-COUNTRY-COUNT" in codes
-    assert "ETS2V2-INV-TZ-TOKEN" in codes
+    assert "ETS2R-INV-ZERO-DDS" in codes
+    assert "ETS2R-INV-COUNTRY-COUNT" in codes
+    assert "ETS2R-INV-TZ-TOKEN" in codes
 
     # MD-03: duplicate .sui + .sii for same slug rejected with 00003
     dup_slug_zip = _write_combo_zip(
@@ -1303,42 +1307,42 @@ def test_profile_combo_accepts_sii_fragments_partial_blocks_and_rejects_faults(
                 b"}\n"
                 b"sign_template_text : _nameless.200.slot0\n{\n"
                 b'\tfont_face: "/font/sign/dot_matrix.font"\n'
-                b'\ttext: "@@fp_xx_missing_ets2v2@@"\n'
+                b'\ttext: "@@fp_xx_missing_ets2r@@"\n'
                 b"}\n}\n"
             ),
         },
     )
     r_dangling = validate_local_zip(dangling_board_zip, baseline_dir=BASELINE_DIR, profile="combo")
     assert r_dangling.ok is False
-    assert "ETS2V2-INV-TOTEM-BOARDS" in _issue_codes(r_dangling)
+    assert "ETS2R-INV-TOTEM-BOARDS" in _issue_codes(r_dangling)
 
 
 def test_license_taint_gate_rejects_forbidden_markers_across_all_profiles(
     built_editions: dict[str, BuiltEditionPaths],
     tmp_path: pathlib.Path,
 ) -> None:
-    """ETS2V2-INV-LICENSE-TAINT rejects forbidden markers across core, promods, and combo."""
+    """ETS2R-INV-LICENSE-TAINT rejects forbidden markers across core, promods, and combo."""
     # 1. Core Workshop profile: description.txt, def/country/*.sui, and versions.sii
     ws_desc = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_desc")
     desc_path = ws_desc / "universal" / "description.txt"
     desc_path.write_bytes(desc_path.read_bytes() + b"\nSource: OpenStreetMap CC BY-SA 2.0\n")
     r_desc = validate_workshop_package(ws_desc, baseline_dir=BASELINE_DIR, profile="core")
     assert r_desc.ok is False
-    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_desc)
+    assert "ETS2R-INV-LICENSE-TAINT" in _issue_codes(r_desc)
 
     ws_sui = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_sui")
     alb_path = ws_sui / "universal" / "def" / "country" / "albania.sui"
     alb_path.write_bytes(b"# Data via GlobalPetrolPrices\n" + alb_path.read_bytes())
     r_sui = validate_workshop_package(ws_sui, baseline_dir=BASELINE_DIR, profile="core")
     assert r_sui.ok is False
-    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_sui)
+    assert "ETS2R-INV-LICENSE-TAINT" in _issue_codes(r_sui)
 
     ws_ver = _clone_workshop(built_editions["summer"].workshop_dir, tmp_path / "ws_taint_ver")
     ver_path = ws_ver / "versions.sii"
     ver_path.write_bytes(b"# ODbL notice\n" + ver_path.read_bytes())
     r_ver = validate_workshop_package(ws_ver, baseline_dir=BASELINE_DIR, profile="core")
     assert r_ver.ok is False
-    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_ver)
+    assert "ETS2R-INV-LICENSE-TAINT" in _issue_codes(r_ver)
 
     # 2. ProMods profile: tainted manifest.sii and def/country/albania.sui in local zip
     tainted_pm_zip = _rebuild_zip_with_mutations(
@@ -1350,15 +1354,15 @@ def test_license_taint_gate_rejects_forbidden_markers_across_all_profiles(
     )
     r_pm = validate_local_zip(tainted_pm_zip, baseline_dir=BASELINE_DIR, profile="promods")
     assert r_pm.ok is False
-    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_pm)
+    assert "ETS2R-INV-LICENSE-TAINT" in _issue_codes(r_pm)
 
     # 3. Combo profile: tainted def/country/thailand.sii and description.txt
     icon_bytes = (ICONS_DIR / "summer.jpg").read_bytes()
     manifest_bytes = (
-        b"SiiNunit\n{\n# ets2v2:managed-package kind=combo\nmod_package : .package_name\n{\n"
+        b"SiiNunit\n{\n# ets2-realism:managed-package kind=combo\nmod_package : .package_name\n{\n"
         b'\tpackage_version: "1.62-2026.47"\n'
-        b'\tdisplay_name: "ETS2V2 Combo Patch"\n'
-        b'\tauthor: "ETS2 World Realism"\n'
+        b'\tdisplay_name: "ETS2 Country Realism Combo Patch"\n'
+        b'\tauthor: "MissionWAR"\n'
         b'\tcategory[]: "other"\n'
         b'\ticon: "mod_icon.jpg"\n'
         b'\tdescription_file: "description.txt"\n'
@@ -1390,4 +1394,4 @@ def test_license_taint_gate_rejects_forbidden_markers_across_all_profiles(
             zf.writestr(zi, data)
     r_combo = validate_local_zip(combo_tainted_zip, baseline_dir=BASELINE_DIR, profile="combo")
     assert r_combo.ok is False
-    assert "ETS2V2-INV-LICENSE-TAINT" in _issue_codes(r_combo)
+    assert "ETS2R-INV-LICENSE-TAINT" in _issue_codes(r_combo)

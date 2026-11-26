@@ -9,8 +9,8 @@ import zlib
 
 import pytest
 
-import ets2v2.vfs.stack as stack_mod
-from ets2v2.vfs import (
+import ets2_realism.vfs.stack as stack_mod
+from ets2_realism.vfs import (
     DirectoryArchive,
     EffectiveVfsEntry,
     ProtectedPayloadError,

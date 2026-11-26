@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.registry import (
+from ets2_realism.registry import (
     CountryAliasEntry,
     CountryAliasRegistry,
     load_country_aliases,

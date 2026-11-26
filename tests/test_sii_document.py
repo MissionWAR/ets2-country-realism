@@ -6,13 +6,13 @@ import struct
 
 import pytest
 
-from ets2v2.sii.document import (
+from ets2_realism.sii.document import (
     SiiAttributeSpan,
     SiiDocument,
     SiiIncludeSpan,
     SiiUnitBlock,
 )
-from ets2v2.sii.lexer import SiiSpan, parse_sii_float, scan_sii_structure
+from ets2_realism.sii.lexer import SiiSpan, parse_sii_float, scan_sii_structure
 
 
 def test_parse_sii_float_decimal_and_ieee754_hex() -> None:

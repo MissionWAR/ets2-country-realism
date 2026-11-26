@@ -9,23 +9,23 @@ from zipfile import ZipFile
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.cli import main as cli_main
-from ets2v2.merge.compose import COMBO_SCS_FILENAMES, ComposeReport, compose_local
-from ets2v2.package.metadata import ETS2V2_MANIFEST_MARKER
-from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.snapshot import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.cli import main as cli_main
+from ets2_realism.merge.compose import COMBO_SCS_FILENAMES, ComposeReport, compose_local
+from ets2_realism.package.metadata import MANAGED_MANIFEST_MARKER
+from ets2_realism.registry.loader import load_law_registry
+from ets2_realism.registry.snapshot import (
     build_realism_snapshot,
     load_or_build_snapshot,
     write_realism_snapshot,
     write_sha256sums,
 )
-from ets2v2.sii.country import parse_country_data
-from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.localization import parse_localization_db
-from ets2v2.sii.sign_board import parse_sign_board
-from ets2v2.sii.speed_limits import parse_speed_limits
-from ets2v2.validate.workshop import validate_local_zip
+from ets2_realism.sii.country import parse_country_data
+from ets2_realism.sii.document import SiiDocument
+from ets2_realism.sii.localization import parse_localization_db
+from ets2_realism.sii.sign_board import parse_sign_board
+from ets2_realism.sii.speed_limits import parse_speed_limits
+from ets2_realism.validate.workshop import validate_local_zip
 
 _BASELINE_DIR = Path("data/baselines/ets2_1.62_def")
 _LOCAL_ETS2_DATA_DIR = Path(r"D:\ETS2Data\Euro Truck Simulator 2")
@@ -415,13 +415,13 @@ def _build_synthetic_combo_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Pa
         newline="\n",
     )
 
-    # 9. Prior zz_ETS2V2_ComboPatch_Summer.scs already present in load order (D-10 self-exclusion)
-    with ZipFile(mod_dir / "zz_ETS2V2_ComboPatch_Summer.scs", "w") as zf:
+    # 9. Prior zz_ETS2_Realism_ComboPatch_Summer.scs in load order (D-10 self-exclusion)
+    with ZipFile(mod_dir / "zz_ETS2_Realism_ComboPatch_Summer.scs", "w") as zf:
         zf.writestr(
             "manifest.sii",
             (
                 "SiiNunit\n{\n"
-                f"{ETS2V2_MANIFEST_MARKER} kind=combo\n"
+                f"{MANAGED_MANIFEST_MARKER} kind=combo\n"
                 "mod_package : .package_name { }\n}\n"
             ),
         )
@@ -435,7 +435,7 @@ def _build_synthetic_combo_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Pa
         "\n".join(
             [
                 "# Top of Mod Manager (highest priority)",
-                "zz_ETS2V2_ComboPatch_Summer.scs",
+                "zz_ETS2_Realism_ComboPatch_Summer.scs",
                 "gmc.beyond.fix.scs",
                 "Beyond_by_TerraMaps_1.scs",
                 "sea_custom.scs",
@@ -492,7 +492,10 @@ def test_compose_local_default_cli_standalone_snapshot(
     assert report.ok is True
     assert report.validation_ok is True
     assert len(report.excluded_self_packages) == 1
-    assert report.excluded_self_packages[0].archive_path.name == "zz_ETS2V2_ComboPatch_Summer.scs"
+    assert (
+        report.excluded_self_packages[0].archive_path.name
+        == "zz_ETS2_Realism_ComboPatch_Summer.scs"
+    )
     assert len(report.protected_archives) == 1
     assert report.protected_archives[0].protection_kind == "encrypted_zip"
     assert report.warnings  # Warns clearly on encrypted Beyond archive
@@ -567,15 +570,15 @@ def test_compose_local_default_cli_standalone_snapshot(
         assert spd_cde.get_block("tram") is not None
 
         # 43-locale Vanilla Option 4b + pm_fuel emitted
-        ets2v2_loc_files = [n for n in names if n.endswith("/local_module.ets2v2_fuel.sii")]
+        ets2r_loc_files = [n for n in names if n.endswith("/local_module.ets2r_fuel.sii")]
         pm_loc_files = [n for n in names if n.endswith("/local_module.pm_fuel.sii")]
-        assert len(ets2v2_loc_files) == 43
+        assert len(ets2r_loc_files) == 43
         assert len(pm_loc_files) == 43
         pm_entries = {e.key: e.val for e in parse_localization_db(zf.read(pm_loc_files[0]))}
         assert pm_entries["pm_custom_unrecognized"] == "KEEP_ME"
 
         # Manifest marker embedded cleanly
-        assert ETS2V2_MANIFEST_MARKER.encode("utf-8") in zf.read("manifest.sii")
+        assert MANAGED_MANIFEST_MARKER.encode("utf-8") in zf.read("manifest.sii")
 
 
 def test_compose_local_strict_protected_and_unpacked_defs(
@@ -676,17 +679,17 @@ def test_compose_local_patch_hardcoded_totems(
         assert "def/sign/board/indo_gas_totem_01j.sii" not in names
         assert "def/sign/board/indo_gas_totem_01a.sii" in names  # ID now in 225-territory snapshot
         kz_board = parse_sign_board(zf.read("def/sign/board/kz_gas_totem_95.sii"))
-        assert kz_board.text_slots[0].localization_key == "fp_kz_petrol_95_ets2v2"
+        assert kz_board.text_slots[0].localization_key == "fp_kz_petrol_95_ets2r"
         id_board = parse_sign_board(zf.read("def/sign/board/indo_gas_totem_01a.sii"))
-        assert id_board.text_slots[0].localization_key == "fp_id_petrol_98_ets2v2"
+        assert id_board.text_slots[0].localization_key == "fp_id_petrol_98_ets2r"
         loc_entries = {
             e.key: e.val
-            for e in parse_localization_db(zf.read("locale/en_gb/local_module.ets2v2_fuel.sii"))
+            for e in parse_localization_db(zf.read("locale/en_gb/local_module.ets2r_fuel.sii"))
         }
-        assert "fp_kz_petrol_95_ets2v2" in loc_entries
-        assert loc_entries["fp_kz_petrol_95_ets2v2"].isdigit()
-        assert "fp_id_petrol_98_ets2v2" in loc_entries
-        assert loc_entries["fp_id_petrol_98_ets2v2"].isdigit()
+        assert "fp_kz_petrol_95_ets2r" in loc_entries
+        assert loc_entries["fp_kz_petrol_95_ets2r"].isdigit()
+        assert "fp_id_petrol_98_ets2r" in loc_entries
+        assert loc_entries["fp_id_petrol_98_ets2r"].isdigit()
 
 
 def test_compose_local_no_totems_and_baseline_only_snapshot(

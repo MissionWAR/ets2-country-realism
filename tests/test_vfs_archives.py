@@ -13,11 +13,11 @@ from typing import IO
 
 import pytest
 
-import ets2v2.vfs.hashfs as hashfs_mod
-import ets2v2.vfs.zip_archive as zip_archive_mod
-from ets2v2.vfs.cityhash import hash_vfs_path
-from ets2v2.vfs.dir_archive import DirectoryArchive
-from ets2v2.vfs.hashfs import (
+import ets2_realism.vfs.hashfs as hashfs_mod
+import ets2_realism.vfs.zip_archive as zip_archive_mod
+from ets2_realism.vfs.cityhash import hash_vfs_path
+from ets2_realism.vfs.dir_archive import DirectoryArchive
+from ets2_realism.vfs.hashfs import (
     MAX_V2_TABLE_BYTES,
     HashFsV1Archive,
     HashFsV2Archive,
@@ -25,8 +25,8 @@ from ets2v2.vfs.hashfs import (
     detect_3nk,
     open_archive,
 )
-from ets2v2.vfs.types import ProtectedPayloadError, UnsupportedCompressionError, VfsArchive
-from ets2v2.vfs.zip_archive import ZipArchive
+from ets2_realism.vfs.types import ProtectedPayloadError, UnsupportedCompressionError, VfsArchive
+from ets2_realism.vfs.zip_archive import ZipArchive
 
 
 @dataclass(frozen=True)
@@ -1003,7 +1003,7 @@ def test_lo04_directory_archive_enforces_max_entry_bytes_cap(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """LO-04 regression: DirectoryArchive.read_bytes() enforces MAX_DIR_ENTRY_BYTES cap."""
-    import ets2v2.vfs.dir_archive as dir_mod
+    import ets2_realism.vfs.dir_archive as dir_mod
 
     assert dir_mod.MAX_DIR_ENTRY_BYTES == 128 * 1024 * 1024
 

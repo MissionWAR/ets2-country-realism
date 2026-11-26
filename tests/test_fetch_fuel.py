@@ -10,8 +10,8 @@ import httpx
 import openpyxl
 import pytest
 
-from ets2v2.fetch._parsing import extract_iso_date, parse_positive_float
-from ets2v2.fetch.ec_bulletin import (
+from ets2_realism.fetch._parsing import extract_iso_date, parse_positive_float
+from ets2_realism.fetch.ec_bulletin import (
     EC_WOB_LANDING_URL,
     EC_WOB_MAX_UNCOMPRESSED_BYTES,
     EC_WOB_MAX_ZIP_ENTRIES,
@@ -23,7 +23,7 @@ from ets2v2.fetch.ec_bulletin import (
     fetch_fuel_prices_eu,
     parse_ec_wob_xlsx,
 )
-from ets2v2.fetch.http import create_http_client
+from ets2_realism.fetch.http import create_http_client
 
 _EU27_SAMPLE_ROWS: list[tuple[str, float, float, float | None]] = [
     ("AT", 1598.0, 1572.0, 910.0),
@@ -225,7 +225,7 @@ def test_fetch_fuel_prices_eu_parses_is_live_eur_and_rejects_ok_false() -> None:
 
 
 def test_fetch_uk_desnz_discovers_csv_blocks_ssrf_and_converts_pence_to_gbp() -> None:
-    from ets2v2.fetch.national import (
+    from ets2_realism.fetch.national import (
         UK_DESNZ_LANDING_URL,
         discover_uk_desnz_csv_url,
         fetch_uk_desnz,
@@ -273,7 +273,7 @@ def test_fetch_uk_desnz_discovers_csv_blocks_ssrf_and_converts_pence_to_gbp() ->
 
 
 def test_fetch_no_ssb_09654_parses_json_stat2_latest_non_null_month() -> None:
-    from ets2v2.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
+    from ets2_realism.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
 
     json_stat2 = {
         "id": ["Drivstoff", "ContentsCode", "Tid"],
@@ -327,7 +327,7 @@ def test_fetch_no_ssb_09654_parses_json_stat2_latest_non_null_month() -> None:
 
 
 def test_fetch_fr_economie_parses_multigrade_and_e10_fallback() -> None:
-    from ets2v2.fetch.national import fetch_fr_economie
+    from ets2_realism.fetch.national import fetch_fr_economie
 
     def _handler_full(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -387,7 +387,7 @@ def test_fetch_fr_economie_parses_multigrade_and_e10_fallback() -> None:
 def test_fetch_de_tankerkoenig_keyless_skip_keyed_median_and_secret_redaction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from ets2v2.fetch.national import TANKERKOENIG_CITIES, fetch_de_tankerkoenig
+    from ets2_realism.fetch.national import TANKERKOENIG_CITIES, fetch_de_tankerkoenig
 
     monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
 
@@ -447,7 +447,7 @@ def test_fetch_de_tankerkoenig_keyless_skip_keyed_median_and_secret_redaction(
 
 
 def test_fetch_es_miteco_comma_decimal_median_resilient_to_outliers() -> None:
-    from ets2v2.fetch.national import ES_MITECO_URL, fetch_es_miteco
+    from ets2_realism.fetch.national import ES_MITECO_URL, fetch_es_miteco
 
     payload = {
         "Fecha": "20/11/2026 07:30:00",
@@ -499,7 +499,7 @@ def test_fetch_es_miteco_comma_decimal_median_resilient_to_outliers() -> None:
 
 
 def test_fetch_it_mimit_strips_banner_sniffs_delimiter_and_filters_isself() -> None:
-    from ets2v2.fetch.national import IT_MIMIT_URL, fetch_it_mimit
+    from ets2_realism.fetch.national import IT_MIMIT_URL, fetch_it_mimit
 
     csv_text = (
         "Estrazione del 2026-11-20 08:00:00\n"
@@ -535,7 +535,7 @@ def test_fetch_it_mimit_strips_banner_sniffs_delimiter_and_filters_isself() -> N
 
 
 def test_fetch_nl_cbs_80416ned_filters_daily_perioden_and_rejects_annual_rows() -> None:
-    from ets2v2.fetch.national import NL_CBS_80416NED_URL, fetch_nl_cbs_80416ned
+    from ets2_realism.fetch.national import NL_CBS_80416NED_URL, fetch_nl_cbs_80416ned
 
     odata_payload = {
         "value": [
@@ -661,7 +661,7 @@ def test_ec_wob_rejects_ex_tax_only_landing_page_and_worksheet() -> None:
 
 
 def test_collectors_fault_isolate_html_for_xlsx_millisecond_ts_and_nul_csv() -> None:
-    from ets2v2.fetch.national import (
+    from ets2_realism.fetch.national import (
         IT_MIMIT_URL,
         UK_DESNZ_LANDING_URL,
         fetch_it_mimit,
@@ -755,7 +755,7 @@ def test_collectors_fault_isolate_html_for_xlsx_millisecond_ts_and_nul_csv() -> 
 
 
 def test_fetch_no_ssb_09654_resolves_multi_metric_contentscode_and_rejects_extra_dim() -> None:
-    from ets2v2.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
+    from ets2_realism.fetch.national import NO_SSB_09654_URL, fetch_no_ssb_09654
 
     # ContentsCode has 2 series: idx 0 = Percent change, idx 1 = Average retail price
     multi_contents = {

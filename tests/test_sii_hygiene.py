@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ets2v2.sii.hygiene import (
+from ets2_realism.sii.hygiene import (
     SiiDiagnostic,
     SiiEncodingError,
     normalize_sii_bytes,

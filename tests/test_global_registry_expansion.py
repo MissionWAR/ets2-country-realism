@@ -9,8 +9,8 @@ import re
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.normalize.currencies import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.normalize.currencies import (
     ALL_CURRENCY_SANITY_BANDS,
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_REFERENCE_FX_RATES,
@@ -44,11 +44,11 @@ from ets2v2.normalize.currencies import (
     load_currency_registry,
     load_tier3_fuel_baselines,
 )
-from ets2v2.normalize.fuel import (
+from ets2_realism.normalize.fuel import (
     SEEDED_LOCKFILE_SOURCES,
     normalize_country_fuel_prices,
 )
-from ets2v2.normalize.fx import (
+from ets2_realism.normalize.fx import (
     CBR_FX_PROVIDER,
     ECB_FX_PROVIDER,
     FAWAZ_FX_PROVIDER,
@@ -56,25 +56,25 @@ from ets2v2.normalize.fx import (
     FxProviderQuote,
     cross_validate_fx_rates,
 )
-from ets2v2.normalize.lockfile import (
+from ets2_realism.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
     PROMODS_CURATED_SEED_SOURCE,
     load_prices_lockfile,
     seed_initial_lockfile,
 )
-from ets2v2.normalize.totem_format import (
+from ets2_realism.normalize.totem_format import (
     EXTENDED_INTEGER_CURRENCY_ISO2S,
     THREE_DEC_NATIONAL_ISO2S,
     format_national_pump_price,
 )
-from ets2v2.package.builder import build_core_edition
-from ets2v2.registry.loader import (
+from ets2_realism.package.builder import build_core_edition
+from ets2_realism.registry.loader import (
     load_country_aliases,
     load_law_registry,
     validate_law_registry,
 )
-from ets2v2.registry.snapshot import build_realism_snapshot
-from ets2v2.registry.timezone import (
+from ets2_realism.registry.snapshot import build_realism_snapshot
+from ets2_realism.registry.timezone import (
     IANA_NUMERIC_ABBR_OVERRIDES,
     resolve_ets2_timezone,
     resolve_season_anchor_date,

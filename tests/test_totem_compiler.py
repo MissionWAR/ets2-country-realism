@@ -7,15 +7,15 @@ import re
 
 import pytest
 
-from ets2v2.baseline.models import (
+from ets2_realism.baseline.models import (
     FuelBoardEntry,
     FuelBoardsBaseline,
     FuelBoardSlot,
     LocalesBaseline,
 )
-from ets2v2.normalize.lockfile import load_prices_lockfile
-from ets2v2.normalize.models import CountryFuelLockEntry
-from ets2v2.normalize.totem_catalog import (
+from ets2_realism.normalize.lockfile import load_prices_lockfile
+from ets2_realism.normalize.models import CountryFuelLockEntry
+from ets2_realism.normalize.totem_catalog import (
     GRADE_SUFFIX_TO_CANONICAL,
     NON_GAS_LEGACY_BOARDS,
     REGION_ALIAS_TO_ISO2,
@@ -24,7 +24,7 @@ from ets2v2.normalize.totem_catalog import (
     classify_all_fuel_boards,
     classify_fuel_board,
 )
-from ets2v2.package.totems import (
+from ets2_realism.package.totems import (
     FUEL_LOCALE_FILENAME,
     FUEL_LOCALE_UNIT_NAME,
     CompiledTotems,
@@ -32,16 +32,16 @@ from ets2v2.package.totems import (
     synthesize_fuel_locale_module_sii,
     synthesize_sign_board_sii,
 )
-from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.localization import parse_localization_db
-from ets2v2.sii.sign_board import parse_sign_board
+from ets2_realism.sii.document import SiiDocument
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.localization import parse_localization_db
+from ets2_realism.sii.sign_board import parse_sign_board
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
 PRICES_LOCK_PATH = REPO_ROOT / "state" / "prices.lock.json"
 
-_TOKEN_KEY_RE = re.compile(r"^fp_[a-z]{2}_[a-z0-9_]+_ets2v2$")
+_TOKEN_KEY_RE = re.compile(r"^fp_[a-z]{2}_[a-z0-9_]+_ets2r$")
 _EXCLUDED_HIGHWAY_SIGNS = ("fi_oulu_95", "fi_oulu_98", "rs_fuel_01", "ru_m_95", "ru_m_98")
 
 
@@ -216,7 +216,7 @@ def test_compile_totem_payloads_round_trips_all_460_boards_and_43_locales() -> N
     locale_doc = SiiDocument.parse(canonical_locale_raw, require_siinunit=True)
     loc_unit = locale_doc.get_unit(class_name="localization_db")
     assert loc_unit is not None
-    assert loc_unit.unit_name == FUEL_LOCALE_UNIT_NAME == ".ets2v2_fuel"
+    assert loc_unit.unit_name == FUEL_LOCALE_UNIT_NAME == ".ets2r_fuel"
 
     parsed_entries = parse_localization_db(canonical_locale_raw)
     parsed_keys = [entry.key for entry in parsed_entries]
@@ -225,11 +225,11 @@ def test_compile_totem_payloads_round_trips_all_460_boards_and_43_locales() -> N
     parsed_token_map = {entry.key: entry.val for entry in parsed_entries}
     assert parsed_token_map == compiled.token_values
     assert len(parsed_token_map) == 164
-    assert "<sup>" in parsed_token_map["fp_de_diesel_ets2v2"]
-    assert "<sup>" not in parsed_token_map["fp_de_diesel_3_ets2v2"]
-    assert "<sup>" not in parsed_token_map["fp_de_diesel_c_ets2v2"]
-    assert float(parsed_token_map["fp_gb_diesel_ets2v2"]) > 50.0  # UK pence/L
-    assert parsed_token_map["fp_is_diesel_ets2v2"].isdigit()  # Integer ISK
+    assert "<sup>" in parsed_token_map["fp_de_diesel_ets2r"]
+    assert "<sup>" not in parsed_token_map["fp_de_diesel_3_ets2r"]
+    assert "<sup>" not in parsed_token_map["fp_de_diesel_c_ets2r"]
+    assert float(parsed_token_map["fp_gb_diesel_ets2r"]) > 50.0  # UK pence/L
+    assert parsed_token_map["fp_is_diesel_ets2r"].isdigit()  # Integer ISK
 
     for key, val in parsed_token_map.items():
         assert _TOKEN_KEY_RE.fullmatch(key) is not None, key
@@ -294,11 +294,11 @@ def test_totem_custom_resolver_and_hygiene_security_guards() -> None:
         entry: CountryFuelLockEntry,
     ) -> tuple[str, str]:
         if classification.iso2 == "DE" and "small" in board.board_name:
-            return (f"{classification.token_base}_c_ets2v2", "1.79")
+            return (f"{classification.token_base}_c_ets2r", "1.79")
         if classification.iso2 == "DE":
-            return (f"{classification.token_base}_ets2v2", "1.78<sup>9</sup>")
+            return (f"{classification.token_base}_ets2r", "1.78<sup>9</sup>")
         val = entry.local_prices[classification.grade]
-        return (f"{classification.token_base}_ets2v2", f"{val:.2f}")
+        return (f"{classification.token_base}_ets2r", f"{val:.2f}")
 
     compiled = compile_totem_payloads(
         fuel_boards,
@@ -306,10 +306,10 @@ def test_totem_custom_resolver_and_hygiene_security_guards() -> None:
         prices_lock,
         resolver=_custom_resolver,
     )
-    assert compiled.board_tokens["gas_de_big_diesel"] == "fp_de_diesel_ets2v2"
-    assert compiled.token_values["fp_de_diesel_ets2v2"] == "1.78<sup>9</sup>"
-    assert compiled.board_tokens["gas_de_small_diesel"] == "fp_de_diesel_c_ets2v2"
-    assert compiled.token_values["fp_de_diesel_c_ets2v2"] == "1.79"
+    assert compiled.board_tokens["gas_de_big_diesel"] == "fp_de_diesel_ets2r"
+    assert compiled.token_values["fp_de_diesel_ets2r"] == "1.78<sup>9</sup>"
+    assert compiled.board_tokens["gas_de_small_diesel"] == "fp_de_diesel_c_ets2r"
+    assert compiled.token_values["fp_de_diesel_c_ets2r"] == "1.79"
 
     # Security guards (T-03-13): reject invalid token keys, comma decimals, and backslash injection
     sample_board = next(b for b in fuel_boards.boards if b.board_name == "gas_de_big_diesel")
@@ -320,10 +320,10 @@ def test_totem_custom_resolver_and_hygiene_security_guards() -> None:
         synthesize_fuel_locale_module_sii({"bad_key": "1.79"})
 
     with pytest.raises(ValueError, match="comma"):
-        synthesize_fuel_locale_module_sii({"fp_de_diesel_ets2v2": "1,79"})
+        synthesize_fuel_locale_module_sii({"fp_de_diesel_ets2r": "1,79"})
 
     with pytest.raises(ValueError, match=r"backslash|NUL"):
-        synthesize_fuel_locale_module_sii({"fp_de_diesel_ets2v2": "1.79\\n"})
+        synthesize_fuel_locale_module_sii({"fp_de_diesel_ets2r": "1.79\\n"})
 
     # Reject fr_qc if ever injected into locales
     bad_locales = LocalesBaseline(

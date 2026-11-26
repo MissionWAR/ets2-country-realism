@@ -9,9 +9,9 @@ from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.registry import load_law_registry
-from ets2v2.registry.timezone import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.registry import load_law_registry
+from ets2_realism.registry.timezone import (
     DEFAULT_ANCHOR_YEAR,
     IANA_NUMERIC_ABBR_OVERRIDES,
     SUMMER_ANCHOR_MONTH_DAY,

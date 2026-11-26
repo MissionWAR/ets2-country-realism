@@ -6,7 +6,7 @@ import pathlib
 
 import pytest
 
-from ets2v2.merge.promods_discovery import (
+from ets2_realism.merge.promods_discovery import (
     ProModsPackSet,
     ProModsPackSpec,
     discover_promods_packs,

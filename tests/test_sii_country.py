@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from ets2v2.sii.country import (
+from ets2_realism.sii.country import (
     CountryDataModel,
     CountryDataPatch,
     parse_country_data,
     parse_country_includes,
     patch_country_data,
 )
-from ets2v2.sii.hygiene import normalize_sii_bytes, serialize_sii_text
+from ets2_realism.sii.hygiene import normalize_sii_bytes, serialize_sii_text
 
 
 def test_parse_country_includes_handles_bom_comments_sui_and_sii_fragments() -> None:

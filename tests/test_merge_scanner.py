@@ -8,12 +8,12 @@ import zipfile
 
 import pytest
 
-from ets2v2.merge.scanner import (
+from ets2_realism.merge.scanner import (
     ComboScanResult,
     ScannedMapCountry,
     scan_active_countries,
 )
-from ets2v2.vfs.stack import VfsStack
+from ets2_realism.vfs.stack import VfsStack
 
 
 def _write_zip(dest: pathlib.Path, files: dict[str, bytes]) -> pathlib.Path:

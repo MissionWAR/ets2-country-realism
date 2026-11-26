@@ -7,8 +7,8 @@ import zipfile
 
 import pytest
 
-from ets2v2.baseline.models import LocalesBaseline
-from ets2v2.merge.promods_fuel import (
+from ets2_realism.baseline.models import LocalesBaseline
+from ets2_realism.merge.promods_fuel import (
     PM_EU_PREFIX_TO_ISO2,
     PM_FUEL_MODULES,
     PM_ME_PREFIX_TO_ISO2,
@@ -17,12 +17,12 @@ from ets2v2.merge.promods_fuel import (
     compile_promods_fuel_module,
     format_pm_fuel_value,
 )
-from ets2v2.normalize.totem_format import format_national_pump_price
-from ets2v2.registry.snapshot import load_or_build_snapshot
-from ets2v2.sii.hygiene import validate_sii_hygiene, validate_unit_name_segments
-from ets2v2.sii.localization import parse_localization_db
-from ets2v2.vfs.hashfs import open_archive
-from ets2v2.vfs.stack import VfsLayer, VfsStack
+from ets2_realism.normalize.totem_format import format_national_pump_price
+from ets2_realism.registry.snapshot import load_or_build_snapshot
+from ets2_realism.sii.hygiene import validate_sii_hygiene, validate_unit_name_segments
+from ets2_realism.sii.localization import parse_localization_db
+from ets2_realism.vfs.hashfs import open_archive
+from ets2_realism.vfs.stack import VfsLayer, VfsStack
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"

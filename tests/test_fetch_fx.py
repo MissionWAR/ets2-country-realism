@@ -1,4 +1,4 @@
-"""100% offline httpx.MockTransport tests for ets2v2.fetch.http, ets2v2.fetch.fx, and CLI tracer."""
+"""100% offline MockTransport tests for ets2_realism.fetch.{http,fx} and CLI tracer."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from pathlib import Path
 import httpx
 import pytest
 
-from ets2v2.cli import main
-from ets2v2.fetch import (
+from ets2_realism.cli import main
+from ets2_realism.fetch import (
     CBR_DAILY_XML_URL,
     ECB_DAILY_XML_URL,
     FAWAZ_CLOUDFLARE_URL,
@@ -28,7 +28,7 @@ from ets2v2.fetch import (
     run_fx_only_fetch,
     validate_https_url,
 )
-from ets2v2.normalize import (
+from ets2_realism.normalize import (
     ALL_REFERENCE_FX_RATES,
     ECB_COVERED_CURRENCIES,
     FxProviderQuote,
@@ -449,8 +449,8 @@ def test_run_fx_only_fetch_and_cli_tracer(
     assert len(loaded.fx_rates) == len(ALL_REFERENCE_FX_RATES)
     assert loaded.fx_rates["EUR"].rate_per_eur == 1.0
 
-    # End-to-end CLI tracer: ets2v2 fetch --fx-only --dry-run --json
-    import ets2v2.fetch.fx as fetch_fx_module
+    # End-to-end CLI tracer: ets2-realism fetch --fx-only --dry-run --json
+    import ets2_realism.fetch.fx as fetch_fx_module
 
     orig_create = fetch_fx_module.create_http_client
 
@@ -497,7 +497,7 @@ def test_run_fx_only_fetch_and_cli_tracer(
             ),
         )
 
-    import ets2v2.fetch.http as fetch_http_module
+    import ets2_realism.fetch.http as fetch_http_module
 
     def _noop_sleep(_seconds: float) -> None:
         return None
@@ -589,7 +589,7 @@ def test_http_port_guard_decoding_error_redaction_bom_xml_and_timeout_bounds(
     def _boom_fetch(*_args: object, **_kwargs: object) -> object:
         raise ValueError("failure for https://example.test/?apikey=cli_secret_999")
 
-    monkeypatch.setattr("ets2v2.cli.run_price_fetch", _boom_fetch)
+    monkeypatch.setattr("ets2_realism.cli.run_price_fetch", _boom_fetch)
     err_code = main(["fetch", "--fx-only", "--dry-run"])
     err_cap = capsys.readouterr()
     assert err_code == 1
@@ -598,8 +598,8 @@ def test_http_port_guard_decoding_error_redaction_bom_xml_and_timeout_bounds(
 
 
 def test_hi03_fx_only_fetch_preserves_all_extended_global_currencies(tmp_path: Path) -> None:
-    """HI-03 regression: ets2v2 fetch --fx-only preserves all global FX currencies in lockfile."""
-    from ets2v2.normalize.currencies import EXTENDED_PROMODS_CURRENCIES
+    """HI-03 regression: fetch --fx-only preserves all global FX currencies in lockfile."""
+    from ets2_realism.normalize.currencies import EXTENDED_PROMODS_CURRENCIES
 
     repo_lock = Path(__file__).resolve().parent.parent / "state" / "prices.lock.json"
     lock_copy = tmp_path / "prices.lock.json"
@@ -628,7 +628,7 @@ def test_hi03_fx_only_fetch_preserves_all_extended_global_currencies(tmp_path: P
 
 def test_http_retry_and_max_bytes_bounds_validation_lo02() -> None:
     """LO-02: Negative max_retries and non-positive max_bytes raise ValueError cleanly."""
-    from ets2v2.fetch.http import post_form_bytes_with_retry
+    from ets2_realism.fetch.http import post_form_bytes_with_retry
 
     allowed = frozenset({"api.frankfurter.dev"})
     with create_http_client(transport=httpx.MockTransport(lambda _r: httpx.Response(200))) as c:

@@ -11,8 +11,8 @@ import httpx
 import openpyxl
 import pytest
 
-from ets2v2.fetch._parsing import extract_iso_date, validate_ooxml_zip_safety
-from ets2v2.fetch.global_tier1 import (
+from ets2_realism.fetch._parsing import extract_iso_date, validate_ooxml_zip_safety
+from ets2_realism.fetch.global_tier1 import (
     AR_ENERGIA_CKAN_FALLBACK_URL,
     AR_ENERGIA_CKAN_PRIMARY_URL,
     BR_ANP_DIESEL_GNV_URL,
@@ -40,13 +40,13 @@ from ets2v2.fetch.global_tier1 import (
     gallon_to_liter,
     parse_jp_meti_xlsx,
 )
-from ets2v2.fetch.http import (
+from ets2_realism.fetch.http import (
     create_http_client,
     fetch_bytes_with_retry,
     redact_url_secrets,
 )
-from ets2v2.fetch.models import FetchRunReport, RawFuelFeedResult
-from ets2v2.fetch.national import fetch_de_tankerkoenig
+from ets2_realism.fetch.models import FetchRunReport, RawFuelFeedResult
+from ets2_realism.fetch.national import fetch_de_tankerkoenig
 
 
 def _build_minimal_xlsx_bytes() -> bytes:

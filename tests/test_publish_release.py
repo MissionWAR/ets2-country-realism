@@ -10,22 +10,22 @@ from typing import cast
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.cli import main
-from ets2v2.normalize.lockfile import load_prices_lockfile, write_prices_lockfile
-from ets2v2.normalize.models import LockAlert
-from ets2v2.publish.changelog import render_edition_changelog
-from ets2v2.publish.ledger import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.cli import main
+from ets2_realism.normalize.lockfile import load_prices_lockfile, write_prices_lockfile
+from ets2_realism.normalize.models import LockAlert
+from ets2_realism.publish.changelog import render_edition_changelog
+from ets2_realism.publish.ledger import (
     PublishedLedger,
     load_published_ledger,
     write_published_ledger,
 )
-from ets2v2.publish.release import (
+from ets2_realism.publish.release import (
     PhaseAReleaseSummary,
     run_phase_a_release,
 )
-from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.snapshot import (
+from ets2_realism.registry.loader import load_law_registry
+from ets2_realism.registry.snapshot import (
     RealismSnapshot,
     build_realism_snapshot,
     verify_snapshot_file,
@@ -134,8 +134,8 @@ def test_phase_a_release_initial_run_and_noop_across_weeks(tmp_path: Path) -> No
 
     assert (out_dir / "workshop" / "summer" / "versions.sii").is_file()
     assert (out_dir / "workshop" / "winter" / "versions.sii").is_file()
-    assert (out_dir / "local" / "ETS2V2_Core_Summer.zip").is_file()
-    assert (out_dir / "local" / "ETS2V2_Core_Winter.zip").is_file()
+    assert (out_dir / "local" / "ETS2_Country_Realism_Core_Summer.zip").is_file()
+    assert (out_dir / "local" / "ETS2_Country_Realism_Core_Winter.zip").is_file()
     assert (out_dir / "snapshots" / "realism-snapshot-summer.json").is_file()
     assert (out_dir / "snapshots" / "realism-snapshot-winter.json").is_file()
     assert (changelogs_dir / "CHANGELOG_SUMMER.md").is_file()
@@ -502,7 +502,7 @@ def test_cli_publish_release_previous_snapshots_dir_and_registry_validate_error_
     def _boom(*_args: object, **_kwargs: object) -> list[str]:
         raise PermissionError("Simulated permission error")
 
-    monkeypatch.setattr("ets2v2.cli.validate_law_registry", _boom)
+    monkeypatch.setattr("ets2_realism.cli.validate_law_registry", _boom)
     exit_err = main(["registry", "validate", "--json"])
     err_out = capsys.readouterr()
     assert exit_err == 1
@@ -794,7 +794,7 @@ def test_md06_non_core_promods_snapshot_change_sets_snapshots_changed_without_bu
 
 
 def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attributions() -> None:
-    from ets2v2.normalize.lockfile import CURATED_TIER3_SOURCES
+    from ets2_realism.normalize.lockfile import CURATED_TIER3_SOURCES
 
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries = CountriesBaseline.model_validate_json(

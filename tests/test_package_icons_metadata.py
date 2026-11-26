@@ -10,17 +10,17 @@ from typing import cast
 import pytest
 from PIL import Image
 
-from ets2v2.package.icons import (
+from ets2_realism.package.icons import (
     ICON_SIZE,
     generate_all_icons,
     generate_promods_icons,
     render_edition_icon_bytes,
     render_promods_icon_bytes,
 )
-from ets2v2.package.metadata import (
+from ets2_realism.package.metadata import (
     DEFAULT_AUTHOR,
-    ETS2V2_MANIFEST_MARKER,
     LOCAL_DISPLAY_NAMES,
+    MANAGED_MANIFEST_MARKER,
     PROMODS_LOCAL_DISPLAY_NAMES,
     WORKSHOP_CATEGORIES,
     render_description_txt,
@@ -29,10 +29,10 @@ from ets2v2.package.metadata import (
     render_promods_manifest_sii,
     render_versions_sii,
 )
-from ets2v2.registry.models import Season
-from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.lexer import parse_sii_bool, unquote_sii_string
+from ets2_realism.registry.models import Season
+from ets2_realism.sii.document import SiiDocument
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.lexer import parse_sii_bool, unquote_sii_string
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 ASSETS_ICONS_DIR = REPO_ROOT / "assets" / "icons"
@@ -239,12 +239,12 @@ def test_promods_icons_clean_room_distinct_and_committed(tmp_path: pathlib.Path)
 @pytest.mark.parametrize("edition", ["summer", "winter"])
 def test_manifest_embeds_self_exclusion_comment_and_promods_metadata(edition: Season) -> None:
     core_ws = render_manifest_sii(edition, "1.62-2026.47", workshop=True)
-    assert f"{ETS2V2_MANIFEST_MARKER} kind=core" in core_ws.decode("utf-8")
+    assert f"{MANAGED_MANIFEST_MARKER} kind=core" in core_ws.decode("utf-8")
 
     pm_ws = render_promods_manifest_sii(edition, "1.62-2026.47", workshop=True)
     assert validate_sii_hygiene(pm_ws, require_siinunit=True) == []
     pm_ws_text = pm_ws.decode("utf-8")
-    assert f"{ETS2V2_MANIFEST_MARKER} kind=promods" in pm_ws_text
+    assert f"{MANAGED_MANIFEST_MARKER} kind=promods" in pm_ws_text
     assert "display_name" not in pm_ws_text
     assert "compatible_versions" not in pm_ws_text
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from ets2v2.vfs.cityhash import K0, K1, K2, K3, cityhash64, hash_vfs_path
-from ets2v2.vfs.types import normalize_vfs_path
+from ets2_realism.vfs.cityhash import K0, K1, K2, K3, cityhash64, hash_vfs_path
+from ets2_realism.vfs.types import normalize_vfs_path
 
 
 def test_cityhash64_103_constants() -> None:

@@ -9,27 +9,27 @@ from typing import cast
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.cli import main
-from ets2v2.merge.promods_builder import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.cli import main
+from ets2_realism.merge.promods_builder import (
     ProModsBuildReport,
     assert_out_dir_not_tracked,
     build_promods_edition,
     build_promods_editions,
 )
-from ets2v2.merge.promods_discovery import discover_promods_packs, resolve_mod_dir
-from ets2v2.package.totems import snapshot_to_totem_lockfile
-from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.snapshot import (
+from ets2_realism.merge.promods_discovery import discover_promods_packs, resolve_mod_dir
+from ets2_realism.package.totems import snapshot_to_totem_lockfile
+from ets2_realism.registry.loader import load_law_registry
+from ets2_realism.registry.snapshot import (
     build_realism_snapshot,
     load_or_build_snapshot,
     write_realism_snapshot,
     write_sha256sums,
 )
-from ets2v2.sii.country import parse_country_data
-from ets2v2.sii.localization import parse_localization_db
-from ets2v2.sii.speed_limits import parse_speed_limits
-from ets2v2.validate import validate_local_zip, validate_workshop_package
+from ets2_realism.sii.country import parse_country_data
+from ets2_realism.sii.localization import parse_localization_db
+from ets2_realism.sii.speed_limits import parse_speed_limits
+from ets2_realism.validate import validate_local_zip, validate_workshop_package
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
@@ -451,7 +451,7 @@ def test_promods_builder_synthetic_full_summer_and_winter_repo_fallback(
         assert report.pm_fuel_modules_emitted == ["pm_fuel", "pm_me_fuel", "pm_tgs_fuel"]
         assert report.workshop_dir == out_dir / "workshop" / f"promods-{edition}"
         assert report.local_zip_path == (
-            out_dir / "local" / f"ETS2V2_ProMods_{edition.capitalize()}.zip"
+            out_dir / "local" / f"ETS2_Country_Realism_ProMods_{edition.capitalize()}.zip"
         )
 
         # Independent Offline SCS Validator check on both Workshop root and local ZIP
@@ -504,7 +504,7 @@ def test_promods_builder_synthetic_full_summer_and_winter_repo_fallback(
         assert ie_spd.get_block("train") is not None
         assert ie_spd.get_block("tram") is not None
 
-        # All 43 active locales present for ets2v2_fuel + pm_fuel + pm_me_fuel + pm_tgs_fuel
+        # All 43 active locales present for ets2r_fuel + pm_fuel + pm_me_fuel + pm_tgs_fuel
         locale_dirs = sorted(p.name for p in (uni / "locale").iterdir() if p.is_dir())
         assert len(locale_dirs) == 43
         assert "fr_ca" in locale_dirs
@@ -579,7 +579,7 @@ def test_promods_builder_offline_snapshot_checksums_and_cli_json(
         [
             "validate",
             "local",
-            str(out_dir / "local" / "ETS2V2_ProMods_Summer.zip"),
+            str(out_dir / "local" / "ETS2_Country_Realism_ProMods_Summer.zip"),
             "--profile",
             "promods",
         ]
@@ -660,7 +660,7 @@ def test_hi05_promods_builder_stages_and_preserves_prior_build_on_validation_fai
             require_all_packs=False,
         )
     assert not (fresh_out / "workshop" / "promods-summer").exists()
-    assert not (fresh_out / "local" / "ETS2V2_ProMods_Summer.zip").exists()
+    assert not (fresh_out / "local" / "ETS2_Country_Realism_ProMods_Summer.zip").exists()
     assert list((fresh_out / "workshop").glob(".tmp_*")) == []
     assert list((fresh_out / "local").glob(".tmp_*")) == []
 

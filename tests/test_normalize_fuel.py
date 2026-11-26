@@ -1,4 +1,4 @@
-"""Offline unit tests for ets2v2.normalize.fuel and 39-territory baseline seeding."""
+"""Offline unit tests for ets2_realism.normalize.fuel and 39-territory baseline seeding."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from datetime import date
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline
-from ets2v2.normalize.currencies import (
+from ets2_realism.baseline.models import CountriesBaseline
+from ets2_realism.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_REFERENCE_FX_RATES,
     ALL_TERRITORY_CURRENCIES,
@@ -17,7 +17,7 @@ from ets2v2.normalize.currencies import (
     PROMODS_EXTENDED_ISO2S,
     TIER3_CURATED_BASELINE_SOURCE,
 )
-from ets2v2.normalize.fuel import (
+from ets2_realism.normalize.fuel import (
     MAX_EUR_PER_LITER,
     MAX_WOW_JUMP_RATIO,
     MIN_EUR_PER_LITER,
@@ -26,7 +26,7 @@ from ets2v2.normalize.fuel import (
     normalize_country_fuel_prices,
     normalize_iso2_alias,
 )
-from ets2v2.normalize.lockfile import (
+from ets2_realism.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
     FALLBACK_STALE_DAYS,
     MONTHLY_LIVE_SOURCES,
@@ -42,7 +42,7 @@ from ets2v2.normalize.lockfile import (
     serialize_lockfile_bytes,
     write_prices_lockfile,
 )
-from ets2v2.normalize.models import (
+from ets2_realism.normalize.models import (
     CANONICAL_FUEL_GRADES,
     CountryFuelLockEntry,
     FuelGrade,

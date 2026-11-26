@@ -3,9 +3,10 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ets2-world-realism"
+name = "ets2-country-realism"
 version = "0.1.0"
 description = "Clean-room ETS2 1.62+ country realism generator and VFS/SII toolkit."
+authors = [{ name = "MissionWAR" }]
 requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
@@ -16,8 +17,13 @@ dependencies = [
     "tzdata>=2025.2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/MissionWAR/ets2-country-realism"
+Repository = "https://github.com/MissionWAR/ets2-country-realism"
+Issues = "https://github.com/MissionWAR/ets2-country-realism/issues"
+
 [project.scripts]
-ets2v2 = "ets2v2.cli:main"
+ets2-realism = "ets2_realism.cli:main"
 
 [dependency-groups]
 dev = [
@@ -29,7 +35,7 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ets2v2"]
+packages = ["src/ets2_realism"]
 
 [tool.ruff]
 target-version = "py312"

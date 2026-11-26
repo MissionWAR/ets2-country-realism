@@ -7,21 +7,21 @@ import zipfile
 
 import pytest
 
-from ets2v2.audit.models import TaintScanReport, TaintViolation
-from ets2v2.audit.taint import (
+from ets2_realism.audit.models import TaintScanReport, TaintViolation
+from ets2_realism.audit.taint import (
     FORBIDDEN_LICENSE_TAINT_PATTERNS as AUDIT_TAINT_PATTERNS,
 )
-from ets2v2.audit.taint import (
+from ets2_realism.audit.taint import (
     scan_package_for_taint,
     scan_repo_and_artifacts_for_taint,
 )
-from ets2v2.package import build_core_editions
-from ets2v2.registry.snapshot import load_or_build_snapshot, serialize_snapshot_bytes
-from ets2v2.validate.invariants import (
+from ets2_realism.package import build_core_editions
+from ets2_realism.registry.snapshot import load_or_build_snapshot, serialize_snapshot_bytes
+from ets2_realism.validate.invariants import (
     FORBIDDEN_LICENSE_TAINT_PATTERNS as VALIDATE_TAINT_PATTERNS,
 )
-from ets2v2.validate.invariants import check_license_taint_bytes
-from ets2v2.validate.models import ValidationCollector
+from ets2_realism.validate.invariants import check_license_taint_bytes
+from ets2_realism.validate.models import ValidationCollector
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
@@ -142,7 +142,7 @@ def test_every_forbidden_taint_marker_is_detected_in_validator_and_audit(
     val_report = collector.build_report("synthetic", "workshop")
     assert val_report.ok is False
     assert any(
-        issue.code == "ETS2V2-INV-LICENSE-TAINT" and expected_marker in issue.detail
+        issue.code == "ETS2R-INV-LICENSE-TAINT" and expected_marker in issue.detail
         for issue in val_report.issues
     )
 
@@ -176,7 +176,7 @@ def test_every_forbidden_taint_marker_is_detected_in_validator_and_audit(
         "U.S. EIA Open Data API v2 (https://api.eia.gov/v2/) public domain.",
         "OpenDOSM Malaysia CC BY 4.0 and Gasvaktin MIT License.",
         "Synthetic non-matching substrings: traffiea, caribbean, media, liberia, nigeria, gambia.",
-        "Roadway sign board fp_ie_diesel_ets2v2 and locale en_gb.",
+        "Roadway sign board fp_ie_diesel_ets2r and locale en_gb.",
     ],
 )
 def test_word_boundary_prevents_false_positives_on_clean_text(
@@ -203,8 +203,8 @@ def test_taint_catches_multiline_underscore_changelogs_and_enforces_size_cap_md0
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """MD-05 & LO-04: Multi-line, underscore, CHANGELOG_*.md, size cap, and protected scs."""
-    from ets2v2.audit import taint as taint_mod
-    from ets2v2.cli import main
+    from ets2_realism.audit import taint as taint_mod
+    from ets2_realism.cli import main
 
     # 1. Multi-line "International\nEnergy Agency" & underscore "CC_BY_SA_4.0" / "CC_BY_NC_ND"
     for sample, expected_marker in (
@@ -246,7 +246,7 @@ def test_taint_catches_multiline_underscore_changelogs_and_enforces_size_cap_md0
         scan_repo_and_artifacts_for_taint(empty_repo, snapshot_paths=[big_file])
     monkeypatch.undo()
 
-    # 4. Protected encrypted .scs archive in `ets2v2 audit taint` exits 1 cleanly (no traceback)
+    # 4. Protected encrypted .scs archive in `audit taint` exits 1 cleanly (no traceback)
     clean_repo = tmp_path / "clean_repo_for_protected"
     clean_repo.mkdir()
     protected_scs = tmp_path / "protected.scs"

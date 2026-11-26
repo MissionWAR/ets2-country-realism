@@ -10,10 +10,10 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.baseline.models import CountriesBaseline, LocalesBaseline
-from ets2v2.cli import main
-from ets2v2.registry import load_law_registry
-from ets2v2.registry.snapshot import (
+from ets2_realism.baseline.models import CountriesBaseline, LocalesBaseline
+from ets2_realism.cli import main
+from ets2_realism.registry import load_law_registry
+from ets2_realism.registry.snapshot import (
     RealismSnapshot,
     RealismSnapshotCountry,
     RealismSnapshotFuel,
@@ -284,8 +284,8 @@ def test_build_realism_snapshot_with_prices_lock_emits_225_territories_and_prese
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from ets2v2.normalize.lockfile import seed_initial_lockfile, write_prices_lockfile
-    from ets2v2.normalize.models import CANONICAL_FUEL_GRADES
+    from ets2_realism.normalize.lockfile import seed_initial_lockfile, write_prices_lockfile
+    from ets2_realism.normalize.models import CANONICAL_FUEL_GRADES
 
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries, bl_locales = _load_inputs()
@@ -377,7 +377,7 @@ def test_build_realism_snapshot_with_prices_lock_emits_225_territories_and_prese
     assert set(raw_countries["KZ"].keys()) == EXPECTED_COUNTRY_KEYS
     assert set(cast(dict[str, object], raw_countries["DE"]["fuel"]).keys()) == EXPECTED_FUEL_KEYS
 
-    # CLI: ets2v2 registry snapshot --prices-lock ...
+    # CLI: ets2-realism registry snapshot --prices-lock ...
     lock_file = tmp_path / "prices.lock.json"
     write_prices_lockfile(custom_lock, lock_file)
     snap_out = tmp_path / "snap-with-prices.json"
@@ -400,7 +400,7 @@ def test_build_realism_snapshot_with_prices_lock_emits_225_territories_and_prese
 
 
 def test_timezone_overrides_cover_promods_numeric_zones_and_seasonal_nuuk() -> None:
-    from ets2v2.registry.timezone import resolve_ets2_timezone
+    from ets2_realism.registry.timezone import resolve_ets2_timezone
 
     _, bl_locales = _load_inputs()
     tz_keys = bl_locales.tz_keys
@@ -438,7 +438,7 @@ def test_timezone_overrides_cover_promods_numeric_zones_and_seasonal_nuuk() -> N
 def test_sha256sums_verify_snapshot_file_and_sibling_auto_verification(
     tmp_path: pathlib.Path,
 ) -> None:
-    from ets2v2.registry.snapshot import (
+    from ets2_realism.registry.snapshot import (
         load_realism_snapshot,
         parse_sha256sums,
         render_sha256sums,
@@ -548,7 +548,7 @@ def test_load_or_build_snapshot_and_cli_snapshot_verify(
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from ets2v2.registry.snapshot import load_or_build_snapshot, write_sha256sums
+    from ets2_realism.registry.snapshot import load_or_build_snapshot, write_sha256sums
 
     # Offline repo checkout fallback (snapshot_path=None)
     fallback_snap = load_or_build_snapshot(
@@ -578,7 +578,7 @@ def test_load_or_build_snapshot_and_cli_snapshot_verify(
     loaded_sibling = load_or_build_snapshot("summer", snapshot_path=snap_path)
     assert loaded_sibling == fallback_snap
 
-    # CLI tracer: ets2v2 registry snapshot-verify -> exit 0 with JSON output
+    # CLI tracer: ets2-realism registry snapshot-verify -> exit 0 with JSON output
     exit_ok = main(
         [
             "registry",
@@ -628,7 +628,7 @@ def test_md04_calendar_anchor_date_bounded_reads_and_single_read_toctou_guard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """MD-04: invalid calendar anchor_date, bounded reads, and single-read TOCTOU guard."""
-    import ets2v2.registry.snapshot as snap_mod
+    import ets2_realism.registry.snapshot as snap_mod
 
     assert snap_mod.MAX_SNAPSHOT_BYTES == 64 * 1024 * 1024
     assert snap_mod.MAX_CHECKSUMS_BYTES == 1 * 1024 * 1024

@@ -8,19 +8,19 @@ import zipfile
 
 import pytest
 
-from ets2v2.cli import main
-from ets2v2.package.builder import (
+from ets2_realism.cli import main
+from ets2_realism.package.builder import (
     BuiltEditionPaths,
     build_core_edition,
     build_core_editions,
 )
-from ets2v2.registry.models import Season
-from ets2v2.sii.country import parse_country_data
-from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.lexer import unquote_sii_string
-from ets2v2.sii.speed_limits import parse_speed_limits
-from ets2v2.vfs import VfsStack, ZipArchive
+from ets2_realism.registry.models import Season
+from ets2_realism.sii.country import parse_country_data
+from ets2_realism.sii.document import SiiDocument
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.lexer import unquote_sii_string
+from ets2_realism.sii.speed_limits import parse_speed_limits
+from ets2_realism.vfs import VfsStack, ZipArchive
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"
@@ -57,8 +57,8 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
     assert set(built.keys()) == {"summer", "winter"}
 
     expected_zip_names: dict[Season, str] = {
-        "summer": "ETS2V2_Core_Summer.zip",
-        "winter": "ETS2V2_Core_Winter.zip",
+        "summer": "ETS2_Country_Realism_Core_Summer.zip",
+        "winter": "ETS2_Country_Realism_Core_Winter.zip",
     }
 
     for edition, info in built.items():
@@ -93,8 +93,8 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
         # TOT-01 / Zero-DDS checks in Workshop root
         assert "universal/def/sign/board/gas_de_big_diesel.sii" in workshop_files
         assert "universal/def/sign/board/gas_ie_pegi_95.sii" in workshop_files
-        assert "universal/locale/fr_ca/local_module.ets2v2_fuel.sii" in workshop_files
-        assert "universal/locale/fr_qc/local_module.ets2v2_fuel.sii" not in workshop_files
+        assert "universal/locale/fr_ca/local_module.ets2r_fuel.sii" in workshop_files
+        assert "universal/locale/fr_qc/local_module.ets2r_fuel.sii" not in workshop_files
         assert "universal/def/sign/board/gas_empty.sii" not in workshop_files
         assert not any(path.lower().endswith((".dds", ".tobj")) for path in workshop_files)
 
@@ -120,8 +120,8 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             assert names == sorted(names)
             assert "def/sign/board/gas_de_big_diesel.sii" in names
             assert "def/sign/board/gas_ie_pegi_95.sii" in names
-            assert "locale/fr_ca/local_module.ets2v2_fuel.sii" in names
-            assert "locale/fr_qc/local_module.ets2v2_fuel.sii" not in names
+            assert "locale/fr_ca/local_module.ets2r_fuel.sii" in names
+            assert "locale/fr_qc/local_module.ets2r_fuel.sii" not in names
             assert "def/sign/board/gas_empty.sii" not in names
             assert not any(name.lower().endswith((".dds", ".tobj")) for name in names)
             for entry in infos:
@@ -144,14 +144,14 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             assert edition.capitalize() in unquote_sii_string(disp.raw_value)[0]
             assert unit.get_attributes("compatible_versions") == []
 
-        # Local ZIP mounts cleanly through ets2v2.vfs.ZipArchive and VfsStack
+        # Local ZIP mounts cleanly through ets2_realism.vfs.ZipArchive and VfsStack
         with ZipArchive(info.local_zip_path) as archive:
             assert archive.diagnostics == []
             listed = archive.list_paths()
             assert len(listed) == EXPECTED_LOCAL_ZIP_ENTRY_COUNT
             assert "def/country.sii" not in listed
             assert "def/sign/board/gas_de_big_diesel.sii" in listed
-            assert "locale/fr_ca/local_module.ets2v2_fuel.sii" in listed
+            assert "locale/fr_ca/local_module.ets2r_fuel.sii" in listed
             ee_sui = archive.read_bytes("def/country/estonia.sui")
             assert parse_country_data(ee_sui).name == "Eesti"
             is_speeds = archive.read_bytes("def/country/iceland/speed_limits.sii")
@@ -164,7 +164,7 @@ def test_build_core_editions_workshop_tree_and_local_zip_contracts(
             assert stack.exists("manifest.sii")
             assert stack.exists("def/country/bosnia.sui")
             assert stack.exists("def/sign/board/gas_ie_pegi_95.sii")
-            assert stack.exists("locale/fr_ca/local_module.ets2v2_fuel.sii")
+            assert stack.exists("locale/fr_ca/local_module.ets2r_fuel.sii")
             assert len(parse_country_data(stack.read_bytes("def/country/bosnia.sui")).regions) == 6
 
 
@@ -268,7 +268,7 @@ def test_cli_package_icons_and_build(
             "--package-version",
             "1.62-2026.47",
             "--author",
-            "ETS2 World Realism",
+            "MissionWAR",
         ]
     )
     captured_build = capsys.readouterr()
@@ -277,8 +277,8 @@ def test_cli_package_icons_and_build(
     assert "winter" in captured_build.out.lower()
     assert (dist_out / "workshop" / "summer" / "versions.sii").is_file()
     assert (dist_out / "workshop" / "winter" / "versions.sii").is_file()
-    assert (dist_out / "local" / "ETS2V2_Core_Summer.zip").is_file()
-    assert (dist_out / "local" / "ETS2V2_Core_Winter.zip").is_file()
+    assert (dist_out / "local" / "ETS2_Country_Realism_Core_Summer.zip").is_file()
+    assert (dist_out / "local" / "ETS2_Country_Realism_Core_Winter.zip").is_file()
 
     # Invalid --date returns exit code 1 with error on stderr
     exit_bad_date = main(

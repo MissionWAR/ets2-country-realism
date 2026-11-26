@@ -9,7 +9,7 @@ from typing import cast
 
 import pytest
 
-from ets2v2.baseline import (
+from ets2_realism.baseline import (
     BaselineBundle,
     BaselineManifest,
     CountriesBaseline,
@@ -20,7 +20,7 @@ from ets2v2.baseline import (
     resolve_game_dir,
     verify_baseline_bundle,
 )
-from ets2v2.sii import (
+from ets2_realism.sii import (
     CountryDataPatch,
     LaneSpeedRule,
     normalize_sii_bytes,
@@ -31,7 +31,7 @@ from ets2v2.sii import (
     patch_speed_limits,
     serialize_sii_text,
 )
-from ets2v2.vfs import open_archive
+from ets2_realism.vfs import open_archive
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"

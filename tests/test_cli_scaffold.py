@@ -1,4 +1,4 @@
-"""Scaffold, CLI tracer, and active-phase boundary tests for ets2v2."""
+"""Scaffold, CLI tracer, and active-phase boundary tests for ets2-realism."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from typing import cast
 import pydantic
 import pytest
 
-import ets2v2
-from ets2v2.cli import build_parser, main
+import ets2_realism
+from ets2_realism.cli import build_parser, main
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -34,14 +34,14 @@ def _as_str_list(value: object) -> list[str]:
 
 
 def test_package_version() -> None:
-    assert ets2v2.__version__ == "0.1.0"
+    assert ets2_realism.__version__ == "0.1.0"
 
 
 def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = main(["--version"])
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert captured.out.strip() == "ets2v2 0.1.0"
+    assert captured.out.strip() == "ets2-realism 0.1.0"
 
 
 def test_cli_help(capsys: pytest.CaptureFixture[str]) -> None:
@@ -50,7 +50,7 @@ def test_cli_help(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = main(["--help"])
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "ets2v2" in captured.out
+    assert "ets2-realism" in captured.out
     assert "--version" in captured.out
 
 
@@ -62,7 +62,7 @@ def test_pydantic_available() -> None:
 
 
 def test_active_phase_only_package_layout() -> None:
-    pkg_root = REPO_ROOT / "src" / "ets2v2"
+    pkg_root = REPO_ROOT / "src" / "ets2_realism"
     assert pkg_root.is_dir()
 
     entries = {entry.name for entry in pkg_root.iterdir() if entry.name != "__pycache__"}
@@ -97,7 +97,7 @@ def test_pyproject_metadata_and_quality_gates() -> None:
     assert build_system["build-backend"] == "hatchling.build"
 
     project = _as_table(raw["project"])
-    assert project["name"] == "ets2-world-realism"
+    assert project["name"] == "ets2-country-realism"
     assert project["version"] == "0.1.0"
     assert project["requires-python"] == ">=3.12"
     assert project["license"] == "MIT"
@@ -110,7 +110,7 @@ def test_pyproject_metadata_and_quality_gates() -> None:
     ]
 
     scripts = _as_table(project["scripts"])
-    assert scripts["ets2v2"] == "ets2v2.cli:main"
+    assert scripts["ets2-realism"] == "ets2_realism.cli:main"
 
     dep_groups = _as_table(raw["dependency-groups"])
     dev_deps = _as_str_list(dep_groups["dev"])
@@ -226,7 +226,7 @@ def _scan_forbidden_imports(
     pkg_dir: pathlib.Path,
     *,
     forbidden_roots: frozenset[str],
-    forbidden_ets2v2_subpackages: frozenset[str],
+    forbidden_ets2r_subpackages: frozenset[str],
 ) -> list[str]:
     violations: list[str] = []
     for py_file in sorted(pkg_dir.rglob("*.py")):
@@ -239,18 +239,20 @@ def _scan_forbidden_imports(
                     root = name.split(".", 1)[0]
                     if root in forbidden_roots:
                         violations.append(f"{rel}: import {name}")
-                    for subpkg in forbidden_ets2v2_subpackages:
-                        if name == f"ets2v2.{subpkg}" or name.startswith(f"ets2v2.{subpkg}."):
+                    for subpkg in forbidden_ets2r_subpackages:
+                        if name == f"ets2_realism.{subpkg}" or name.startswith(
+                            f"ets2_realism.{subpkg}."
+                        ):
                             violations.append(f"{rel}: import {name}")
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
                 if node.level > 0:
                     top_rel = module.split(".", 1)[0] if module else ""
-                    if top_rel in forbidden_ets2v2_subpackages:
+                    if top_rel in forbidden_ets2r_subpackages:
                         violations.append(f"{rel}: from {'.' * node.level}{module} import ...")
                     elif not module:
                         for alias in node.names:
-                            if alias.name in forbidden_ets2v2_subpackages:
+                            if alias.name in forbidden_ets2r_subpackages:
                                 violations.append(
                                     f"{rel}: from {'.' * node.level} import {alias.name}"
                                 )
@@ -259,19 +261,21 @@ def _scan_forbidden_imports(
                 root = module.split(".", 1)[0] if module else ""
                 if root in forbidden_roots:
                     violations.append(f"{rel}: from {module} import ...")
-                for subpkg in forbidden_ets2v2_subpackages:
-                    if module == f"ets2v2.{subpkg}" or module.startswith(f"ets2v2.{subpkg}."):
+                for subpkg in forbidden_ets2r_subpackages:
+                    if module == f"ets2_realism.{subpkg}" or module.startswith(
+                        f"ets2_realism.{subpkg}."
+                    ):
                         violations.append(f"{rel}: from {module} import ...")
-                if module == "ets2v2":
+                if module == "ets2_realism":
                     for alias in node.names:
-                        if alias.name in forbidden_ets2v2_subpackages:
-                            violations.append(f"{rel}: from ets2v2 import {alias.name}")
+                        if alias.name in forbidden_ets2r_subpackages:
+                            violations.append(f"{rel}: from ets2_realism import {alias.name}")
     return violations
 
 
 def test_phase5_ast_dag_isolation_walls() -> None:
     """Enforce all 6 offline AST DAG walls plus the Phase 5 audit quarantine wall (D-16)."""
-    src_root = REPO_ROOT / "src" / "ets2v2"
+    src_root = REPO_ROOT / "src" / "ets2_realism"
     online_third_party = frozenset({"httpx", "openpyxl"})
 
     wall_specs: dict[str, frozenset[str]] = {
@@ -291,12 +295,12 @@ def test_phase5_ast_dag_isolation_walls() -> None:
         violations = _scan_forbidden_imports(
             pkg_dir,
             forbidden_roots=online_third_party,
-            forbidden_ets2v2_subpackages=forbidden_subpkgs,
+            forbidden_ets2r_subpackages=forbidden_subpkgs,
         )
         assert violations == [], f"AST DAG isolation violation in {subpkg}/: {violations}"
 
     # Universal Phase 5 audit quarantine wall: ZERO of the 10 non-audit subpackages may
-    # ever import ets2v2.audit (D-16).
+    # ever import ets2_realism.audit (D-16).
     all_non_audit_subpkgs = (
         "vfs",
         "sii",
@@ -315,7 +319,7 @@ def test_phase5_ast_dag_isolation_walls() -> None:
         audit_violations = _scan_forbidden_imports(
             pkg_dir,
             forbidden_roots=frozenset(),
-            forbidden_ets2v2_subpackages=frozenset({"audit"}),
+            forbidden_ets2r_subpackages=frozenset({"audit"}),
         )
         assert audit_violations == [], f"Audit quarantine breach in {subpkg}/: {audit_violations}"
 
@@ -325,7 +329,7 @@ def test_phase5_ast_dag_isolation_walls() -> None:
     audit_outbound_violations = _scan_forbidden_imports(
         audit_dir,
         forbidden_roots=frozenset({"openpyxl"}),
-        forbidden_ets2v2_subpackages=frozenset({"package", "merge", "publish", "validate"}),
+        forbidden_ets2r_subpackages=frozenset({"package", "merge", "publish", "validate"}),
     )
     assert audit_outbound_violations == [], (
         f"Forbidden outbound import in audit/: {audit_outbound_violations}"

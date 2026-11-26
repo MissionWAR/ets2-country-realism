@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          uv run --offline ets2v2 fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json
+          uv run --offline ets2-realism fetch --lock-path state/prices.lock.json --json > dist/fetch_summary.json
 
       - name: Publish fetch alert summary to step summary
         run: |
@@ -65,7 +65,7 @@ jobs:
           import os
           import pathlib
 
-          from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
+          from ets2_realism.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
 
           def _sanitize(text: str, limit: int = 240) -> str:
               cleaned = (
@@ -158,7 +158,7 @@ jobs:
           if [ "${FORCE_RUN:-false}" = "true" ]; then
             args+=(--force)
           fi
-          uv run --offline ets2v2 publish release "${args[@]}"
+          uv run --offline ets2-realism publish release "${args[@]}"
           uv run --offline python - <<'PY'
           import json, os, pathlib
 
@@ -176,16 +176,16 @@ jobs:
       - name: Run explicit Offline SCS Workshop Validator checks
         run: |
           set -euo pipefail
-          uv run --offline ets2v2 validate workshop dist/workshop/summer
-          uv run --offline ets2v2 validate workshop dist/workshop/winter
-          uv run --offline ets2v2 validate local dist/local/ETS2V2_Core_Summer.zip
-          uv run --offline ets2v2 validate local dist/local/ETS2V2_Core_Winter.zip
+          uv run --offline ets2-realism validate workshop dist/workshop/summer
+          uv run --offline ets2-realism validate workshop dist/workshop/winter
+          uv run --offline ets2-realism validate local dist/local/ETS2_Country_Realism_Core_Summer.zip
+          uv run --offline ets2-realism validate local dist/local/ETS2_Country_Realism_Core_Winter.zip
 
       - name: Verify v1 realism snapshots and SHA256SUMS manifest
         run: |
           set -euo pipefail
-          uv run --offline ets2v2 registry snapshot-verify dist/snapshots/realism-snapshot-summer.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition summer
-          uv run --offline ets2v2 registry snapshot-verify dist/snapshots/realism-snapshot-winter.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition winter
+          uv run --offline ets2-realism registry snapshot-verify dist/snapshots/realism-snapshot-summer.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition summer
+          uv run --offline ets2-realism registry snapshot-verify dist/snapshots/realism-snapshot-winter.json --checksums dist/snapshots/SHA256SUMS.txt --expected-edition winter
 
       - name: Log clean no-op exit when nothing changed
         if: steps.release.outputs.any_changed != 'true' && steps.release.outputs.snapshots_changed != 'true' && env.FORCE_RUN != 'true' && steps.release.outputs.force_run != 'true'
@@ -214,7 +214,7 @@ jobs:
           set -euo pipefail
           TAG="snapshots-latest"
           TITLE="Latest Realism Snapshots (schema_version=1)"
-          NOTES="Automated rolling public release of verified schema_version=1 summer/winter realism snapshots and SHA256SUMS.txt for offline ProMods Companion Builder and ets2v2 compose-local."
+          NOTES="Automated rolling public release of verified schema_version=1 summer/winter realism snapshots and SHA256SUMS.txt for offline ProMods Companion Builder and ets2-realism compose-local."
           ASSETS=(
             dist/snapshots/realism-snapshot-summer.json
             dist/snapshots/realism-snapshot-winter.json
@@ -276,7 +276,7 @@ jobs:
 
           summary_path = pathlib.Path("dist/fetch_summary.json")
           if summary_path.is_file():
-              from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
+              from ets2_realism.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
 
               def _sanitize(text: str, limit: int = 240) -> str:
                   cleaned = (

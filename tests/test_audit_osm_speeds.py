@@ -10,7 +10,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from ets2v2.audit import (
+from ets2_realism.audit import (
     DEFAULT_WESTNORDOST_RULES_URL,
     MAX_OVERPASS_ISO2S,
     OsmSpeedAuditReport,
@@ -21,10 +21,10 @@ from ets2v2.audit import (
     render_osm_speed_drift_markdown,
     run_osm_speed_audit,
 )
-from ets2v2.audit.overpass import build_overpass_speed_query
-from ets2v2.audit.taint import scan_repo_and_artifacts_for_taint
-from ets2v2.cli import main
-from ets2v2.fetch.http import (
+from ets2_realism.audit.overpass import build_overpass_speed_query
+from ets2_realism.audit.taint import scan_repo_and_artifacts_for_taint
+from ets2_realism.cli import main
+from ets2_realism.fetch.http import (
     HttpFetchError,
     create_http_client,
     post_form_bytes_with_retry,
@@ -486,7 +486,7 @@ def test_cli_audit_osm_speeds_and_taint_end_to_end(
     tmp_path: pathlib.Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """ets2v2 audit osm-speeds & audit taint CLI work end-to-end offline."""
+    """ets2-realism audit osm-speeds & audit taint CLI work end-to-end offline."""
     # Help on bare `audit`
     rc_help = main(["audit"])
     help_out = capsys.readouterr()
@@ -558,7 +558,7 @@ def test_cli_audit_osm_speeds_and_taint_end_to_end(
     _ = capsys.readouterr()
     assert rc_fail == 1
 
-    # `ets2v2 audit taint --json` exits 0 with zero violations on clean repo
+    # `ets2-realism audit taint --json` exits 0 with zero violations on clean repo
     rc_taint = main(["audit", "taint", "--repo-root", str(REPO_ROOT), "--json"])
     cap_taint = capsys.readouterr()
     assert rc_taint == 0, cap_taint.err
@@ -706,7 +706,7 @@ def test_cli_audit_osm_speeds_handles_output_oserror_cleanly_lo03(
 
 def test_markdown_issue_truncation_and_link_image_sanitization_md01_md06() -> None:
     """MD-01 & MD-06: Cap GitHub Issue body <= 58k on line boundary & neutralize ![...](...)."""
-    from ets2v2.audit import OverpassSpotCheck, truncate_markdown_for_github_issue
+    from ets2_realism.audit import OverpassSpotCheck, truncate_markdown_for_github_issue
 
     # 1. MD-01: Truncation preserves complete lines, caps <= max_chars, points to artifact
     rows = ["# OSM Speed-Limit Drift Audit Report", "", "| ISO2 | Detail |", "|------|--------|"]

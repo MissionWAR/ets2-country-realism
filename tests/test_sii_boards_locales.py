@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from ets2v2.sii.localization import LocalizationEntry, parse_localization_db
-from ets2v2.sii.sign_board import (
+from ets2_realism.sii.localization import LocalizationEntry, parse_localization_db
+from ets2_realism.sii.sign_board import (
     SignBoardTemplate,
     SignTemplateTextSlot,
     parse_sign_board,
@@ -284,7 +284,7 @@ def test_parse_localization_db_headerless_and_wrapped_multilingual() -> None:
 
 
 def test_public_sii_package_exports() -> None:
-    import ets2v2.sii as sii
+    import ets2_realism.sii as sii
 
     expected = {
         "CountryDataModel",

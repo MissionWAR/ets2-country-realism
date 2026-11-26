@@ -6,23 +6,23 @@ import pathlib
 
 import pytest
 
-from ets2v2.baseline.models import (
+from ets2_realism.baseline.models import (
     BaselineCountry,
     BaselineSpeedLimit,
     CountriesBaseline,
     LocalesBaseline,
     SpeedLimitsBaseline,
 )
-from ets2v2.package.synthesize import (
+from ets2_realism.package.synthesize import (
     synthesize_country_sui,
     synthesize_speed_limits_sii,
 )
-from ets2v2.registry.loader import load_law_registry
-from ets2v2.registry.models import Season
-from ets2v2.registry.snapshot import RealismSnapshot, build_realism_snapshot
-from ets2v2.sii.country import parse_country_data
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.speed_limits import LaneSpeedRule, parse_speed_limits
+from ets2_realism.registry.loader import load_law_registry
+from ets2_realism.registry.models import Season
+from ets2_realism.registry.snapshot import RealismSnapshot, build_realism_snapshot
+from ets2_realism.sii.country import parse_country_data
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.speed_limits import LaneSpeedRule, parse_speed_limits
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE_DIR = REPO_ROOT / "data" / "baselines" / "ets2_1.62_def"

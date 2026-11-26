@@ -1,12 +1,12 @@
-"""Unit and round-trip tests for ets2v2.merge.policy (FieldOwnershipPolicy, D-14, D-15)."""
+"""Unit and round-trip tests for ets2_realism.merge.policy (FieldOwnershipPolicy, D-14, D-15)."""
 
 from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
 
-from ets2v2.baseline.models import LocalesBaseline
-from ets2v2.merge.policy import (
+from ets2_realism.baseline.models import LocalesBaseline
+from ets2_realism.merge.policy import (
     CountryPolicyResult,
     FieldOwnershipPolicy,
     SpeedLimitsPolicyResult,
@@ -15,12 +15,12 @@ from ets2v2.merge.policy import (
     merge_axle_mass_limits,
     should_patch_timezone,
 )
-from ets2v2.registry.models import LaneSpeedOverride, RoadVehicleClass
-from ets2v2.registry.snapshot import RealismSnapshotCountry, RealismSnapshotFuel
-from ets2v2.sii.country import parse_country_data
-from ets2v2.sii.document import SiiDocument
-from ets2v2.sii.hygiene import validate_sii_hygiene
-from ets2v2.sii.speed_limits import parse_speed_limits
+from ets2_realism.registry.models import LaneSpeedOverride, RoadVehicleClass
+from ets2_realism.registry.snapshot import RealismSnapshotCountry, RealismSnapshotFuel
+from ets2_realism.sii.country import parse_country_data
+from ets2_realism.sii.document import SiiDocument
+from ets2_realism.sii.hygiene import validate_sii_hygiene
+from ets2_realism.sii.speed_limits import parse_speed_limits
 
 _LOCALES_PATH = Path("data/baselines/ets2_1.62_def/locales.json")
 

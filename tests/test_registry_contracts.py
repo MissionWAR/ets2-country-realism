@@ -6,9 +6,9 @@ import pathlib
 
 import pytest
 
-from ets2v2.baseline.models import CountriesBaseline
-from ets2v2.cli import main
-from ets2v2.registry import (
+from ets2_realism.baseline.models import CountriesBaseline
+from ets2_realism.cli import main
+from ets2_realism.registry import (
     load_country_aliases,
     load_law_registry,
     serialize_registry_json_bytes,

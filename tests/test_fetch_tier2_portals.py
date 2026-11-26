@@ -10,7 +10,7 @@ import httpx
 import openpyxl
 import pytest
 
-from ets2v2.fetch._html import (
+from ets2_realism.fetch._html import (
     TableExtractor,
     TextExtractor,
     Tier2EncodingError,
@@ -18,8 +18,8 @@ from ets2v2.fetch._html import (
     extract_html_tables,
     extract_html_text,
 )
-from ets2v2.fetch.http import create_http_client
-from ets2v2.fetch.tier2_portals import (
+from ets2_realism.fetch.http import create_http_client
+from ets2_realism.fetch.tier2_portals import (
     AE_MOEI_URL,
     CH_BFS_LIK_URL,
     IL_MOE_URL,
@@ -814,7 +814,7 @@ def test_table_extractor_flushes_unclosed_table_on_close_md07() -> None:
 
 def test_tier2_empty_row_cap_ng_yoy_ago_boundary_ch_multidim_and_md_anre_md03_lo01() -> None:
     """MD-03 & LO-01: Empty-row cap, NG YoY/AGO boundary, CH multi-dim reject, MD ANRE row[1:]."""
-    from ets2v2.fetch.tier2_portals import TIER2_MAX_XLSX_ROWS
+    from ets2_realism.fetch.tier2_portals import TIER2_MAX_XLSX_ROWS
 
     # 1. Empty-row XLSX cap: National Average past TIER2_MAX_XLSX_ROWS empty rows is NOT scanned
     wb = openpyxl.Workbook()

@@ -11,7 +11,7 @@ import zlib
 
 import pytest
 
-from ets2v2.baseline import (
+from ets2_realism.baseline import (
     DEFAULT_ETS2_GAME_DIR,
     BaselineBundle,
     BaselineManifest,
@@ -24,8 +24,8 @@ from ets2v2.baseline import (
     verify_baseline_bundle,
     write_baseline_bundle,
 )
-from ets2v2.cli import main
-from ets2v2.vfs.cityhash import hash_vfs_path
+from ets2_realism.cli import main
+from ets2_realism.vfs.cityhash import hash_vfs_path
 
 
 def _encode_v2_dir_listing(items: list[str]) -> bytes:

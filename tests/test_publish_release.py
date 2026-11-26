@@ -794,7 +794,7 @@ def test_md06_non_core_promods_snapshot_change_sets_snapshots_changed_without_bu
 
 
 def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attributions() -> None:
-    from ets2v2.normalize.currencies import TIER3_CURATED_BASELINE_SOURCE
+    from ets2v2.normalize.lockfile import CURATED_TIER3_SOURCES
 
     registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
     bl_countries = CountriesBaseline.model_validate_json(
@@ -819,11 +819,9 @@ def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attribution
     )
 
     t3_iso2s = sorted(
-        iso2
-        for iso2, entry in updated_countries.items()
-        if entry.source == TIER3_CURATED_BASELINE_SOURCE
+        iso2 for iso2, entry in updated_countries.items() if entry.source in CURATED_TIER3_SOURCES
     )
-    assert len(t3_iso2s) >= 140
+    assert len(t3_iso2s) == 184  # 186 curated (149 Tier 3 + 37 ProMods) minus live US & AE
 
     synthetic_alerts = [
         LockAlert(
@@ -874,7 +872,7 @@ def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attribution
     assert "Live Tier 1 EU" in md
     assert "Live Tier 1 Global" in md
     assert "Live Tier 2 National Portals" in md
-    assert "Tier 3 Curated Global Baselines" in md
+    assert "Tier 3 Curated Global Baselines:** `184` territories" in md
 
     # Noise-controlled Tier 3 rollup: 1 summary line instead of 140+ individual ISO-2 codes!
     expected_t3_summary = (

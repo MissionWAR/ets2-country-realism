@@ -337,7 +337,11 @@ def test_anchorless_grade_map_emits_price_anchor_missing_and_holds_previous() ->
         ("ZA", "ZAR", "za_dmre_cef", False, 45, "stale_tier2_monthly"),
         ("EG", "EGP", "eg_fapc", False, 105, "stale_tier2_quarterly"),
         ("DE", "EUR", "ec_weekly_oil_bulletin", True, 30, "stale_fallback"),
+        ("NO", "NOK", "no_ssb_09654", True, 45, "stale_fallback"),
+        ("AE", "AED", "ae_moei", True, 45, "stale_fallback"),
+        ("EG", "EGP", "eg_fapc", True, 105, "stale_fallback"),
         ("KE", "KES", TIER3_CURATED_BASELINE_SOURCE, True, 180, "stale_tier3_curated"),
+        ("KZ", "KZT", PROMODS_CURATED_SEED_SOURCE, True, 180, "stale_tier3_curated"),
     ],
 )
 def test_evaluate_lockfile_staleness_d08_five_tier_boundaries(

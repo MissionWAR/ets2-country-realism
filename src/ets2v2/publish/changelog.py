@@ -7,9 +7,9 @@ from typing import Final
 from ets2v2.normalize.currencies import (
     CORE_REFERENCE_FX_RATES,
     EXTENDED_GLOBAL_CURRENCIES,
-    TIER3_CURATED_BASELINE_SOURCE,
     VANILLA_36_ISO2S,
 )
+from ets2v2.normalize.lockfile import CURATED_TIER3_SOURCES
 from ets2v2.normalize.models import LockAlert, PricesLockfile
 from ets2v2.normalize.totem_format import format_national_pump_price
 from ets2v2.publish.ledger import PublishedEditionState
@@ -154,14 +154,14 @@ def _render_alerts_section(
         for iso2, entry in prices_lock.countries.items()
         if iso2 in snapshot.countries
         and entry.fallback_used
-        and entry.source != TIER3_CURATED_BASELINE_SOURCE
+        and entry.source not in CURATED_TIER3_SOURCES
     )
     tier3_fallback_countries = sorted(
         iso2
         for iso2, entry in prices_lock.countries.items()
         if iso2 in snapshot.countries
         and entry.fallback_used
-        and entry.source == TIER3_CURATED_BASELINE_SOURCE
+        and entry.source in CURATED_TIER3_SOURCES
     )
     fallback_fx = sorted(ccy for ccy, fx in prices_lock.fx_rates.items() if fx.fallback_used)
     if (
@@ -243,7 +243,7 @@ def _render_global_coverage_section(
         source = lock_entry.source if lock_entry is not None else country.fuel.source
         fallback_used = lock_entry.fallback_used if lock_entry is not None else False
 
-        if source == TIER3_CURATED_BASELINE_SOURCE:
+        if source in CURATED_TIER3_SOURCES:
             tier3_curated += 1
         elif not fallback_used and source in _GLOBAL_TIER1_SOURCES:
             live_global_tier1 += 1

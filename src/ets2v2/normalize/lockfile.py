@@ -48,6 +48,9 @@ BASELINE_SEEDED_SOURCE: Final[str] = "baseline_1.62_seeded"
 BASELINE_SEEDED_LICENSE: Final[str] = "ETS2 1.62 baseline seed"
 PROMODS_CURATED_SEED_SOURCE: Final[str] = "promods_curated_seed"
 PROMODS_CURATED_SEED_LICENSE: Final[str] = "ProMods curated reference seed"
+CURATED_TIER3_SOURCES: Final[frozenset[str]] = frozenset(
+    {TIER3_CURATED_BASELINE_SOURCE, PROMODS_CURATED_SEED_SOURCE}
+)
 
 MONTHLY_LIVE_SOURCES: Final[frozenset[str]] = frozenset(
     {
@@ -124,13 +127,12 @@ def write_prices_lockfile(lockfile: PricesLockfile, path: Path) -> bytes:
 def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> list[LockAlert]:
     """Evaluate D-08 tier/cadence-aware staleness limits (14d/45d/105d/30d/180d)."""
     alerts: list[LockAlert] = []
-    non_t3_seeded_sources = {BASELINE_SEEDED_SOURCE, PROMODS_CURATED_SEED_SOURCE}
     for iso2 in sorted(lockfile.countries):
         entry = lockfile.countries[iso2]
         entry_date = date.fromisoformat(entry.data_date)
         age_days = (as_of_date - entry_date).days
 
-        if entry.source == TIER3_CURATED_BASELINE_SOURCE:
+        if entry.source in CURATED_TIER3_SOURCES:
             if age_days > TIER3_CURATED_STALE_DAYS:
                 alerts.append(
                     LockAlert(
@@ -144,8 +146,14 @@ def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> l
                         ),
                     )
                 )
-        elif entry.fallback_used or entry.source in non_t3_seeded_sources:
-            if age_days > FALLBACK_STALE_DAYS:
+        elif entry.fallback_used or entry.source == BASELINE_SEEDED_SOURCE:
+            if entry.source in QUARTERLY_TIER2_SOURCES:
+                fallback_limit = max(FALLBACK_STALE_DAYS, TIER2_QUARTERLY_STALE_DAYS)
+            elif entry.source in MONTHLY_LIVE_SOURCES:
+                fallback_limit = max(FALLBACK_STALE_DAYS, TIER2_MONTHLY_STALE_DAYS)
+            else:
+                fallback_limit = FALLBACK_STALE_DAYS
+            if age_days > fallback_limit:
                 alerts.append(
                     LockAlert(
                         severity="warning",
@@ -154,7 +162,7 @@ def evaluate_lockfile_staleness(lockfile: PricesLockfile, as_of_date: date) -> l
                         detail=(
                             f"Fallback/seeded fuel entry for {iso2} ({entry.source}) is "
                             f"{age_days} days old (data_date={entry.data_date}, "
-                            f"limit={FALLBACK_STALE_DAYS}d)."
+                            f"limit={fallback_limit}d)."
                         ),
                     )
                 )

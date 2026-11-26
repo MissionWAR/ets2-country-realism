@@ -41,10 +41,10 @@ Requirements for the V1 release (Phases 1–5), targeting Phase A Semi-Auto Stea
 
 ### Global Tier 1/2/3 Data Expansion & Internal OSM Audit
 
-- [ ] **GLB-01**: Integrate Tier 1 non-European government fuel APIs (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`) into the snapshot pipeline.
-- [ ] **GLB-02**: Integrate Tier 2 guarded national portal scrapers with isolated per-country circuit breakers and `prices.lock.json` fallback so individual portal breakages never fail CI or corrupt snapshots.
-- [ ] **GLB-03**: Curate Tier 3 global baseline entries bringing total snapshot territory coverage to `200+` countries/regions (Africa, Latin America, Central/East/Southeast Asia) for `compose-local` map combos.
-- [ ] **GLB-04**: Add an internal CI OSM Overpass/Taginfo (`CC BY-SA`) speed-limit drift audit comparing real-world road limits against `data/laws/` and surfacing maintainer review reports without bundling any `CC BY-SA` data into `CC BY 4.0` mod outputs.
+- [x] **GLB-01**: Integrate Tier 1 non-European government fuel APIs (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`) into the snapshot pipeline.
+- [x] **GLB-02**: Integrate Tier 2 guarded national portal scrapers with isolated per-country circuit breakers and `prices.lock.json` fallback so individual portal breakages never fail CI or corrupt snapshots.
+- [x] **GLB-03**: Curate Tier 3 global baseline entries bringing total snapshot territory coverage to `200+` countries/regions (Africa, Latin America, Central/East/Southeast Asia) for `compose-local` map combos.
+- [x] **GLB-04**: Add an internal CI OSM Overpass/Taginfo (`CC BY-SA`) speed-limit drift audit comparing real-world road limits against `data/laws/` and surfacing maintainer review reports without bundling any `CC BY-SA` data into `CC BY 4.0` mod outputs.
 
 ## V2 Requirements (Deferred)
 
@@ -90,10 +90,10 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 | MAP-03 | Phase 4 | Complete |
 | MAP-04 | Phase 4 | Complete |
 | MAP-05 | Phase 4 | Complete |
-| GLB-01 | Phase 5 | Pending |
-| GLB-02 | Phase 5 | Pending |
-| GLB-03 | Phase 5 | Pending |
-| GLB-04 | Phase 5 | Pending |
+| GLB-01 | Phase 5 | Complete |
+| GLB-02 | Phase 5 | Complete |
+| GLB-03 | Phase 5 | Complete |
+| GLB-04 | Phase 5 | Complete |
 
 **Coverage:**
 - V1 requirements: 24 total
@@ -102,4 +102,4 @@ Explicit boundaries preserving open-source licensing (`MIT` / `CC BY 4.0`) and m
 
 ---
 *Requirements defined: 2026-11-16*
-*Last updated: 2026-11-25 after Phase 4 verification (`MAP-01`..`MAP-05` verified)*
+*Last updated: 2026-11-26 after Phase 5 verification & code review (`GLB-01`..`GLB-04` verified; all 24/24 V1 requirements complete)*

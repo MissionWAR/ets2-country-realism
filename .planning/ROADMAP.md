@@ -14,7 +14,7 @@ ETS2 World Country Realism Generator (V2) (`ETS2V2`) is an open-source (`MIT` / 
 - [x] **Phase 2: Realism Registry, Seasonal Core Builds & Offline Validator (Phase A)** - Canonical seasonal country laws, `zoneinfo`+`tzdata` DST derivation, dual 36-country Vanilla+DLC Core builds, Offline SCS Validator, SHA-256 diff gate, and Friday CI release pipeline. (completed 2026-11-20)
 - [x] **Phase 3: Open European Fuel/FX Pipeline & Zero-DDS Totem Engine** - Multi-provider FX cross-validation, Tier 1 EU/EEA fuel APIs with `prices.lock.json` circuit breakers, and Option 4b Zero-DDS 43-locale fuel totems covering all active and placeholder `1.62` signs. (completed 2026-11-22)
 - [x] **Phase 4: ProMods Companion Builder & Local Map Combo Composer** - Versioned `realism-snapshot-{summer|winter}.json` contract, local ProMods `EU+ME+MA+TGS` builder, and `ets2v2 compose-local` with `FieldOwnershipPolicy` map-combo protection. (completed 2026-11-25)
-- [ ] **Phase 5: Global Tier 1/2/3 Coverage & Internal OSM Audit** - Non-EU Tier 1 government APIs, Tier 2 guarded portals with isolated circuit breakers, Tier 3 curated baselines (`200+` territories), and CI-only OSM (`CC BY-SA`) speed-limit drift reporting.
+- [x] **Phase 5: Global Tier 1/2/3 Coverage & Internal OSM Audit** - Non-EU Tier 1 government APIs, Tier 2 guarded portals with isolated circuit breakers, Tier 3 curated baselines (`200+` territories), and CI-only OSM (`CC BY-SA`) speed-limit drift reporting. (completed 2026-11-26)
 
 ## Phase Details
 
@@ -100,9 +100,9 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] `05-01-PLAN.md` — Global `225`-territory & `151`-currency foundation (`currencies.json`, `tier3_fuel_baselines.json`, `225` canonical laws/mappings/lockfile, `58` global TZ overrides, `18` ECB + `134` isolated FX, `0.010 EUR/L` floor clamping, frozen v1 snapshot, 12 updated Phase 2-4 tests) (`GLB-03`)
-- [ ] `05-02-PLAN.md` — Non-EU Tier 1 open government fuel collectors (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`/CREG, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), `code=` secret redaction, shared OOXML safety, EU Core vs Global Tier 1 outage gate separation, `--no-global`, and optional Friday CI secrets (`GLB-01`)
-- [ ] `05-03-PLAN.md` — Research-gated Tier 2 national portal scrapers (`IS`, `CH`, `MD`, `MK`, `RU`, `IL`, `AE`, `ZA`, `SA`, `NG`; `KE`/`ID`/`JO`/`EG` in Tier 3), stdlib `fetch/_html.py`, per-country circuit breakers, `--no-tier2`, 5-tier staleness (`14d`/`45d`/`105d`/`30d`/`180d`), noise-controlled Tier 3 rollups & Global Snapshot Coverage changelogs (`GLB-02`)
-- [ ] `05-04-PLAN.md` — Quarantined `src/ets2v2/audit/` subpackage + Phase 5 universal AST DAG quarantine walls, clean-room `speed_audit_allowlist.json`, `ets2v2 audit {osm-speeds,taint}` (`westnordost` + opt-in Overpass/Taginfo), independent `ETS2V2-INV-LICENSE-TAINT` validator gate, full repo/snapshot/package taint gate, and standalone monthly zero-Git-write `.github/workflows/osm-speed-audit.yml` (`GLB-04`)
+- [x] `05-02-PLAN.md` — Non-EU Tier 1 open government fuel collectors (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`/CREG, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), `code=` secret redaction, shared OOXML safety, EU Core vs Global Tier 1 outage gate separation, `--no-global`, and optional Friday CI secrets (`GLB-01`)
+- [x] `05-03-PLAN.md` — Research-gated Tier 2 national portal scrapers (`IS`, `CH`, `MD`, `MK`, `RU`, `IL`, `AE`, `ZA`, `SA`, `NG`; `KE`/`ID`/`JO`/`EG` in Tier 3), stdlib `fetch/_html.py`, per-country circuit breakers, `--no-tier2`, 5-tier staleness (`14d`/`45d`/`105d`/`30d`/`180d`), noise-controlled Tier 3 rollups & Global Snapshot Coverage changelogs (`GLB-02`)
+- [x] `05-04-PLAN.md` — Quarantined `src/ets2v2/audit/` subpackage + Phase 5 universal AST DAG quarantine walls, clean-room `speed_audit_allowlist.json`, `ets2v2 audit {osm-speeds,taint}` (`westnordost` + opt-in Overpass/Taginfo), independent `ETS2V2-INV-LICENSE-TAINT` validator gate, full repo/snapshot/package taint gate, and standalone monthly zero-Git-write `.github/workflows/osm-speed-audit.yml` (`GLB-04`)
 
 ## Progress
 
@@ -112,7 +112,7 @@ Plans:
 | 2. Realism Registry, Core & Validator | 5/5 | Complete | 2026-11-20 |
 | 3. European Fuel/FX & Totems | 4/4 | Complete | 2026-11-22 |
 | 4. ProMods Companion & Combo Composer | 4/4 | Complete | 2026-11-25 |
-| 5. Global Tier 1/2/3 & OSM Audit | 1/4 | In progress | - |
+| 5. Global Tier 1/2/3 & OSM Audit | 4/4 | Complete | 2026-11-26 |
 
 ## Future Milestone Scope (V2 — Deferred)
 

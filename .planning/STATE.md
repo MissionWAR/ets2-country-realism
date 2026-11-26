@@ -5,24 +5,24 @@
 See: [.planning/PROJECT.md](PROJECT.md) and [.planning/REQUIREMENTS.md](REQUIREMENTS.md) (updated 2026-11-16)
 
 **Core value:** One public, open-source (`MIT` / `CC BY 4.0`), reproducible pipeline generating bug-free **Summer** and **Winter** ETS2 `1.62+` country realism mods and Zero-DDS multi-currency gas-station totems — preserving map-mod geometry, zones, and regions cleanly across Vanilla+DLC, ProMods (`EU + ME + MA + TGS`), and arbitrary global map combos via `ets2v2 compose-local`.
-**Current focus:** Phase 5 in progress on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` — Plan `05-01` complete (`GLB-03`, 225 territories / 151 ISO-4217 currencies / 526 tests passing); paused by user request before Wave 2 (`05-02`).
+**Current focus:** Phase 5 COMPLETE & verified on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` (`05-01`..`05-04`, `05-VERIFICATION.md` `PASSED` `19/19`, `05-REVIEW.md` all `19/19` code review findings fixed; `634 passed, 4 deselected`, `0` ruff/basedpyright errors, `0` license-taint violations) — all 5/5 V1 phases complete and ready for branch merge / milestone audit (`GLB-01`..`GLB-04` done).
 
 ## Current Position
 
 Milestone: V1 (Phase A Semi-Auto Workshop & Local Map Combo Release)
-Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — In Progress (Paused after Wave 1)
-Plan: 1 of 4 executed in current phase (`05-01` complete; `05-02`..`05-04` pending)
-Status: Plan `05-01` complete (`3443717`); paused cleanly before Wave 2 (`05-02`: Non-EU Tier 1 open government fuel collectors)
-Last activity: 2026-11-25 — Completed Phase 5 Wave 1 (`05-01-PLAN.md` -> `05-01-SUMMARY.md`) and paused before Wave 2
+Phase: 5 of 5 (Global Tier 1/2/3 Coverage & Internal OSM Audit) — Complete & Verified (Code Review Resolved)
+Plan: 4 of 4 executed in current phase (`05-01`..`05-04` complete; `05-VERIFICATION.md` `PASSED`; `05-REVIEW.md` `19/19` findings resolved)
+Status: All 5 V1 phases (`21/21` plans, `24/24` requirements) complete on `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`; ready to merge into `master` and run `/gsd-audit-milestone` / `/gsd-complete-milestone`
+Last activity: 2026-11-26 — Completed Phase 5 Waves 2–4 (`05-02`..`05-04`), verification (`05-VERIFICATION.md` `PASSED`), deep code review (`05-REVIEW.md`), and resolved all 19 review findings (`634 passed, 4 deselected`)
 
-Progress: [█████████░] 85%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: ~28 min
-- Total execution time: ~8.6 hours
+- Total plans completed: 21
+- Average duration: ~29 min
+- Total execution time: ~10.3 hours
 
 **By Phase:**
 
@@ -32,7 +32,7 @@ Progress: [█████████░] 85%
 | 2. Realism Registry, Core & Validator | 5/5 | ~68 min | ~14 min |
 | 3. European Fuel/FX & Totems | 4/4 | ~116 min | ~29 min |
 | 4. ProMods Companion & Combo Composer | 4/4 | ~227 min | ~57 min |
-| 5. Global Tier 1/2/3 & OSM Audit | 1/4 | ~36 min | ~36 min |
+| 5. Global Tier 1/2/3 & OSM Audit | 4/4 | ~140 min | ~35 min |
 
 ## Accumulated Context
 
@@ -68,7 +68,7 @@ None blocking Phase 4 closeout or Phase 5 planning.
 
 ## Session Continuity
 
-Last session: 2026-11-25
-Stopped at: Phase 5 Wave 1 (`05-01`) complete on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`; paused before Wave 2 (`05-02`)
-Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-02-PLAN.md
-Next action: Run `/gsd-execute-phase 5` (or resume Wave 2 with `05-02-PLAN.md` -> `05-03-PLAN.md` -> `05-04-PLAN.md`)
+Last session: 2026-11-26
+Stopped at: Phase 5 complete, verified (`05-VERIFICATION.md` `PASSED`), and all 19 code review findings fixed (`05-REVIEW.md` resolved) on branch `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit`
+Resume file: .planning/phases/05-global-tier-1-2-3-coverage-internal-osm-audit/05-VERIFICATION.md
+Next action: Merge `gsd/phase-05-global-tier-1-2-3-coverage-internal-osm-audit` into `master` (tag `phase-05`), then run `/gsd-audit-milestone` and `/gsd-complete-milestone` to close V1

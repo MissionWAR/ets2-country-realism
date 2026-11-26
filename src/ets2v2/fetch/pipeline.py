@@ -28,6 +28,7 @@ from ets2v2.fetch.models import (
     RawFuelFeedResult,
 )
 from ets2v2.fetch.national import fetch_all_national_feeds
+from ets2v2.fetch.tier2_portals import fetch_all_tier2_portals
 from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_TERRITORY_CURRENCIES,
@@ -67,6 +68,16 @@ _NON_EU_PRIMARY_LIVE_ISO2S: Final[frozenset[str]] = _NON_EU_VANILLA_ISO2S | PROM
 _FEED_PRECEDENCE: Final[dict[str, int]] = {
     "fuel_prices_eu": 10,
     "fionnhughes_ec_wob": 20,
+    "is_gasvaktin": 25,
+    "ch_bfs_lik": 25,
+    "md_anre": 25,
+    "mk_erc": 25,
+    "ru_rosstat": 25,
+    "il_moe": 25,
+    "ae_moei": 25,
+    "za_dmre_cef": 25,
+    "sa_aramco": 25,
+    "ng_nbs": 25,
     "ec_weekly_oil_bulletin": 30,
     "uk_desnz": 40,
     "no_ssb_09654": 40,
@@ -222,6 +233,7 @@ def run_price_fetch(
     fx_only: bool = False,
     seed_offline: bool = False,
     include_global: bool = True,
+    include_tier2: bool = True,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     write_lock: bool = True,
     transport: httpx.BaseTransport | None = None,
@@ -345,6 +357,9 @@ def run_price_fetch(
             if include_global
             else []
         )
+        tier2_results: list[RawFuelFeedResult] = (
+            fetch_all_tier2_portals(client, sleep_fn=sleep_fn) if include_tier2 else []
+        )
 
     all_fuel_results: list[RawFuelFeedResult] = [
         ec_wob,
@@ -352,6 +367,7 @@ def run_price_fetch(
         *([fionnhughes] if fionnhughes is not None else []),
         fuel_prices_eu,
         *global_tier1_results,
+        *tier2_results,
     ]
 
     for feed_res in all_fuel_results:
@@ -374,11 +390,12 @@ def run_price_fetch(
             )
         )
         if not feed_res.ok:
-            default_code = (
-                "global_tier1_outage"
-                if (feed_res.tier == "tier1" and feed_res.region_scope == "global")
-                else "feed_outage"
-            )
+            if feed_res.tier == "tier1" and feed_res.region_scope == "global":
+                default_code = "global_tier1_outage"
+            elif feed_res.tier == "tier2":
+                default_code = "tier2_portal_outage"
+            else:
+                default_code = "feed_outage"
             alerts.append(
                 LockAlert(
                     severity="warning",

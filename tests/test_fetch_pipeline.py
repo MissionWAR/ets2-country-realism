@@ -46,6 +46,18 @@ from ets2v2.fetch.national import (
     UK_DESNZ_LANDING_URL,
 )
 from ets2v2.fetch.pipeline import run_price_fetch
+from ets2v2.fetch.tier2_portals import (
+    AE_MOEI_URL,
+    CH_BFS_LIK_URL,
+    IL_MOE_URL,
+    IS_GASVAKTIN_URL,
+    MD_ANRE_URL,
+    MK_ERC_URL,
+    NG_NBS_URL,
+    RU_ROSSTAT_URL,
+    SA_ARAMCO_URL,
+    ZA_DMRE_CEF_URL,
+)
 from ets2v2.normalize.currencies import (
     ALL_LOCKFILE_TERRITORY_ISO2S,
     ALL_REFERENCE_FX_RATES,
@@ -377,6 +389,7 @@ def test_run_price_fetch_full_39_territory_merge_precedence_and_keyless_vs_keyed
         baseline_dir=BASELINE_DIR,
         write_lock=True,
         include_global=False,
+        include_tier2=False,
         transport=_pipeline_transport(),
         now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
         sleep_fn=lambda _: None,
@@ -423,6 +436,7 @@ def test_run_price_fetch_full_39_territory_merge_precedence_and_keyless_vs_keyed
         baseline_dir=BASELINE_DIR,
         write_lock=True,
         include_global=False,
+        include_tier2=False,
         transport=_pipeline_transport(),
         tankerkoenig_api_key="tk-test-key-xyz",
         now_utc=datetime(2026, 11, 20, 6, 5, 0, tzinfo=UTC),
@@ -1246,3 +1260,265 @@ def test_run_price_fetch_keyless_skip_reasons_are_feed_specific_and_no_global_cl
     assert "us_eia_v2" not in providers
     assert "my_opendosm" not in providers
     assert "kr_opinet" not in providers
+
+
+def test_run_price_fetch_tier2_all_10_failing_warns_only_and_falls_back_to_fuel_prices_eu(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+    bl = CountriesBaseline.model_validate_json((BASELINE_DIR / "countries.json").read_text("utf-8"))
+    seeded = seed_initial_lockfile(bl, seed_date="2026-11-15", updated_at="2026-11-15T06:00:00Z")
+    write_prices_lockfile(seeded, lock_path)
+
+    base = _pipeline_transport()
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url == FUEL_PRICES_EU_URL:
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "ts": 1795154400,
+                    "petrol": {"IS": 1.810, "CH": 1.920, "MD": 1.300, "MK": 1.330},
+                    "diesel": {"IS": 1.840, "CH": 1.990, "MD": 1.240, "MK": 1.250},
+                },
+            )
+        if url == RU_ROSSTAT_URL:
+            return httpx.Response(403, request=request, text="geo blocked")
+        if url == SA_ARAMCO_URL:
+            return httpx.Response(429, request=request, text="rate limited")
+        if url == AE_MOEI_URL:
+            return httpx.Response(200, request=request, content=b"\x98\xff\xfebad")
+        if url == MD_ANRE_URL:
+            return httpx.Response(200, request=request, text="<html><body>No table</body></html>")
+        if url == NG_NBS_URL:
+            raise httpx.ReadTimeout("nbs timeout", request=request)
+        if url in {
+            IS_GASVAKTIN_URL,
+            CH_BFS_LIK_URL,
+            MK_ERC_URL,
+            IL_MOE_URL,
+            ZA_DMRE_CEF_URL,
+        }:
+            return httpx.Response(503, request=request, text="portal down")
+        return base.handle_request(request)
+
+    report = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        include_global=False,
+        include_tier2=True,
+        transport=httpx.MockTransport(_handler),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert report.ok is True
+    assert report.tier2_feeds_succeeded == 0
+    assert report.tier2_feeds_failed == 10
+
+    alert_by_scope = {a.scope: a for a in report.alerts}
+    assert alert_by_scope["ru_rosstat"].code == "tier2_rate_limited"
+    assert alert_by_scope["sa_aramco"].code == "tier2_rate_limited"
+    assert alert_by_scope["ae_moei"].code == "tier2_encoding_error"
+    assert alert_by_scope["md_anre"].code == "tier2_selector_drift"
+    assert alert_by_scope["ng_nbs"].code == "tier2_portal_outage"
+    assert all(a.severity == "warning" for a in report.alerts if a.code.startswith("tier2_"))
+
+    loaded = load_prices_lockfile(lock_path)
+    # European Tier 2 portals automatically fell back to live fuel_prices_eu (precedence 10)
+    for eu_t2 in ("IS", "CH", "MD", "MK"):
+        assert loaded.countries[eu_t2].source == "fuel_prices_eu"
+        assert loaded.countries[eu_t2].fallback_used is False
+    # Non-EU Tier 2 portals cleanly retained lockfile/Tier 3 baseline
+    for non_eu_t2 in ("AE", "ZA", "SA", "NG", "IL", "RU"):
+        assert loaded.countries[non_eu_t2].eur_per_liter == pytest.approx(
+            seeded.countries[non_eu_t2].eur_per_liter
+        )
+        assert loaded.countries[non_eu_t2].fallback_used is True
+
+
+def test_run_price_fetch_tier2_live_updates_and_bounds_wow_guards(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+
+    base = _pipeline_transport()
+    t2_rates = {
+        **_RATES,
+        "AED": 3.96,
+        "ZAR": 19.80,
+        "SAR": 4.05,
+        "ILS": 4.00,
+    }
+
+    def _make_handler(*, ae_diesel_aed: float = 2.67) -> httpx.MockTransport:
+        def _handler(request: httpx.Request) -> httpx.Response:
+            url = str(request.url)
+            if url.startswith("https://api.frankfurter.dev/v2/rates"):
+                return httpx.Response(
+                    200,
+                    json=[
+                        {"date": "2026-11-20", "base": "EUR", "quote": c, "rate": r}
+                        for c, r in sorted(t2_rates.items())
+                    ],
+                )
+            if url in {FAWAZ_JSDELIVR_URL, FAWAZ_CLOUDFLARE_URL}:
+                return httpx.Response(
+                    200,
+                    json={
+                        "date": "2026-11-20",
+                        "eur": {c.lower(): r for c, r in t2_rates.items()},
+                    },
+                )
+            if url == AE_MOEI_URL:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "<html><body><p>2026-11-01</p><table>"
+                        f"<tr><td>Diesel</td><td>{ae_diesel_aed}</td></tr>"
+                        "<tr><td>Special 95</td><td>2.63</td></tr>"
+                        "</table></body></html>"
+                    ),
+                )
+            if url == ZA_DMRE_CEF_URL:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "<html><body><p>2026-11-04</p><table>"
+                        "<tr><th>Grade</th><th>Inland (c/L)</th></tr>"
+                        "<tr><td>Petrol 95 ULP</td><td>2345.0</td></tr>"
+                        "<tr><td>Diesel 0.005%</td><td>2105.0</td></tr>"
+                        "</table></body></html>"
+                    ),
+                )
+            if url == SA_ARAMCO_URL:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "<html><body><p>2026-11-11</p><table>"
+                        "<tr><td>Diesel</td><td>1.15</td></tr>"
+                        "<tr><td>Gasoline 95</td><td>2.33</td></tr>"
+                        "</table></body></html>"
+                    ),
+                )
+            if url == IL_MOE_URL:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "<html><body><p>2026-11-01</p><table>"
+                        "<tr><td>Unleaded 95 Octane (Self-Service)</td><td>7.45</td></tr>"
+                        "</table></body></html>"
+                    ),
+                )
+            return base.handle_request(request)
+
+        return httpx.MockTransport(_handler)
+
+    # First live run: AE, ZA, SA, IL update cleanly (IL derives diesel from petrol_95 anchor)
+    res1 = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        include_global=False,
+        include_tier2=True,
+        transport=_make_handler(ae_diesel_aed=2.67),
+        now_utc=datetime(2026, 11, 20, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res1.ok is True
+    assert res1.tier2_feeds_succeeded == 4
+    loaded1 = load_prices_lockfile(lock_path)
+    assert loaded1.countries["AE"].source == "ae_moei"
+    assert loaded1.countries["AE"].fallback_used is False
+    assert loaded1.countries["AE"].local_prices["diesel"] == pytest.approx(2.67)
+    assert loaded1.countries["ZA"].source == "za_dmre_cef"
+    assert loaded1.countries["ZA"].local_prices["diesel"] == pytest.approx(21.05)
+    assert loaded1.countries["SA"].source == "sa_aramco"
+    assert loaded1.countries["SA"].local_prices["diesel"] == pytest.approx(1.15)
+    assert loaded1.countries["IL"].source == "il_moe"
+    assert loaded1.countries["IL"].fallback_used is False
+    assert loaded1.countries["IL"].local_prices["petrol_95"] == pytest.approx(7.45)
+    assert "diesel" in loaded1.countries["IL"].derived_grades
+
+    # Corrupt out-of-bounds (< 0.01 EUR/L) quote from AE is rejected
+    res_oob = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        include_global=False,
+        include_tier2=True,
+        transport=_make_handler(ae_diesel_aed=0.001),
+        now_utc=datetime(2026, 11, 21, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_oob.ok is True
+    assert any(a.code == "price_bounds_rejected" and a.scope == "AE" for a in res_oob.alerts)
+    assert load_prices_lockfile(lock_path).countries["AE"].local_prices["diesel"] == pytest.approx(
+        2.67
+    )
+
+    # Corrupt +80% WoW jump from AE is rejected by +/-25% circuit breaker
+    res_jump = run_price_fetch(
+        lock_path=lock_path,
+        baseline_dir=BASELINE_DIR,
+        write_lock=True,
+        include_global=False,
+        include_tier2=True,
+        transport=_make_handler(ae_diesel_aed=4.80),
+        now_utc=datetime(2026, 11, 22, 6, 0, 0, tzinfo=UTC),
+        sleep_fn=lambda _: None,
+    )
+    assert res_jump.ok is True
+    assert any(a.code == "price_jump_rejected" and a.scope == "AE" for a in res_jump.alerts)
+    assert load_prices_lockfile(lock_path).countries["AE"].local_prices["diesel"] == pytest.approx(
+        2.67
+    )
+
+
+def test_cli_no_tier2_flag_skips_all_tier2_portals(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    lock_path = tmp_path / "prices.lock.json"
+
+    import ets2v2.fetch.pipeline as pipeline_mod
+
+    orig_create = pipeline_mod.create_http_client
+
+    def _patched_create(
+        *, timeout: float = 20.0, transport: httpx.BaseTransport | None = None
+    ) -> httpx.Client:
+        return orig_create(timeout=timeout, transport=transport or _pipeline_transport())
+
+    monkeypatch.setattr(pipeline_mod, "create_http_client", _patched_create)
+    exit_code = main(
+        [
+            "fetch",
+            "--no-global",
+            "--no-tier2",
+            "--lock-path",
+            str(lock_path),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--dry-run",
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["ok"] is True
+    assert payload["tier2_feeds_succeeded"] == 0
+    assert payload["tier2_feeds_failed"] == 0
+    providers = {s["provider"] for s in payload["provider_statuses"]}
+    assert "ae_moei" not in providers
+    assert "is_gasvaktin" not in providers
+    assert "za_dmre_cef" not in providers

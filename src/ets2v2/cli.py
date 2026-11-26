@@ -641,6 +641,7 @@ def _handle_fetch(args: argparse.Namespace) -> int:
     fx_only = cast(bool, args.fx_only)
     seed_offline = cast(bool, args.seed_offline)
     no_global = cast(bool, args.no_global)
+    no_tier2 = cast(bool, args.no_tier2)
     timeout = cast(float, args.timeout)
     dry_run = cast(bool, args.dry_run)
     as_json = cast(bool, args.json)
@@ -660,6 +661,7 @@ def _handle_fetch(args: argparse.Namespace) -> int:
             fx_only=fx_only,
             seed_offline=seed_offline,
             include_global=not no_global,
+            include_tier2=not no_tier2,
             timeout=timeout,
             write_lock=not dry_run,
         )
@@ -1442,6 +1444,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-global",
         action="store_true",
         help="Skip non-EU Global Tier 1 fuel collectors (EU Core only).",
+    )
+    fetch_parser.add_argument(
+        "--no-tier2",
+        action="store_true",
+        help="Skip Tier 2 guarded national portal scrapers.",
     )
     fetch_parser.add_argument(
         "--timeout",

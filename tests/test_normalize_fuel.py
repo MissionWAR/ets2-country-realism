@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+from datetime import date
 
 import pytest
 
@@ -27,7 +28,15 @@ from ets2v2.normalize.fuel import (
 )
 from ets2v2.normalize.lockfile import (
     BASELINE_SEEDED_SOURCE,
+    FALLBACK_STALE_DAYS,
+    MONTHLY_LIVE_SOURCES,
     PROMODS_CURATED_SEED_SOURCE,
+    QUARTERLY_TIER2_SOURCES,
+    TIER1_STALE_DAYS,
+    TIER2_MONTHLY_STALE_DAYS,
+    TIER2_QUARTERLY_STALE_DAYS,
+    TIER3_CURATED_STALE_DAYS,
+    evaluate_lockfile_staleness,
     load_prices_lockfile,
     seed_initial_lockfile,
     serialize_lockfile_bytes,
@@ -317,3 +326,66 @@ def test_anchorless_grade_map_emits_price_anchor_missing_and_holds_previous() ->
         a.code == "price_anchor_missing" and a.severity == "warning" and a.scope == "DE"
         for a in res.alerts
     )
+
+
+@pytest.mark.parametrize(
+    ("iso2", "currency", "source", "fallback_used", "limit_days", "expected_code"),
+    [
+        ("DE", "EUR", "ec_weekly_oil_bulletin", False, 14, "stale_tier1"),
+        ("NO", "NOK", "no_ssb_09654", False, 45, "stale_tier2_monthly"),
+        ("AE", "AED", "ae_moei", False, 45, "stale_tier2_monthly"),
+        ("ZA", "ZAR", "za_dmre_cef", False, 45, "stale_tier2_monthly"),
+        ("EG", "EGP", "eg_fapc", False, 105, "stale_tier2_quarterly"),
+        ("DE", "EUR", "ec_weekly_oil_bulletin", True, 30, "stale_fallback"),
+        ("KE", "KES", TIER3_CURATED_BASELINE_SOURCE, True, 180, "stale_tier3_curated"),
+    ],
+)
+def test_evaluate_lockfile_staleness_d08_five_tier_boundaries(
+    iso2: str,
+    currency: str,
+    source: str,
+    fallback_used: bool,
+    limit_days: int,
+    expected_code: str,
+) -> None:
+    from datetime import timedelta
+
+    assert TIER1_STALE_DAYS == 14
+    assert TIER2_MONTHLY_STALE_DAYS == 45
+    assert TIER2_QUARTERLY_STALE_DAYS == 105
+    assert FALLBACK_STALE_DAYS == 30
+    assert TIER3_CURATED_STALE_DAYS == 180
+    assert {"no_ssb_09654", "ae_moei", "za_dmre_cef"} <= MONTHLY_LIVE_SOURCES
+    assert "eg_fapc" in QUARTERLY_TIER2_SOURCES
+
+    as_of = date(2026, 11, 26)
+    at_limit_date = (as_of - timedelta(days=limit_days)).isoformat()
+    over_limit_date = (as_of - timedelta(days=limit_days + 1)).isoformat()
+
+    def _make_lock(data_date: str) -> PricesLockfile:
+        entry = CountryFuelLockEntry(
+            iso2=iso2,
+            currency=currency,
+            eur_per_liter=1.500,
+            local_prices={"diesel": 1.5, "petrol_95": 1.6},
+            derived_grades=[],
+            source=source,
+            license="CC BY 4.0",
+            data_date=data_date,
+            fetched_at=f"{data_date}T06:00:00Z",
+            fallback_used=fallback_used,
+        )
+        return PricesLockfile(
+            schema_version=1,
+            updated_at=f"{as_of.isoformat()}T06:00:00Z",
+            fx_rates={"EUR": _fx("EUR", 1.0)},
+            countries={iso2: entry},
+            alerts=[],
+        )
+
+    assert evaluate_lockfile_staleness(_make_lock(at_limit_date), as_of) == []
+    overdue_alerts = evaluate_lockfile_staleness(_make_lock(over_limit_date), as_of)
+    assert len(overdue_alerts) == 1
+    assert overdue_alerts[0].code == expected_code
+    assert overdue_alerts[0].scope == iso2
+    assert overdue_alerts[0].severity == "warning"

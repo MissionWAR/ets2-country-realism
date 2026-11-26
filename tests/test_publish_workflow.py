@@ -286,3 +286,20 @@ def test_phase_a_workflow_wires_optional_global_tier1_secrets_and_eu_vs_global_c
     assert "EIA_API_KEY" not in ci_text
     assert "OPINET_API_KEY" not in ci_text
     assert "CNE_API_TOKEN" not in ci_text
+
+
+def test_phase_a_workflow_reports_tier2_counters_and_rolls_up_tier3_staleness() -> None:
+    text = WORKFLOW_PATH.read_text("utf-8")
+    assert "tier2_feeds_succeeded" in text
+    assert "tier2_feeds_failed" in text
+    assert text.count("stale_tier3_curated") >= 2
+    assert text.count("def _sanitize(") >= 2
+
+    # Compile every embedded Python snippet and confirm zero ${{ inside run: blocks
+    run_blocks = _extract_run_blocks(text)
+    for block in run_blocks:
+        assert "${{" not in block
+    snippets = _extract_embedded_python_snippets(run_blocks)
+    assert len(snippets) >= 3
+    for idx, snippet in enumerate(snippets):
+        compile(snippet, f"phase-a-release.yml:tier2-snippet-{idx}", "exec")

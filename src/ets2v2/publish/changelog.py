@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from ets2v2.normalize.currencies import VANILLA_36_ISO2S
+from typing import Final
+
+from ets2v2.normalize.currencies import (
+    CORE_REFERENCE_FX_RATES,
+    TIER3_CURATED_BASELINE_SOURCE,
+    VANILLA_36_ISO2S,
+)
 from ets2v2.normalize.models import PricesLockfile
 from ets2v2.normalize.totem_format import format_national_pump_price
 from ets2v2.publish.ledger import PublishedEditionState
@@ -11,6 +17,49 @@ from ets2v2.registry.snapshot import RealismSnapshot, RealismSnapshotCountry
 
 _VEHICLE_ORDER: tuple[RoadVehicleClass, ...] = ("car", "truck", "bus")
 _MAX_ALERT_DETAIL_LEN: int = 240
+_EXTENDED_FX_ROLLUP_THRESHOLD: Final[int] = 20
+
+_EU_TIER1_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        "ec_weekly_oil_bulletin",
+        "uk_desnz",
+        "no_ssb_09654",
+        "fr_economie_ods",
+        "de_tankerkoenig",
+        "es_miteco",
+        "it_mimit",
+        "nl_cbs_80416ned",
+        "fionnhughes_ec_wob",
+        "fuel_prices_eu",
+    }
+)
+_GLOBAL_TIER1_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        "us_eia_v2",
+        "br_anp",
+        "ar_energia",
+        "co_sicom",
+        "co_creg",
+        "cl_cne",
+        "my_opendosm",
+        "jp_meti",
+        "kr_opinet",
+    }
+)
+_TIER2_PORTAL_SOURCES: Final[frozenset[str]] = frozenset(
+    {
+        "is_gasvaktin",
+        "ch_bfs_lik",
+        "md_anre",
+        "mk_erc",
+        "ru_rosstat",
+        "il_moe",
+        "ae_moei",
+        "za_dmre_cef",
+        "sa_aramco",
+        "ng_nbs",
+    }
+)
 
 
 def _sanitize_markdown_inline(text: str, *, max_len: int = _MAX_ALERT_DETAIL_LEN) -> str:
@@ -81,33 +130,110 @@ def _render_alerts_section(
 ) -> list[str]:
     if prices_lock is None:
         return []
-    fallback_countries = sorted(
+    itemized_alerts = [a for a in prices_lock.alerts if a.code != "stale_tier3_curated"]
+    tier3_stale_alerts = [a for a in prices_lock.alerts if a.code == "stale_tier3_curated"]
+
+    non_tier3_fallback_countries = sorted(
         iso2
         for iso2, entry in prices_lock.countries.items()
-        if iso2 in snapshot.countries and entry.fallback_used
+        if iso2 in snapshot.countries
+        and entry.fallback_used
+        and entry.source != TIER3_CURATED_BASELINE_SOURCE
+    )
+    tier3_fallback_countries = sorted(
+        iso2
+        for iso2, entry in prices_lock.countries.items()
+        if iso2 in snapshot.countries
+        and entry.fallback_used
+        and entry.source == TIER3_CURATED_BASELINE_SOURCE
     )
     fallback_fx = sorted(ccy for ccy, fx in prices_lock.fx_rates.items() if fx.fallback_used)
-    if not prices_lock.alerts and not fallback_countries and not fallback_fx:
+    if (
+        not itemized_alerts
+        and not tier3_stale_alerts
+        and not non_tier3_fallback_countries
+        and not tier3_fallback_countries
+        and not fallback_fx
+    ):
         return []
 
     lines: list[str] = ["## Circuit-Breaker & Staleness Alerts", ""]
-    for alert in prices_lock.alerts:
+    for alert in itemized_alerts:
         safe_code = _sanitize_markdown_inline(alert.code, max_len=64)
         safe_scope = _sanitize_markdown_inline(alert.scope, max_len=64)
         safe_detail = _sanitize_markdown_inline(alert.detail)
         lines.append(
             f"- **[{alert.severity.upper()}] `{safe_code}` (`{safe_scope}`):** {safe_detail}"
         )
-    if fallback_countries:
-        joined_cc = ", ".join(f"`{iso2}`" for iso2 in fallback_countries)
+    if non_tier3_fallback_countries:
+        joined_cc = ", ".join(f"`{iso2}`" for iso2 in non_tier3_fallback_countries)
         lines.append(
-            f"- **Fallback/Seeded Countries Retained ({len(fallback_countries)}):** {joined_cc}"
+            f"- **Fallback/Seeded Countries Retained ({len(non_tier3_fallback_countries)}):** "
+            f"{joined_cc}"
+        )
+    if tier3_fallback_countries or tier3_stale_alerts:
+        lines.append(
+            f"- **Tier 3 Curated Global Baselines Retained:** `{len(tier3_fallback_countries)}` "
+            f"territories (`{len(tier3_stale_alerts)}` overdue >180d)"
         )
     if fallback_fx:
-        joined_fx = ", ".join(f"`{ccy}`" for ccy in fallback_fx)
-        lines.append(f"- **Fallback FX Rates Retained ({len(fallback_fx)}):** {joined_fx}")
+        if len(fallback_fx) > _EXTENDED_FX_ROLLUP_THRESHOLD:
+            core_fx = [ccy for ccy in fallback_fx if ccy in CORE_REFERENCE_FX_RATES]
+            extended_count = len(fallback_fx) - len(core_fx)
+            if core_fx:
+                joined_core = ", ".join(f"`{ccy}`" for ccy in core_fx)
+                lines.append(
+                    f"- **Fallback FX Rates Retained ({len(fallback_fx)}):** "
+                    f"Core: {joined_core}, plus `{extended_count}` extended global currencies."
+                )
+            else:
+                lines.append(
+                    f"- **Fallback FX Rates Retained ({len(fallback_fx)}):** "
+                    f"`{extended_count}` extended global currencies."
+                )
+        else:
+            joined_fx = ", ".join(f"`{ccy}`" for ccy in fallback_fx)
+            lines.append(f"- **Fallback FX Rates Retained ({len(fallback_fx)}):** {joined_fx}")
     lines.append("")
     return lines
+
+
+def _render_global_coverage_section(
+    snapshot: RealismSnapshot,
+    prices_lock: PricesLockfile | None,
+) -> list[str]:
+    total = len(snapshot.countries)
+    core_count = len(VANILLA_36_ISO2S) if set(snapshot.countries) >= VANILLA_36_ISO2S else total
+    live_eu_tier1 = 0
+    live_global_tier1 = 0
+    live_tier2 = 0
+    tier3_curated = 0
+
+    for iso2, country in snapshot.countries.items():
+        lock_entry = prices_lock.countries.get(iso2) if prices_lock is not None else None
+        source = lock_entry.source if lock_entry is not None else country.fuel.source
+        fallback_used = lock_entry.fallback_used if lock_entry is not None else False
+
+        if source == TIER3_CURATED_BASELINE_SOURCE:
+            tier3_curated += 1
+        elif not fallback_used and source in _GLOBAL_TIER1_SOURCES:
+            live_global_tier1 += 1
+        elif not fallback_used and source in _TIER2_PORTAL_SOURCES:
+            live_tier2 += 1
+        elif not fallback_used and source in _EU_TIER1_SOURCES:
+            live_eu_tier1 += 1
+
+    return [
+        "## Global Snapshot Coverage",
+        "",
+        f"- **Total Snapshot Territories:** `{total}` "
+        f"(`{core_count}` Core Vanilla+DLC Workshop countries)",
+        f"- **Live Tier 1 EU Coverage:** `{live_eu_tier1}` territories",
+        f"- **Live Tier 1 Global Coverage:** `{live_global_tier1}` territories",
+        f"- **Live Tier 2 National Portals:** `{live_tier2}` territories",
+        f"- **Tier 3 Curated Global Baselines:** `{tier3_curated}` territories",
+        "",
+    ]
 
 
 def _format_lane_override(lane: LaneSpeedOverride) -> str:
@@ -328,6 +454,7 @@ def render_edition_changelog(
 
     lines.extend(_render_alerts_section(snapshot, prices_lock))
     lines.extend(_render_fuel_summary_table(snapshot, prices_lock))
+    lines.extend(_render_global_coverage_section(snapshot, prices_lock))
 
     lines.extend(
         [
@@ -339,6 +466,12 @@ def render_edition_changelog(
             "- Open European fuel data: EC Weekly Oil Bulletin CC BY 4.0, fuel-prices.eu "
             "CC BY 4.0, UK DESNZ OGL v3, Norway SSB CC BY 4.0, France Licence Ouverte, "
             "Italy MIMIT IODL 2.0, Spain MITECO, Netherlands CBS, Germany Tankerkönig CC BY 4.0.",
+            "- Open Global Tier 1 fuel data: U.S. EIA, Brazil ANP, Argentina Energía, "
+            "Colombia MinMinas/CREG, Chile CNE, Malaysia OpenDOSM CC BY 4.0, Japan METI, "
+            "Korea KNOC Opinet.",
+            "- Open Tier 2 national portals: Iceland Gasvaktin MIT, Switzerland BFS, "
+            "Moldova ANRE, North Macedonia ERC, Russia Rosstat, Israel MoE, UAE MOEI, "
+            "South Africa DMRE/CEF, Saudi Aramco, Nigeria NBS.",
             "- Open FX reference rates: Frankfurter v2 MIT, ECB, fawazahmed0 CC0.",
             "",
         ]

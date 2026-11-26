@@ -78,22 +78,32 @@ jobs:
               eu_fail = fetch_data.get("eu_tier1_feeds_failed", fetch_data.get("tier1_feeds_failed", 0))
               global_ok = fetch_data.get("global_tier1_feeds_succeeded", 0)
               global_fail = fetch_data.get("global_tier1_feeds_failed", 0)
+              tier2_ok = fetch_data.get("tier2_feeds_succeeded", 0)
+              tier2_fail = fetch_data.get("tier2_feeds_failed", 0)
+              itemized_alerts = [a for a in alerts if a.get("code") != "stale_tier3_curated"]
+              tier3_stale = [a for a in alerts if a.get("code") == "stale_tier3_curated"]
               lines = [
                   "### Phase A Fetch Summary",
                   "",
                   f"- **EU Core Tier 1 Feeds Succeeded / Failed:** `{eu_ok}` / `{eu_fail}`",
                   f"- **Global Tier 1 Feeds Succeeded / Failed:** `{global_ok}` / `{global_fail}`",
+                  f"- **Tier 2 National Portals Succeeded / Failed:** `{tier2_ok}` / `{tier2_fail}`",
                   f"- **Countries Updated / Fallback:** `{fetch_data.get('countries_updated', 0)}` / `{fetch_data.get('countries_fallback', 0)}`",
                   f"- **Alerts:** `{len(alerts)}`",
               ]
-              if alerts:
+              if itemized_alerts or tier3_stale:
                   lines.extend(["", "#### Circuit-Breaker & Staleness Alerts"])
-                  for alert in alerts:
+                  for alert in itemized_alerts:
                       sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
                       code = _sanitize(str(alert.get("code", "alert")), 64)
                       scope = _sanitize(str(alert.get("scope", "global")), 64)
                       detail = _sanitize(str(alert.get("detail", "")), 240)
                       lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
+                  if tier3_stale:
+                      lines.append(
+                          f"- **[WARNING] `stale_tier3_curated` (`tier3`):** `{len(tier3_stale)}` "
+                          "Tier 3 curated baseline territories overdue (>180d)."
+                      )
               with pathlib.Path(step_summary).open("a", encoding="utf-8") as fh:
                   fh.write("\n".join(lines) + "\n")
           PY
@@ -236,14 +246,21 @@ jobs:
 
               fetch_data = json.loads(summary_path.read_text("utf-8"))
               alerts = fetch_data.get("alerts", [])
-              if alerts:
+              itemized_alerts = [a for a in alerts if a.get("code") != "stale_tier3_curated"]
+              tier3_stale = [a for a in alerts if a.get("code") == "stale_tier3_curated"]
+              if itemized_alerts or tier3_stale:
                   lines.extend(["", "### Circuit-Breaker & Staleness Alerts"])
-                  for alert in alerts:
+                  for alert in itemized_alerts:
                       sev = _sanitize(str(alert.get("severity", "warning")).upper(), 32)
                       code = _sanitize(str(alert.get("code", "alert")), 64)
                       scope = _sanitize(str(alert.get("scope", "global")), 64)
                       detail = _sanitize(str(alert.get("detail", "")), 240)
                       lines.append(f"- **[{sev}] `{code}` (`{scope}`):** {detail}")
+                  if tier3_stale:
+                      lines.append(
+                          f"- **[WARNING] `stale_tier3_curated` (`tier3`):** `{len(tier3_stale)}` "
+                          "Tier 3 curated baseline territories overdue (>180d)."
+                      )
 
           print("\n".join(lines))
           PY

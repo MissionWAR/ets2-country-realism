@@ -44,12 +44,15 @@ _D09_EXACT_BOARD_TOKEN_BASES: Final[dict[str, str]] = {
 }
 
 FORBIDDEN_LICENSE_TAINT_PATTERNS: Final[tuple[tuple[str, re.Pattern[str]], ...]] = (
-    ("CC BY-SA", re.compile(r"cc[\s-]*by[\s-]*sa", re.IGNORECASE)),
+    ("CC BY-SA", re.compile(r"cc[\s_-]*by[\s_-]*sa", re.IGNORECASE)),
     ("ODbL", re.compile(r"\bodbl\b", re.IGNORECASE)),
     ("OpenStreetMap", re.compile(r"openstreetmap", re.IGNORECASE)),
-    ("osm-legal-default-speeds", re.compile(r"osm-legal-default-speeds", re.IGNORECASE)),
+    (
+        "osm-legal-default-speeds",
+        re.compile(r"osm[\s_-]*legal[\s_-]*default[\s_-]*speeds", re.IGNORECASE),
+    ),
     ("GlobalPetrolPrices", re.compile(r"globalpetrolprices", re.IGNORECASE)),
-    ("CC BY-NC-ND", re.compile(r"cc[\s-]*by[\s-]*nc[\s-]*nd", re.IGNORECASE)),
+    ("CC BY-NC-ND", re.compile(r"cc[\s_-]*by[\s_-]*nc[\s_-]*nd", re.IGNORECASE)),
     ("MyLPG", re.compile(r"\bmylpg\b", re.IGNORECASE)),
     ("IEA", re.compile(r"(?:international\s+energy\s+agency|\biea\b)", re.IGNORECASE)),
 )

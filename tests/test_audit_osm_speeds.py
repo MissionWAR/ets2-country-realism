@@ -652,3 +652,36 @@ def test_overpass_nan_sleep_and_taginfo_malformed_fraction_lo02() -> None:
     assert len(dists) == 1
     assert dists[0].ok is True
     assert [v.value for v in dists[0].values] == ["50"]
+
+
+def test_cli_audit_osm_speeds_handles_output_oserror_cleanly_lo03(
+    tmp_path: pathlib.Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """LO-03: Directory target for --out-md returns exit 1 cleanly instead of uncaught traceback."""
+    rules_path = tmp_path / "rules.json"
+    rules_path.write_text(json.dumps(_sample_westnordost_payload()) + "\n", encoding="utf-8")
+    dir_target = tmp_path / "out_is_dir"
+    dir_target.mkdir()
+
+    rc = main(
+        [
+            "audit",
+            "osm-speeds",
+            "--iso2",
+            "FR",
+            "--rules-file",
+            str(rules_path),
+            "--allowlist",
+            str(ALLOWLIST_PATH),
+            "--laws-dir",
+            str(LAWS_DIR),
+            "--mappings",
+            str(MAPPINGS_PATH),
+            "--out-md",
+            str(dir_target),
+        ]
+    )
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert "error: audit osm-speeds failed:" in cap.err

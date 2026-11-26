@@ -13,12 +13,15 @@ from ets2v2.vfs.hashfs import open_archive
 from ets2v2.vfs.types import VfsArchive
 
 FORBIDDEN_LICENSE_TAINT_PATTERNS: Final[tuple[tuple[str, re.Pattern[str]], ...]] = (
-    ("CC BY-SA", re.compile(r"cc[\s-]*by[\s-]*sa", re.IGNORECASE)),
+    ("CC BY-SA", re.compile(r"cc[\s_-]*by[\s_-]*sa", re.IGNORECASE)),
     ("ODbL", re.compile(r"\bodbl\b", re.IGNORECASE)),
     ("OpenStreetMap", re.compile(r"openstreetmap", re.IGNORECASE)),
-    ("osm-legal-default-speeds", re.compile(r"osm-legal-default-speeds", re.IGNORECASE)),
+    (
+        "osm-legal-default-speeds",
+        re.compile(r"osm[\s_-]*legal[\s_-]*default[\s_-]*speeds", re.IGNORECASE),
+    ),
     ("GlobalPetrolPrices", re.compile(r"globalpetrolprices", re.IGNORECASE)),
-    ("CC BY-NC-ND", re.compile(r"cc[\s-]*by[\s-]*nc[\s-]*nd", re.IGNORECASE)),
+    ("CC BY-NC-ND", re.compile(r"cc[\s_-]*by[\s_-]*nc[\s_-]*nd", re.IGNORECASE)),
     ("MyLPG", re.compile(r"\bmylpg\b", re.IGNORECASE)),
     ("IEA", re.compile(r"(?:international\s+energy\s+agency|\biea\b)", re.IGNORECASE)),
 )
@@ -28,6 +31,22 @@ _SCANNABLE_TEXT_SUFFIXES: Final[frozenset[str]] = frozenset(
 )
 _ARCHIVE_SUFFIXES: Final[frozenset[str]] = frozenset({".zip", ".scs"})
 _MAX_EXCERPT_CHARS: Final[int] = 160
+MAX_TAINT_TEXT_BYTES: Final[int] = 64 * 1024 * 1024  # 64 MiB bounded text read cap
+
+
+def _read_bounded_text_bytes(path: Path, *, max_bytes: int = MAX_TAINT_TEXT_BYTES) -> bytes:
+    size = path.stat().st_size
+    if size > max_bytes:
+        raise ValueError(
+            f"File {path} size ({size} bytes) exceeds taint scanner limit ({max_bytes} bytes)"
+        )
+    with path.open("rb") as fh:
+        data = fh.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise ValueError(
+            f"File {path} exceeded taint scanner limit ({max_bytes} bytes) while reading"
+        )
+    return data
 
 
 def _sanitize_excerpt(line: str) -> str:
@@ -41,18 +60,24 @@ def _sanitize_excerpt(line: str) -> str:
 
 def _scan_text_bytes(raw: bytes, display_path: str) -> list[TaintViolation]:
     text = raw.decode("utf-8", errors="replace")
+    lines = text.splitlines()
     violations: list[TaintViolation] = []
-    for line_idx, line in enumerate(text.splitlines(), start=1):
-        for label, pattern in FORBIDDEN_LICENSE_TAINT_PATTERNS:
-            if pattern.search(line) is not None:
-                violations.append(
-                    TaintViolation(
-                        path=display_path,
-                        marker=label,
-                        line_number=line_idx,
-                        excerpt=_sanitize_excerpt(line),
-                    )
+    seen: set[tuple[str, int]] = set()
+    for label, pattern in FORBIDDEN_LICENSE_TAINT_PATTERNS:
+        for match in pattern.finditer(text):
+            line_idx = text.count("\n", 0, match.start()) + 1
+            if (label, line_idx) in seen:
+                continue
+            seen.add((label, line_idx))
+            excerpt_source = lines[line_idx - 1] if 1 <= line_idx <= len(lines) else match.group(0)
+            violations.append(
+                TaintViolation(
+                    path=display_path,
+                    marker=label,
+                    line_number=line_idx,
+                    excerpt=_sanitize_excerpt(excerpt_source),
                 )
+            )
     return violations
 
 
@@ -146,20 +171,25 @@ def scan_repo_and_artifacts_for_taint(
             files_scanned += 1
             violations.extend(
                 _scan_text_bytes(
-                    file_path.read_bytes(),
+                    _read_bounded_text_bytes(file_path),
                     _display_repo_path(file_path, repo_root),
                 )
             )
 
-    lockfile_path = repo_root / "state" / "prices.lock.json"
-    if lockfile_path.is_file():
-        files_scanned += 1
-        violations.extend(
-            _scan_text_bytes(
-                lockfile_path.read_bytes(),
-                _display_repo_path(lockfile_path, repo_root),
+    root_files = (
+        repo_root / "state" / "prices.lock.json",
+        repo_root / "CHANGELOG_SUMMER.md",
+        repo_root / "CHANGELOG_WINTER.md",
+    )
+    for extra_path in root_files:
+        if extra_path.is_file():
+            files_scanned += 1
+            violations.extend(
+                _scan_text_bytes(
+                    _read_bounded_text_bytes(extra_path),
+                    _display_repo_path(extra_path, repo_root),
+                )
             )
-        )
 
     snapshots_scanned = 0
     for snap_path in snapshot_paths:
@@ -169,7 +199,7 @@ def scan_repo_and_artifacts_for_taint(
         files_scanned += 1
         violations.extend(
             _scan_text_bytes(
-                snap_path.read_bytes(),
+                _read_bounded_text_bytes(snap_path),
                 _display_repo_path(snap_path, repo_root),
             )
         )

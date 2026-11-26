@@ -195,3 +195,69 @@ def test_word_boundary_prevents_false_positives_on_clean_text(
     fake_repo.mkdir(exist_ok=True)
     scan_report = scan_repo_and_artifacts_for_taint(fake_repo, snapshot_paths=[snap_file])
     assert scan_report.ok is True, scan_report.violations
+
+
+def test_taint_catches_multiline_underscore_changelogs_and_enforces_size_cap_md05_lo04(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """MD-05 & LO-04: Multi-line, underscore, CHANGELOG_*.md, size cap, and protected scs."""
+    from ets2v2.audit import taint as taint_mod
+    from ets2v2.cli import main
+
+    # 1. Multi-line "International\nEnergy Agency" & underscore "CC_BY_SA_4.0" / "CC_BY_NC_ND"
+    for sample, expected_marker in (
+        ("Data from International\nEnergy Agency report", "IEA"),
+        ("License: CC_BY_SA_4.0", "CC BY-SA"),
+        ("License: CC_BY_NC_ND_3.0", "CC BY-NC-ND"),
+        ("Using osm_legal_default_speeds rules", "osm-legal-default-speeds"),
+    ):
+        collector = ValidationCollector()
+        check_license_taint_bytes(sample.encode("utf-8"), "desc.txt", collector)
+        assert not collector.build_report("s", "workshop").ok
+
+        fake_repo = tmp_path / f"repo_{expected_marker.replace(' ', '_')}"
+        (fake_repo / "data" / "laws").mkdir(parents=True, exist_ok=True)
+        (fake_repo / "data" / "laws" / "test.json").write_text(sample, encoding="utf-8")
+        rep = scan_repo_and_artifacts_for_taint(fake_repo)
+        assert rep.ok is False
+        assert any(v.marker == expected_marker for v in rep.violations)
+
+    # 2. CHANGELOG_SUMMER.md and CHANGELOG_WINTER.md scanned when present at repo_root
+    cl_repo = tmp_path / "repo_changelog"
+    cl_repo.mkdir()
+    (cl_repo / "CHANGELOG_SUMMER.md").write_text(
+        "# Changelog\nData from OpenStreetMap\n", encoding="utf-8"
+    )
+    cl_rep = scan_repo_and_artifacts_for_taint(cl_repo)
+    assert cl_rep.ok is False
+    assert any(
+        v.marker == "OpenStreetMap" and v.path == "CHANGELOG_SUMMER.md" for v in cl_rep.violations
+    )
+
+    # 3. Bounded text read cap rejects oversized files cleanly
+    big_file = tmp_path / "oversized.json"
+    big_file.write_bytes(b"x" * 256)
+    monkeypatch.setattr(taint_mod, "MAX_TAINT_TEXT_BYTES", 128)
+    with pytest.raises(ValueError, match="taint scanner limit"):
+        taint_mod._read_bounded_text_bytes(big_file, max_bytes=128)
+    monkeypatch.undo()
+
+    # 4. Protected encrypted .scs archive in `ets2v2 audit taint` exits 1 cleanly (no traceback)
+    clean_repo = tmp_path / "clean_repo_for_protected"
+    clean_repo.mkdir()
+    protected_scs = tmp_path / "protected.scs"
+    with zipfile.ZipFile(protected_scs, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("def/country/test.sui", "country_data : country.data.test {}\n")
+    raw_zip = bytearray(protected_scs.read_bytes())
+    # Set bit 0 (encrypted flag) in local header (offset 6) and central directory (PK\x01\x02)
+    raw_zip[6] |= 0x01
+    cd_offset = raw_zip.index(b"PK\x01\x02")
+    raw_zip[cd_offset + 8] |= 0x01
+    protected_scs.write_bytes(bytes(raw_zip))
+
+    rc = main(["audit", "taint", "--repo-root", str(clean_repo), "--package", str(protected_scs)])
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert "error: audit taint failed:" in cap.err

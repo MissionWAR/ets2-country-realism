@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
+import os
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
 from datetime import date
 from pathlib import Path
@@ -699,6 +702,9 @@ def _handle_fetch(args: argparse.Namespace) -> int:
         print(
             f"Price fetch {status_label} ({mode_label}): "
             f"tier1={report.tier1_feeds_succeeded} ok/{report.tier1_feeds_failed} failed, "
+            f"global_tier1={report.global_tier1_feeds_succeeded} ok/"
+            f"{report.global_tier1_feeds_failed} failed, "
+            f"tier2={report.tier2_feeds_succeeded} ok/{report.tier2_feeds_failed} failed, "
             f"countries={report.countries_updated} updated/{report.countries_fallback} fallback, "
             f"fx={report.fx_currencies_validated}, alerts={len(report.alerts)}."
         )
@@ -801,6 +807,27 @@ def _handle_compose_local(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _write_bytes_atomic(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            tmp_file.write(data)
+        os.replace(tmp_path, path)
+    except BaseException:
+        if tmp_path is not None:
+            with contextlib.suppress(OSError):
+                tmp_path.unlink()
+        raise
+
+
 def _handle_audit_osm_speeds(args: argparse.Namespace) -> int:
     iso2_raw = cast(str | None, args.iso2)
     include_overpass = cast(bool, args.overpass)
@@ -836,18 +863,14 @@ def _handle_audit_osm_speeds(args: argparse.Namespace) -> int:
             include_taginfo=include_taginfo,
             timeout=timeout,
         )
+        if out_md is not None:
+            md_text = render_osm_speed_drift_markdown(report)
+            _write_bytes_atomic(out_md, md_text.encode("utf-8"))
+        if out_json is not None:
+            _write_bytes_atomic(out_json, serialize_audit_report_bytes(report))
     except (OSError, ValueError, ValidationError, HttpFetchError) as exc:
         print(f"error: audit osm-speeds failed: {redact_url_secrets(str(exc))}", file=sys.stderr)
         return 1
-
-    if out_md is not None:
-        out_md.parent.mkdir(parents=True, exist_ok=True)
-        md_text = render_osm_speed_drift_markdown(report)
-        out_md.write_bytes(md_text.encode("utf-8"))
-
-    if out_json is not None:
-        out_json.parent.mkdir(parents=True, exist_ok=True)
-        out_json.write_bytes(serialize_audit_report_bytes(report))
 
     if as_json:
         payload: object = report.model_dump(mode="json")
@@ -877,7 +900,13 @@ def _handle_audit_taint(args: argparse.Namespace) -> int:
             snapshot_paths=snapshots,
             package_paths=packages,
         )
-    except (OSError, ValueError, ValidationError) as exc:
+    except (
+        OSError,
+        ValueError,
+        ValidationError,
+        ProtectedPayloadError,
+        UnsupportedCompressionError,
+    ) as exc:
         print(f"error: audit taint failed: {exc}", file=sys.stderr)
         return 1
 

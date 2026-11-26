@@ -1592,3 +1592,38 @@ def test_run_price_fetch_preserves_curated_tier3_petrol_and_verified_date_hi01(
         assert entry.local_prices["petrol_95"] == pytest.approx(
             round_local_price(t3.petrol_95_eur_per_liter * rate)
         )
+
+
+def test_cli_fetch_human_output_includes_global_tier1_and_tier2_counts_in02(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """IN-02: Human-readable `ets2v2 fetch` stdout includes global_tier1= and tier2= counters."""
+    monkeypatch.delenv("TANKERKOENIG_API_KEY", raising=False)
+    import ets2v2.fetch.pipeline as pipeline_mod
+
+    orig_create = pipeline_mod.create_http_client
+
+    def _patched_create(
+        *, timeout: float = 20.0, transport: httpx.BaseTransport | None = None
+    ) -> httpx.Client:
+        return orig_create(timeout=timeout, transport=transport or _pipeline_transport())
+
+    monkeypatch.setattr(pipeline_mod, "create_http_client", _patched_create)
+    rc = main(
+        [
+            "fetch",
+            "--no-global",
+            "--no-tier2",
+            "--lock-path",
+            str(tmp_path / "prices.lock.json"),
+            "--baseline-dir",
+            str(BASELINE_DIR),
+            "--dry-run",
+        ]
+    )
+    cap = capsys.readouterr()
+    assert rc == 0, cap.err
+    assert "global_tier1=" in cap.out
+    assert "tier2=" in cap.out

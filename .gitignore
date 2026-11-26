@@ -12,6 +12,9 @@ out/
 raw/
 vendor/
 
+# Local AI agent reference skills (kept locally, not tracked on GitHub)
+.agents/
+
 # OS / editor
 .DS_Store
 Thumbs.db

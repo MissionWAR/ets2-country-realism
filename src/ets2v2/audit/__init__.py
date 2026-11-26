@@ -17,6 +17,27 @@ from ets2v2.audit.models import (
     TaintViolation,
     VehicleSpeedClass,
 )
+from ets2v2.audit.osm_speeds import (
+    DEFAULT_ALLOWLIST_PATH,
+    DEFAULT_WESTNORDOST_RULES_URL,
+    WESTNORDOST_ALLOWED_HOSTS,
+    load_speed_audit_allowlist,
+    render_osm_speed_drift_markdown,
+    run_osm_speed_audit,
+    serialize_audit_report_bytes,
+)
+from ets2v2.audit.overpass import (
+    DEFAULT_OVERPASS_SLEEP_SECONDS,
+    DEFAULT_OVERPASS_URL,
+    DEFAULT_TAGINFO_KEYS,
+    DEFAULT_TAGINFO_URL,
+    MAX_OVERPASS_ISO2S,
+    OVERPASS_ALLOWED_HOSTS,
+    TAGINFO_ALLOWED_HOSTS,
+    build_overpass_speed_query,
+    fetch_overpass_speed_spot_checks,
+    fetch_taginfo_maxspeed_distributions,
+)
 from ets2v2.audit.taint import (
     FORBIDDEN_LICENSE_TAINT_PATTERNS,
     scan_package_for_taint,
@@ -24,7 +45,17 @@ from ets2v2.audit.taint import (
 )
 
 __all__ = [
+    "DEFAULT_ALLOWLIST_PATH",
+    "DEFAULT_OVERPASS_SLEEP_SECONDS",
+    "DEFAULT_OVERPASS_URL",
+    "DEFAULT_TAGINFO_KEYS",
+    "DEFAULT_TAGINFO_URL",
+    "DEFAULT_WESTNORDOST_RULES_URL",
     "FORBIDDEN_LICENSE_TAINT_PATTERNS",
+    "MAX_OVERPASS_ISO2S",
+    "OVERPASS_ALLOWED_HOSTS",
+    "TAGINFO_ALLOWED_HOSTS",
+    "WESTNORDOST_ALLOWED_HOSTS",
     "LaneSpeedClass",
     "OsmSpeedAuditReport",
     "OverpassSpotCheck",
@@ -38,6 +69,13 @@ __all__ = [
     "TaintScanReport",
     "TaintViolation",
     "VehicleSpeedClass",
+    "build_overpass_speed_query",
+    "fetch_overpass_speed_spot_checks",
+    "fetch_taginfo_maxspeed_distributions",
+    "load_speed_audit_allowlist",
+    "render_osm_speed_drift_markdown",
+    "run_osm_speed_audit",
     "scan_package_for_taint",
     "scan_repo_and_artifacts_for_taint",
+    "serialize_audit_report_bytes",
 ]

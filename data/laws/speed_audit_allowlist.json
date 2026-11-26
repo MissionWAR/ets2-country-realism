@@ -1,0 +1,93 @@
+{
+  "entries": [
+    {
+      "field": "limit",
+      "iso2": "DE",
+      "lane_speed_class": "expressway",
+      "statutory_rationale": "German StVO dual-carriageway roads with separated lanes have no general statutory car speed ceiling (advisory 130 km/h), encoded as ETS2 limit 0.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "DE",
+      "lane_speed_class": "motorway",
+      "statutory_rationale": "German StVO Autobahn advisory speed (Richtgeschwindigkeit 130 km/h) has no general statutory ceiling, encoded as ETS2 limit 0.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "EE",
+      "lane_speed_class": "expressway",
+      "statutory_rationale": "Estonian Traffic Act (Liiklusseadus) seasonal Summer (110 km/h) vs Winter (90 km/h) expressway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "EE",
+      "lane_speed_class": "motorway",
+      "statutory_rationale": "Estonian Traffic Act (Liiklusseadus) seasonal Summer (110 km/h) vs Winter (90 km/h) divided-highway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "FI",
+      "lane_speed_class": "expressway",
+      "statutory_rationale": "Finnish Road Traffic Act (Tieliikennelaki 729/2018) seasonal Summer (100 km/h) vs Winter (80 km/h) expressway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "FI",
+      "lane_speed_class": "motorway",
+      "statutory_rationale": "Finnish Road Traffic Act (Tieliikennelaki 729/2018) seasonal Summer (120 km/h) vs Winter (100 km/h) motorway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "IM",
+      "lane_speed_class": "expressway",
+      "statutory_rationale": "Isle of Man Road Traffic Regulation Act has no national unrestricted car speed ceiling, encoded as ETS2 limit 0 under ETS2 3-lane abstraction.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "IM",
+      "lane_speed_class": "local_road",
+      "statutory_rationale": "Isle of Man Road Traffic Regulation Act has no national rural car speed ceiling, encoded as ETS2 limit 0.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "IM",
+      "lane_speed_class": "motorway",
+      "statutory_rationale": "Isle of Man Road Traffic Regulation Act has no motorway network or national car ceiling, encoded as ETS2 limit 0 under ETS2 3-lane abstraction.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "LT",
+      "lane_speed_class": "expressway",
+      "statutory_rationale": "Lithuanian Road Traffic Rules (KET 131) seasonal Summer (120 km/h) vs Winter (110 km/h) expressway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    },
+    {
+      "field": "limit",
+      "iso2": "LT",
+      "lane_speed_class": "motorway",
+      "statutory_rationale": "Lithuanian Road Traffic Rules (KET 131) seasonal Summer (130 km/h) vs Winter (110 km/h) motorway ceiling modeled via dual ETS2 seasonal editions.",
+      "vehicle_class": "car",
+      "verified_date": "2026-11-25"
+    }
+  ],
+  "schema_version": 1
+}

@@ -15,7 +15,6 @@ import zipfile
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from html.parser import HTMLParser
 from typing import Final, cast
 from urllib.parse import urljoin, urlsplit
 
@@ -23,6 +22,7 @@ import httpx
 import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 
+from ets2v2.fetch._html import extract_html_tables, extract_html_text
 from ets2v2.fetch._parsing import (
     AnchorExtractor,
     extract_iso_date,
@@ -102,6 +102,9 @@ JP_METI_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset({"www.enecho.meti.go.jp
 JP_METI_MAX_XLSX_BYTES: Final[int] = 20_971_520  # 20 MiB
 JP_METI_MAX_ROWS: Final[int] = 5000
 _JP_KANJI_DATE_RE: Final[re.Pattern[str]] = re.compile(r"(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日")
+_JP_REIWA_DATE_RE: Final[re.Pattern[str]] = re.compile(
+    r"令和\s*(元|\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日"
+)
 _JP_SLASH_DATE_RE: Final[re.Pattern[str]] = re.compile(r"\b(\d{4})/(\d{1,2})/(\d{1,2})\b")
 
 # --- KR Opinet ---
@@ -113,56 +116,6 @@ _KR_OPINET_PRODUCT_MAP: Final[dict[str, FuelGrade]] = {
     "B034": "petrol_98",
     "K015": "lpg",
 }
-
-
-class _HtmlTableExtractor(HTMLParser):
-    """Minimal stdlib HTML table extractor for CREG fallback tables."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.tables: list[list[list[str]]] = []
-        self.text_chunks: list[str] = []
-        self._in_table = False
-        self._in_row = False
-        self._in_cell = False
-        self._current_table: list[list[str]] = []
-        self._current_row: list[str] = []
-        self._cell_parts: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        del attrs
-        lower = tag.lower()
-        if lower == "table":
-            self._in_table = True
-            self._current_table = []
-        elif lower == "tr" and self._in_table:
-            self._in_row = True
-            self._current_row = []
-        elif lower in {"td", "th"} and self._in_row:
-            self._in_cell = True
-            self._cell_parts = []
-
-    def handle_data(self, data: str) -> None:
-        self.text_chunks.append(data)
-        if self._in_cell:
-            self._cell_parts.append(data)
-
-    def handle_endtag(self, tag: str) -> None:
-        lower = tag.lower()
-        if lower in {"td", "th"} and self._in_cell:
-            self._current_row.append(" ".join("".join(self._cell_parts).split()))
-            self._cell_parts = []
-            self._in_cell = False
-        elif lower == "tr" and self._in_row:
-            if self._current_row:
-                self._current_table.append(self._current_row)
-            self._current_row = []
-            self._in_row = False
-        elif lower == "table" and self._in_table:
-            if self._current_table:
-                self.tables.append(self._current_table)
-            self._current_table = []
-            self._in_table = False
 
 
 def gallon_to_liter(price_per_gallon: float) -> float:
@@ -186,12 +139,14 @@ def _fold_text(value: str) -> str:
 
 
 def _decode_csv_bytes(raw: bytes) -> str:
-    for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+    if b"\x00" in raw:
+        raise ValueError("CSV payload contains NUL bytes (binary/corrupt content)")
+    for encoding in ("utf-8-sig", "cp1252"):
         try:
             return raw.decode(encoding)
         except UnicodeDecodeError:
             continue
-    raise ValueError("Failed to decode CSV payload as UTF-8, CP1252, or Latin-1")
+    return raw.decode("latin-1")
 
 
 def _parse_yyyymmdd_date(raw: object) -> str | None:
@@ -220,6 +175,15 @@ def _parse_jp_date(value: object) -> str | None:
             return date(int(year_s), int(month_s), int(day_s)).isoformat()
         except ValueError:
             return None
+    reiwa = _JP_REIWA_DATE_RE.search(value)
+    if reiwa is not None:
+        era_s, month_s, day_s = reiwa.groups()
+        era_year = 1 if era_s == "元" else int(era_s)
+        if era_year >= 1:
+            try:
+                return date(2018 + era_year, int(month_s), int(day_s)).isoformat()
+            except ValueError:
+                return None
     slash = _JP_SLASH_DATE_RE.search(value)
     if slash is not None:
         year_s, month_s, day_s = slash.groups()
@@ -797,12 +761,8 @@ def _fetch_co_creg_fallback(
         sleep_fn=sleep_fn,
     )
     html_text = raw_html.decode("utf-8", errors="replace")
-    extractor = _HtmlTableExtractor()
-    extractor.feed(html_text)
-    extractor.close()
-
-    detected_date = extract_iso_date(" ".join(extractor.text_chunks))
-    for table in extractor.tables:
+    detected_date = extract_iso_date(" ".join(extract_html_text(html_text)))
+    for table in extract_html_tables(html_text):
         gas_col: int | None = None
         acpm_col: int | None = None
         header_idx: int | None = None
@@ -1247,6 +1207,7 @@ def parse_jp_meti_xlsx(
             ws = wb[sheet_name]
             detected_date: str | None = None
             grade_cols: dict[FuelGrade, int] = {}
+            headers_locked = False
             national_prices: dict[FuelGrade, float] | None = None
             latest_ts_date: str | None = None
             latest_ts_prices: dict[FuelGrade, float] | None = None
@@ -1257,20 +1218,24 @@ def parse_jp_meti_xlsx(
                 if scanned_rows > max_rows:
                     break
 
-                # Scan cells for Japanese/ISO dates and multi-row grade headers
+                # Scan cells for Japanese/ISO dates and multi-row grade headers (lock once found)
                 row_date: str | None = None
                 for idx, cell in enumerate(row):
                     if isinstance(cell, str):
                         if "全国" in cell:
                             sheet_is_national = True
-                        matched_grade = _match_jp_meti_grade_header(cell)
-                        if matched_grade is not None:
-                            grade_cols[matched_grade] = idx
+                        if not headers_locked:
+                            matched_grade = _match_jp_meti_grade_header(cell)
+                            if matched_grade is not None:
+                                grade_cols[matched_grade] = idx
                     maybe_date = _parse_jp_date(cell)
                     if maybe_date is not None:
                         row_date = maybe_date
                         if detected_date is None or maybe_date > detected_date:
                             detected_date = maybe_date
+
+                if not headers_locked and "diesel" in grade_cols and "petrol_95" in grade_cols:
+                    headers_locked = True
 
                 if "diesel" not in grade_cols or "petrol_95" not in grade_cols:
                     continue
@@ -1312,7 +1277,7 @@ def parse_jp_meti_xlsx(
             chosen_prices = national_prices or latest_ts_prices
             if chosen_prices is not None:
                 resolved_date = (
-                    latest_ts_date
+                    (detected_date if national_prices is not None else latest_ts_date)
                     or detected_date
                     or default_date
                     or datetime.now(UTC).date().isoformat()

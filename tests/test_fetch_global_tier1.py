@@ -1126,3 +1126,59 @@ def test_extract_iso_date_handles_t_separated_iso8601_timestamps_hi04() -> None:
         cl_res = fetch_cl_cne(client, api_token="dummy-token", sleep_fn=lambda _: None)
     assert cl_res.ok is True
     assert cl_res.data_date == "2026-11-16"
+
+
+def test_co_creg_ignores_script_dates_and_handles_nested_tables_md07() -> None:
+    """MD-07: CO CREG uses shared _html.py (ignores <script> dates, handles nested tables)."""
+    creg_html = (
+        "<html><head><script>var oldDate = '1999-01-01';</script></head><body>"
+        "<p>Actualizado: 2026-11-19</p>"
+        "<table><tr><td>Wrapper</td><td><table><tr><td>Nested</td></tr></table></td></tr></table>"
+        "<table><tr><th>Ciudad</th><th>Gasolina MC</th><th>ACPM</th></tr>"
+        "<tr><td>Promedio Nacional</td><td>15.600</td><td>9.550</td></tr>"
+    )
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == CO_SICOM_CATALOG_URL:
+            return httpx.Response(503)
+        if str(request.url) == CO_CREG_FALLBACK_URL:
+            return httpx.Response(200, text=creg_html)
+        return httpx.Response(404)
+
+    with create_http_client(transport=httpx.MockTransport(_handler)) as client:
+        res = fetch_co_sicom(client, sleep_fn=lambda _: None)
+    assert res.ok is True
+    assert res.data_date == "2026-11-19"
+    assert res.quotes[0].source == "co_creg"
+    assert res.quotes[0].prices_by_grade["diesel"] == pytest.approx(gallon_to_liter(9550.0))
+
+
+def test_jp_meti_locks_headers_prefers_layout_a_date_and_parses_reiwa_md08_in03() -> None:
+    """MD-08 & IN-03: JP METI locks grade headers, prefers Layout A date, and parses Reiwa era."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "全国平均価格"
+    ws.append(["調査日", "令和8年11月16日"])
+    ws.append(["都道府県", "レギュラー", "ハイオク", "軽油"])
+    # Earlier dated row (older date) before 全国平均 must NOT override Layout A date
+    ws.append(["2026-11-09", 170.0, 180.0, 150.0])
+    # Footnote/annotation row mentioning 軽油 in col 0 must NOT corrupt locked grade_cols!
+    ws.append(["※軽油は税込価格", "", "", ""])
+    ws.append(["全国平均", 175.2, 186.0, 154.9])
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    quote, data_date = parse_jp_meti_xlsx(buf.getvalue())
+    assert data_date == "2026-11-16"
+    assert quote.prices_by_grade["petrol_95"] == pytest.approx(175.2)
+    assert quote.prices_by_grade["petrol_98"] == pytest.approx(186.0)
+    assert quote.prices_by_grade["diesel"] == pytest.approx(154.9)
+
+    # Also verify Reiwa 元年 (year 1 -> 2019) and NUL CSV rejection (IN-02)
+    from ets2v2.fetch.global_tier1 import _decode_csv_bytes, _parse_jp_date
+
+    assert _parse_jp_date("令和元年5月1日") == "2019-05-01"
+    assert _parse_jp_date("令和8年11月16日") == "2026-11-16"
+    with pytest.raises(ValueError, match="NUL"):
+        _decode_csv_bytes(b"a,b\x00c")

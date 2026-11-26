@@ -800,3 +800,13 @@ def test_tier2_corrupt_deflate_and_utf16_xxe_isolated_by_circuit_breaker_hi02() 
     assert res_xxe.ok is False
     assert res_xxe.error is not None
     assert "DOCTYPE" in res_xxe.error or "ENTITY" in res_xxe.error
+
+
+def test_table_extractor_flushes_unclosed_table_on_close_md07() -> None:
+    """MD-07: TableExtractor.close() flushes unclosed <table>/<tr>/<td> frames."""
+    unclosed = "<table><tr><td>Diesel</td><td>2.67</td></tr>"
+    assert extract_html_tables(unclosed) == [[["Diesel", "2.67"]]]
+    nested_unclosed = "<table><tr><td>Outer</td></tr><table><tr><td>Inner</td><td>1.99</td></tr>"
+    tables = extract_html_tables(nested_unclosed)
+    assert [["Inner", "1.99"]] in tables
+    assert [["Outer"]] in tables

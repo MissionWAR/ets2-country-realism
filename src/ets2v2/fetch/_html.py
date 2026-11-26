@@ -131,6 +131,14 @@ class TableExtractor(HTMLParser):
             if finished.rows:
                 self.tables.append(finished.rows)
 
+    def close(self) -> None:
+        super().close()
+        while self._stack:
+            frame = self._stack.pop()
+            self._flush_row(frame)
+            if frame.rows:
+                self.tables.append(frame.rows)
+
 
 class TextExtractor(HTMLParser):
     """Stdlib HTMLParser extracting normalized visible text blocks while ignoring script/style."""

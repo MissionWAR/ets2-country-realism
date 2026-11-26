@@ -1,3 +1,4 @@
+# Automated weekly Phase A semi-auto release pipeline (Fridays 06:00 UTC + manual dispatch).
 name: Phase A Weekly Release
 
 on:

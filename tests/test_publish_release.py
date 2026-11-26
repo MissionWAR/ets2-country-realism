@@ -828,12 +828,12 @@ def test_changelog_d08_d12_global_coverage_tier3_rollup_and_expanded_attribution
     )
     assert len(t3_iso2s) >= 140  # 140+ Tier 3 curated global baselines
 
-    # Ensure deterministic >10 extended fallback FX rollup even after live FX runs succeed
+    # Ensure deterministic extended fallback FX rollup (>20) even after live FX runs succeed
     from ets2_realism.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
 
     updated_fx = dict(base_lock.fx_rates)
     ext_fx_keys = sorted(c for c in updated_fx if c in EXTENDED_GLOBAL_CURRENCIES)
-    for ccy in ext_fx_keys[:15]:
+    for ccy in ext_fx_keys[:40]:
         updated_fx[ccy] = updated_fx[ccy].model_copy(update={"fallback_used": True})
 
     synthetic_alerts = [

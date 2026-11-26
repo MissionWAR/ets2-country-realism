@@ -1,6 +1,6 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-11-16
+**Analysis Date:** 2026-11-26
 
 ## Directory Layout
 
@@ -8,199 +8,262 @@
 d:\CODE\Ets2 Mod V2\
 ├── .agents/                          # Project-local agent skills (vendored SCS Modding Wiki)
 │   └── skills/
-│       └── scs-modding-wiki/         # SKILL.md, index.json, sources.json, 163 mirrored wiki docs
+│       └── scs-modding-wiki/         # SKILL.md, index.json, sources.json, 162 mirrored wiki docs
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                    # Day-1 CI: ruff check/format, basedpyright strict, pytest
-├── .planning/                        # GSD project metadata, research, plans, and codebase maps
-│   ├── codebase/                     # ARCHITECTURE.md, STRUCTURE.md (generated codebase analysis)
-│   ├── intel/                        # Refresh metadata (.last-refresh.json)
-│   ├── phases/
-│   │   └── 01-vfs-1-62-baseline-extraction-structural-sii-engine/
-│   ├── research/                     # Pre-implementation research docs (STACK, ARCHITECTURE, etc.)
-│   ├── config.json                   # GSD workflow, model, and skill bindings
-│   ├── PROJECT.md                    # Core project scope and locked architectural decisions
-│   ├── REQUIREMENTS.md               # Traceable V1/V2 requirements matrix
-│   ├── ROADMAP.md                    # 5-phase V1 milestone roadmap and plan tracker
-│   └── STATE.md                      # Live execution position and metrics
-├── data/
-│   └── baselines/
-│       └── ets2_1.62_def/            # Deterministic clean-room ETS2 1.62.3.3s JSON baseline
-│           ├── countries.json        # 36 base country_data schemas
-│           ├── fuel_boards.json      # 461 fuel totem boards + 5 excluded highway signs
-│           ├── locales.json          # 43 active locales, 12 tz_* keys, 99 fp_* keys
-│           ├── manifest.json         # Version counts, DLC audit (107 DLCs), file SHA-256 digests
-│           └── speed_limits.json     # 36 country speed_limits.sii schemas (incl. train/tram)
+│       ├── ci.yml                    # Push/PR quality gates: ruff check/format, basedpyright strict, pytest
+│       ├── osm-speed-audit.yml       # Monthly quarantined OSM speed-limit drift audit -> rolling Issue
+│       └── phase-a-release.yml       # Friday 06:00 UTC fetch, diff-gated Core build, snapshots-latest & Release PR
+├── .planning/                        # GSD planning artifacts, research, phase logs & codebase maps
+│   ├── codebase/                     # ARCHITECTURE.md, STRUCTURE.md, STACK.md, INTEGRATIONS.md, etc.
+│   ├── intel/                        # Cached codebase intel JSONs
+│   └── phases/                       # Completed V1 Phase 1–5 plans, summaries, reviews & verifications
+├── assets/
+│   └── icons/                        # Checked-in clean-room 276x162 JPEG mod icons (4 files)
+│       ├── promods_summer.jpg
+│       ├── promods_winter.jpg
+│       ├── summer.jpg
+│       └── winter.jpg
+├── data/                             # Checked-in clean-room immutable registries & baselines
+│   ├── baselines/
+│   │   └── ets2_1.62_def/            # Deterministic ETS2 1.62.3.3s baseline JSONs (5 files)
+│   │       ├── countries.json        # 36 Vanilla+DLC country_data schemas
+│   │       ├── fuel_boards.json      # 461 single-text fuel boards (373 active_fp, 88 placeholder/blank)
+│   │       ├── locales.json          # 43 active locales, 12 @@tz_*@@ keys, 99 @@fp_*@@ keys
+│   │       ├── manifest.json         # Counts, 107-DLC country audit, payload SHA-256 digests
+│   │       └── speed_limits.json     # 36 country speed_limits.sii schemas (incl. train/tram)
+│   ├── curated/
+│   │   └── tier3_fuel_baselines.json # 186 curated CC BY 4.0 Tier 3 global retail fuel baselines
+│   ├── laws/
+│   │   ├── countries/                # 225 canonical per-country law JSONs (<iso2>.json, ad.json..zw.json)
+│   │   └── speed_audit_allowlist.json# 11 clean-room documented statutory speed-limit deviations
+│   └── mappings/
+│       ├── country_aliases.json      # 119 third-party slug aliases (incl. SemEuropa shields & TZ overrides)
+│       ├── currencies.json           # 151 ISO-4217 currencies, sanity bands & 225 territory mappings
+│       └── ets2_countries.json       # 225 country-to-ETS2 slug/ISO mappings (36 vanilla_1_62 + 189 global)
+├── scripts/
+│   └── generate_icons.py             # Thin reproducible wrapper to regenerate assets/icons/*.jpg
 ├── src/
-│   └── ets2v2/                       # Installable Python 3.12+ package (`ets2-world-realism`)
-│       ├── __init__.py               # Package docstring and __version__ = "0.1.0"
-│       ├── cli.py                    # CLI entrypoint (`ets2v2` console script)
+│   └── ets2_realism/                 # Installable Python 3.12+ package (`ets2-country-realism`, 73 files)
+│       ├── __init__.py               # Package docstring & __version__ = "0.1.0"
+│       ├── cli.py                    # Root CLI entrypoint (`ets2-realism`, 9 command groups)
 │       ├── py.typed                  # PEP 561 typed-package marker
-│       ├── baseline/                 # ETS2 1.62 baseline Pydantic models & extractor
-│       │   ├── __init__.py
-│       │   ├── extractor.py
-│       │   └── models.py
-│       ├── sii/                      # Structural SII/SUI lexer, hygiene, surgical editor & adapters
-│       │   ├── __init__.py
-│       │   ├── country.py
-│       │   ├── document.py
-│       │   ├── hygiene.py
-│       │   ├── lexer.py
-│       │   ├── localization.py
-│       │   ├── sign_board.py
-│       │   └── speed_limits.py
-│       └── vfs/                      # Clean-room HashFS v1/v2, ZIP, directory & VfsStack overlay
-│           ├── __init__.py
-│           ├── cityhash.py
-│           ├── dir_archive.py
-│           ├── hashfs.py
-│           ├── stack.py
-│           ├── types.py
-│           └── zip_archive.py
-├── tests/                            # Pytest suite (113 CI-safe + 2 @pytest.mark.local_ets2)
-│   ├── test_baseline_contracts.py
-│   ├── test_baseline_extractor.py
-│   ├── test_cli_scaffold.py
-│   ├── test_sii_boards_locales.py
-│   ├── test_sii_country.py
-│   ├── test_sii_document.py
-│   ├── test_sii_hygiene.py
-│   ├── test_sii_speed_limits.py
-│   ├── test_vfs_archives.py
-│   ├── test_vfs_cityhash.py
-│   └── test_vfs_stack.py
+│       ├── audit/                    # Quarantined Layer 7C OSM speed drift & CC BY 4.0 taint scanner (5 files)
+│       ├── baseline/                 # Clean-room ETS2 1.62 metadata schemas & extractor (3 files)
+│       ├── fetch/                    # Online-only hardened HTTP/XML/HTML FX & Tier 1/2 collectors (11 files)
+│       ├── merge/                    # Offline ProMods Companion Builder & compose-local engine (10 files)
+│       ├── normalize/                # Pure offline FX/fuel bounds, lockfile & 460-board totem logic (8 files)
+│       ├── package/                  # Clean-room Core SII synthesizer, Zero-DDS totems, icons & builder (6 files)
+│       ├── publish/                  # Phase A canonical SHA-256 diff-gate, ledger & changelogs (4 files)
+│       ├── registry/                 # 225-country law validator, DST zoneinfo & v1 RealismSnapshot (5 files)
+│       ├── sii/                      # Structural SII/SUI lexer, hygiene, surgical SiiDocument & adapters (8 files)
+│       └── vfs/                      # HashFS v1/v2, ZIP, Dir, VfsStack overlay & MIT CityHash64 (7 files)
+├── state/                            # Versioned operational state updated by Phase A Release PRs
+│   ├── prices.lock.json              # Canonical 151-FX / 225-territory fuel & FX lockfile
+│   └── published.json                # v1 per-edition canonical payload/snapshot SHA-256 release ledger
+├── tests/                            # Pytest suite (45 test modules, 634 CI-safe + 4 local-archive tests)
 ├── .gitattributes                    # Enforces LF line endings and binary markers (.scs, .dds, .jpg, .png)
-├── .gitignore                        # Excludes .venv/, build/, dist/, out/, raw/, vendor/, caches
-├── pyproject.toml                    # Hatchling build, dependencies, Ruff, Basedpyright, Pytest config
-└── uv.lock                           # Locked 17-package reproducible dependency graph
+├── .gitignore                        # Excludes .venv/, build/, dist/, out/, raw/, vendor/, caches, *.tmp
+├── pyproject.toml                    # Hatchling build, dependencies, ets2-realism script, Ruff, Basedpyright, Pytest
+└── uv.lock                           # Locked reproducible uv dependency graph
 ```
 
 ## Directory Purposes
 
-**`src/ets2v2/`:**
-- Purpose: Root Python package containing only active Phase 1 subsystems (`cli.py`, `vfs/`, `sii/`, `baseline/`).
-- Contains: Typed modules (`py.typed`), Pydantic v2 schemas, pure-Python VFS/SII engines, and CLI orchestration.
-- Key files: `src/ets2v2/__init__.py`, `src/ets2v2/cli.py`, `src/ets2v2/py.typed`.
+**`src/ets2_realism/`:**
+- Purpose: Root installable Python package (`ets2-country-realism`) containing the `ets2-realism` CLI and 10 strictly acyclic domain subpackages.
+- Contains: Typed Python 3.12+ modules (`basedpyright` strict, `py.typed`), frozen Pydantic v2 models, and pure-Python VFS/SII/packaging/merge engines.
+- Key files: `src/ets2_realism/__init__.py`, `src/ets2_realism/cli.py`, `src/ets2_realism/py.typed`.
 
-**`src/ets2v2/vfs/`:**
-- Purpose: Cross-platform read-only SCS virtual filesystem abstraction.
-- Contains: MIT pure-Python `CityHash64` 1.0.3 (`cityhash.py`), protocol/diagnostic types (`types.py`), HashFS v1/v2 & magic dispatcher (`hashfs.py`), ZIP/ZIP-`.scs` reader (`zip_archive.py`), root-contained directory reader (`dir_archive.py`), and priority overlay stack (`stack.py`).
-- Key files: `src/ets2v2/vfs/__init__.py`, `src/ets2v2/vfs/types.py`, `src/ets2v2/vfs/cityhash.py`, `src/ets2v2/vfs/hashfs.py`, `src/ets2v2/vfs/zip_archive.py`, `src/ets2v2/vfs/dir_archive.py`, `src/ets2v2/vfs/stack.py`.
+**`src/ets2_realism/vfs/`:**
+- Purpose: Cross-platform read-only SCS virtual filesystem layer.
+- Contains: Protocol & diagnostic types (`types.py`), MIT pure-Python `CityHash64` 1.0.3 (`cityhash.py`), HashFS v1/v2 & magic dispatcher (`hashfs.py`), ZIP/ZIP-`.scs` reader (`zip_archive.py`), root-contained directory reader (`dir_archive.py`), and priority overlay engine (`stack.py`).
+- Key files: `src/ets2_realism/vfs/stack.py`, `src/ets2_realism/vfs/hashfs.py`, `src/ets2_realism/vfs/types.py`.
 
-**`src/ets2v2/sii/`:**
-- Purpose: String/comment-aware structural scanner, hygiene checker, and span-preserving surgical SII/SUI editor plus ETS2 format adapters.
-- Contains: Linear lexer (`lexer.py`), UTF-8/LF/path/unit-segment validator (`hygiene.py`), surgical editor (`document.py`), read+patch adapters (`country.py`, `speed_limits.py`), and read-only parsers (`sign_board.py`, `localization.py`).
-- Key files: `src/ets2v2/sii/__init__.py`, `src/ets2v2/sii/lexer.py`, `src/ets2v2/sii/hygiene.py`, `src/ets2v2/sii/document.py`, `src/ets2v2/sii/country.py`, `src/ets2v2/sii/speed_limits.py`, `src/ets2v2/sii/sign_board.py`, `src/ets2v2/sii/localization.py`.
+**`src/ets2_realism/sii/`:**
+- Purpose: Structural SII/SUI lexer, SCS hygiene checker, span-preserving surgical editor, and ETS2 domain adapters.
+- Contains: Linear scanner (`lexer.py`), UTF-8/LF/path/unit-segment validator (`hygiene.py`), surgical `SiiDocument` (`document.py`), read+patch adapters (`country.py`, `speed_limits.py`), and read-only parsers (`sign_board.py`, `localization.py`).
+- Key files: `src/ets2_realism/sii/document.py`, `src/ets2_realism/sii/lexer.py`, `src/ets2_realism/sii/country.py`, `src/ets2_realism/sii/speed_limits.py`.
 
-**`src/ets2v2/baseline/`:**
-- Purpose: Clean-room ETS2 `1.62.3.3s` metadata extraction, JSON serialization, and SHA-256 verification.
-- Contains: Frozen Pydantic baseline schemas (`models.py`) and extraction/verification pipeline (`extractor.py`).
-- Key files: `src/ets2v2/baseline/__init__.py`, `src/ets2v2/baseline/models.py`, `src/ets2v2/baseline/extractor.py`.
+**`src/ets2_realism/baseline/`:**
+- Purpose: Clean-room ETS2 `1.62.3.3s` metadata extraction, canonical JSON writing, and SHA-256 verification.
+- Contains: Frozen Pydantic baseline models (`models.py`) and extraction pipeline (`extractor.py`).
+- Key files: `src/ets2_realism/baseline/extractor.py`, `src/ets2_realism/baseline/models.py`.
 
-**`data/baselines/ets2_1.62_def/`:**
-- Purpose: Version-controlled clean-room JSON fixture snapshot extracted from ETS2 `1.62.3.3s` (`version.scs`, `def.scs`, `locale.scs`, and audited `dlc_*.scs`).
-- Contains: Five deterministic UTF-8 no-BOM LF JSON files (`countries.json`, `speed_limits.json`, `fuel_boards.json`, `locales.json`, `manifest.json`). Zero `.sii`/`.sui` files are permitted here.
+**`src/ets2_realism/normalize/`:**
+- Purpose: Pure offline currency, FX, fuel price, lockfile, and Option 4b Zero-DDS totem formatting logic.
+- Contains: Lockfile/alert schemas (`models.py`), 225-territory / 151-currency registry loader (`currencies.py`), multi-provider FX cross-validator (`fx.py`), bounds/WoW circuit-breaker & secondary-grade spreads (`fuel.py`), `prices.lock.json` I/O & staleness (`lockfile.py`), 461-board classifier (`totem_catalog.py`), and glyph/font-width formatter (`totem_format.py`).
+- Key files: `src/ets2_realism/normalize/currencies.py`, `src/ets2_realism/normalize/fx.py`, `src/ets2_realism/normalize/fuel.py`, `src/ets2_realism/normalize/totem_format.py`.
+
+**`src/ets2_realism/registry/`:**
+- Purpose: Canonical 225-country law registry validation, dynamic seasonal DST timezone resolution, and locked `schema_version=1` `RealismSnapshot` export/verification.
+- Contains: Law & alias schemas (`models.py`), strict loader/validator (`loader.py`), `zoneinfo`/`tzdata` DST resolver (`timezone.py`), and snapshot + `SHA256SUMS.txt` engine (`snapshot.py`).
+- Key files: `src/ets2_realism/registry/models.py`, `src/ets2_realism/registry/loader.py`, `src/ets2_realism/registry/timezone.py`, `src/ets2_realism/registry/snapshot.py`.
+
+**`src/ets2_realism/fetch/`:**
+- Purpose: Online-only hardened HTTP/XML/OOXML/HTML transport and live FX + Tier 1/2 fuel price collectors.
+- Contains: Hardened HTTP/XXE client (`http.py`), OOXML zip-bomb guard (`_parsing.py`), stdlib HTML table/text decoders (`_html.py`), fetch DTOs (`models.py`), FX fetchers (`fx.py`), EC Weekly Oil Bulletin (`ec_bulletin.py`), 7 EU Tier 1 national feeds (`national.py`), 8 Global Tier 1 feeds (`global_tier1.py`), 10 guarded Tier 2 national portals (`tier2_portals.py`), and full orchestrator (`pipeline.py`).
+- Key files: `src/ets2_realism/fetch/pipeline.py`, `src/ets2_realism/fetch/http.py`, `src/ets2_realism/fetch/global_tier1.py`, `src/ets2_realism/fetch/tier2_portals.py`.
+
+**`src/ets2_realism/validate/`:**
+- Purpose: Package-independent Offline SCS Workshop Validator and ETS2 `1.62` realism / ProMods / Combo / Totem / License-Taint invariant engine.
+- Contains: Diagnostic models & hard-fail collector (`models.py`), Workshop/local ZIP validator (`workshop.py`), and invariant auditor (`invariants.py`).
+- Key files: `src/ets2_realism/validate/workshop.py`, `src/ets2_realism/validate/invariants.py`, `src/ets2_realism/validate/models.py`.
+
+**`src/ets2_realism/package/`:**
+- Purpose: Clean-room Vanilla+DLC Core mod synthesis, Option 4b Zero-DDS totem compilation, icon generation, and dual-target Workshop/local ZIP building.
+- Contains: SII/SUI synthesizers (`synthesize.py`), 460-board + 43-locale totem compiler (`totems.py`), Pillow `276×162` icon generator (`icons.py`), manifest/description/versions renderers (`metadata.py`), and deterministic ZIP/Workshop builder (`builder.py`).
+- Key files: `src/ets2_realism/package/builder.py`, `src/ets2_realism/package/totems.py`, `src/ets2_realism/package/synthesize.py`, `src/ets2_realism/package/metadata.py`.
+
+**`src/ets2_realism/publish/`:**
+- Purpose: Phase A weekly semi-auto release orchestration, canonical SHA-256 diff-gating, and structured seasonal changelogs.
+- Contains: Canonical Workshop hashing & ledger I/O (`ledger.py`), Markdown changelog renderer (`changelog.py`), and release orchestrator (`release.py`).
+- Key files: `src/ets2_realism/publish/release.py`, `src/ets2_realism/publish/ledger.py`, `src/ets2_realism/publish/changelog.py`.
+
+**`src/ets2_realism/merge/`:**
+- Purpose: Offline ProMods Companion Builder (`EU + ME + MA + TGS`) and `compose-local` arbitrary map-combo patch composer.
+- Contains: Multi-source load-order parser & D-10 self-exclusion (`load_order.py`), include-aware `VfsStack` country scanner (`scanner.py`), 3-tier alias resolver with SemEuropa shield (`aliases.py`), `FieldOwnershipPolicy` surgical merger (`policy.py`), ProMods pack discovery (`promods_discovery.py`), dynamic 43-locale `pm*_fuel` compiler (`promods_fuel.py`), ProMods edition builder (`promods_builder.py`), opt-in JRR/7RM hardcoded totem rewriter (`hardcoded_totems.py`), and `compose_local()` orchestrator (`compose.py`).
+- Key files: `src/ets2_realism/merge/compose.py`, `src/ets2_realism/merge/policy.py`, `src/ets2_realism/merge/load_order.py`, `src/ets2_realism/merge/promods_builder.py`, `src/ets2_realism/merge/promods_fuel.py`.
+
+**`src/ets2_realism/audit/`:**
+- Purpose: Strictly quarantined read-only internal OSM speed-limit drift auditor and automated `CC BY 4.0` license-taint scanner.
+- Contains: Audit/taint Pydantic models (`models.py`), `westnordost` comparator & Markdown renderer (`osm_speeds.py`), opt-in Overpass/Taginfo spot-checker (`overpass.py`), and repo/snapshot/package taint scanner (`taint.py`).
+- Key files: `src/ets2_realism/audit/osm_speeds.py`, `src/ets2_realism/audit/taint.py`, `src/ets2_realism/audit/overpass.py`.
+
+**`data/`:**
+- Purpose: All checked-in clean-room static data inputs (ETS2 `1.62` baseline schemas, 225 statutory country law files, alias/currency/slug mappings, and 186 curated Tier 3 fuel baselines).
+- Contains: Sorted, UTF-8 no-BOM LF JSON files validated by strict Pydantic schemas and license-taint gates.
+- Key files: `data/baselines/ets2_1.62_def/manifest.json`, `data/laws/countries/<iso2>.json`, `data/laws/speed_audit_allowlist.json`, `data/mappings/ets2_countries.json`, `data/mappings/country_aliases.json`, `data/mappings/currencies.json`, `data/curated/tier3_fuel_baselines.json`.
+
+**`state/`:**
+- Purpose: Mutable operational state committed via automated Phase A Release PRs.
+- Contains: Canonical price/FX lockfile and per-edition release ledger.
+- Key files: `state/prices.lock.json`, `state/published.json`.
+
+**`assets/icons/`:**
+- Purpose: Checked-in clean-room `276×162` JPEG Workshop/Mod Manager preview icons.
+- Contains: `summer.jpg`, `winter.jpg`, `promods_summer.jpg`, `promods_winter.jpg`.
+- Key files: Regenerable via `scripts/generate_icons.py` or `ets2-realism package icons`.
 
 **`tests/`:**
-- Purpose: Automated TDD and contract verification suite mirroring `src/ets2v2/` subsystems.
-- Contains: Synthetic/in-memory unit tests (CI-safe) plus `@pytest.mark.local_ets2` live-archive verification in `tests/test_baseline_contracts.py` and scaffold/layout guards in `tests/test_cli_scaffold.py`.
-
-**`.github/workflows/`:**
-- Purpose: Automated CI quality gate execution.
-- Key files: `.github/workflows/ci.yml` (`ruff check`, `ruff format --check`, `basedpyright`, `pytest`).
+- Purpose: Comprehensive offline pytest suite covering every subpackage, contract, security edge case, and taint invariant, plus opt-in local archive integration tests.
+- Contains: 45 `test_*.py` files (`634` CI-safe tests + `4` `@pytest.mark.local_ets2` / `@pytest.mark.local_promods` tests).
+- Key files: `tests/test_cli_scaffold.py`, `tests/test_baseline_contracts.py`, `tests/test_registry_contracts.py`, `tests/test_validate_workshop.py`, `tests/test_totem_compiler.py`, `tests/test_compose_local.py`, `tests/test_promods_builder.py`, `tests/test_license_taint_gate.py`.
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/ets2v2/cli.py`: `ets2v2` CLI (`build_parser()`, `main()`, `vfs inspect`, `baseline extract`).
-- `src/ets2v2/__init__.py`: Package version export (`__version__ = "0.1.0"`).
+- `src/ets2_realism/cli.py`: Root `ets2-realism` CLI entrypoint and all 9 command handlers.
+- `scripts/generate_icons.py`: Standalone icon regeneration wrapper.
+- `.github/workflows/ci.yml`: Push/PR lint, format, strict typecheck, and pytest gate.
+- `.github/workflows/phase-a-release.yml`: Weekly Phase A fetch, release build, validation, snapshot release, and persistent Release PR workflow.
+- `.github/workflows/osm-speed-audit.yml`: Monthly quarantined OSM speed-limit drift advisory workflow.
 
 **Configuration:**
-- `pyproject.toml`: Build system (`hatchling`), runtime/dev dependency bounds, `ets2v2` script, `ruff` (`line-length = 100`, `E/F/I/UP/B/SIM/RUF`), `basedpyright` (`strict`, Python `3.12`), and `pytest` (`testpaths = ["tests"]`, `pythonpath = ["src"]`, `local_ets2` marker).
-- `uv.lock`: Exact locked dependency versions (`pydantic==2.14.3`, `basedpyright==1.40.2`, `pytest==9.2.0`, `pytest-cov==7.1.0`, `ruff==0.17.5`).
-- `.gitattributes` / `.gitignore`: LF text enforcement, binary patterns, and gitignored output/cache directories (`build/`, `dist/`, `out/`, `raw/`, `vendor/`).
-- `.github/workflows/ci.yml`: GitHub Actions CI definition.
+- `pyproject.toml`: Package metadata (`ets2-country-realism`), Hatchling wheel target (`src/ets2_realism`), `ets2-realism` console script, runtime & dev dependencies, Ruff (`line-length = 100`, `py312`), Basedpyright (`strict`), Pytest markers (`local_ets2`, `local_promods`).
+- `uv.lock`: Locked reproducible dependency graph.
+- `.gitattributes`: Enforces LF line endings on source/JSON/SII and binary attributes on `.scs`/`.dds`/`.jpg`/`.png`.
+- `.gitignore`: Excludes `.venv/`, `build/`, `dist/`, `out/`, `raw/`, `vendor/`, caches, and temp files.
 
 **Core Logic:**
-- `src/ets2v2/vfs/hashfs.py` & `src/ets2v2/vfs/stack.py`: Archive dispatching and multi-layer VFS overlay resolution.
-- `src/ets2v2/sii/lexer.py` & `src/ets2v2/sii/document.py`: Structural SII/SUI scanner and surgical span editor.
-- `src/ets2v2/sii/country.py` & `src/ets2v2/sii/speed_limits.py`: Surgical ETS2 country and speed-limit round-trip adapters.
-- `src/ets2v2/baseline/extractor.py` & `src/ets2v2/baseline/models.py`: Clean-room baseline schema models and deterministic extractor/verifier.
+- `src/ets2_realism/vfs/stack.py` & `src/ets2_realism/vfs/hashfs.py`: Multi-layer VFS overlay and HashFS v1/v2 container readers.
+- `src/ets2_realism/sii/document.py` & `src/ets2_realism/sii/lexer.py`: Span-preserving surgical SII/SUI engine.
+- `src/ets2_realism/registry/snapshot.py` & `src/ets2_realism/registry/timezone.py`: Locked v1 `RealismSnapshot` contract and seasonal DST resolver.
+- `src/ets2_realism/fetch/pipeline.py` & `src/ets2_realism/normalize/fuel.py`: 3-tier global FX/fuel fetch & circuit-breaker normalization.
+- `src/ets2_realism/package/builder.py` & `src/ets2_realism/package/totems.py`: Core dual-target packager & Option 4b Zero-DDS totem compiler.
+- `src/ets2_realism/validate/workshop.py` & `src/ets2_realism/validate/invariants.py`: Package-independent Offline SCS Workshop Validator.
+- `src/ets2_realism/publish/release.py` & `src/ets2_realism/publish/ledger.py`: Canonical SHA-256 diff-gate & Phase A release pipeline.
+- `src/ets2_realism/merge/compose.py`, `src/ets2_realism/merge/policy.py`, `src/ets2_realism/merge/promods_builder.py`: `FieldOwnershipPolicy` surgical merger, ProMods Companion Builder, and `compose-local`.
+- `src/ets2_realism/audit/osm_speeds.py` & `src/ets2_realism/audit/taint.py`: Quarantined OSM speed audit and license-taint gate.
 
 **Testing:**
-- `tests/test_cli_scaffold.py`: CLI smoke tests, pyproject/CI validation, and `test_active_phase_only_package_layout()` boundary check.
-- `tests/test_vfs_cityhash.py`, `tests/test_vfs_archives.py`, `tests/test_vfs_stack.py`: CityHash64, HashFS v1/v2, ZIP, Directory, protection stubs, and `VfsStack` overlay tests.
-- `tests/test_sii_hygiene.py`, `tests/test_sii_document.py`, `tests/test_sii_country.py`, `tests/test_sii_speed_limits.py`, `tests/test_sii_boards_locales.py`: SII lexer, hygiene, surgical mutation, country, speed-limit, sign-board, and localization tests.
-- `tests/test_baseline_extractor.py` & `tests/test_baseline_contracts.py`: Synthetic extractor tests, committed `1.62` baseline invariants, zero-raw-SCS check, and `@pytest.mark.local_ets2` 36-country live round-trip checks.
+- `tests/test_vfs_*.py` (3 files): CityHash64, HashFS/ZIP/Dir archives, `VfsStack`.
+- `tests/test_sii_*.py` (5 files): Lexer/document, hygiene, country, speed limits, sign boards & locales.
+- `tests/test_baseline_*.py` (2 files): Baseline extraction & 1.62 contract assertions.
+- `tests/test_registry_*.py`, `tests/test_country_aliases.py`, `tests/test_global_registry_expansion.py` (6 files): 225-country registry schema, contracts, timezone, aliases, v1 snapshot verification.
+- `tests/test_fetch_*.py` & `tests/test_normalize_*.py` (7 files): FX, EU/Global Tier 1, Tier 2 portals, fetch pipeline, currency/fuel normalization.
+- `tests/test_totem_*.py`, `tests/test_package_*.py`, `tests/test_hardcoded_totems.py` (6 files): Zero-DDS totem formatting/compiling, SII synthesis, icons/metadata, Core builder, JRR/7RM hardcoded totems.
+- `tests/test_validate_*.py` (2 files): Offline SCS Workshop Validator & 1.62/ProMods/Combo invariants.
+- `tests/test_publish_*.py` (3 files): Release ledger, Phase A orchestrator, workflow contract.
+- `tests/test_merge_*.py`, `tests/test_promods_*.py`, `tests/test_compose_local.py` (8 files): Load order, scanner, aliases, policy, ProMods discovery/fuel/builder, `compose-local`.
+- `tests/test_audit_osm_speeds.py`, `tests/test_license_taint_gate.py`, `tests/test_cli_scaffold.py` (3 files): Quarantined OSM audit, CC BY 4.0 taint gate, CLI subcommand coverage.
 
 ## Naming Conventions
 
-**Files & Packages:**
-- Lowercase `snake_case.py` for Python modules (`dir_archive.py`, `speed_limits.py`, `sign_board.py`).
-- Short lowercase subsystem package names (`vfs/`, `sii/`, `baseline/`).
-- Test modules mirror subsystem prefix: `tests/test_<subsystem>_<area>.py` (`test_vfs_stack.py`, `test_sii_country.py`, `test_baseline_contracts.py`).
-- Clean-room JSON baselines use lowercase `snake_case.json` (`countries.json`, `fuel_boards.json`, `locales.json`, `manifest.json`, `speed_limits.json`).
+**Files:**
+- Python modules: `snake_case.py` (e.g., `promods_builder.py`, `totem_catalog.py`, `speed_limits.py`); internal helper modules use a leading underscore (`src/ets2_realism/fetch/_html.py`, `src/ets2_realism/fetch/_parsing.py`).
+- Test modules: `test_<subsystem>_<topic>.py` flat inside `tests/` (e.g., `tests/test_merge_policy.py`, `tests/test_fetch_tier2_portals.py`).
+- Country law records: lowercase ISO-2 JSON files `data/laws/countries/<iso2>.json` (e.g., `data/laws/countries/is.json`, `data/laws/countries/de.json`).
+- Emitted ETS2 archives: `ETS2_Country_Realism_Core_{Summer|Winter}.zip`, `ETS2_Country_Realism_ProMods_{Summer|Winter}.zip`, `zz_ETS2_Realism_ComboPatch_{Summer|Winter}.scs`.
+- Emitted fuel locale modules: `locale/<lang>/local_module.ets2r_fuel.sii` (unit `.ets2r_fuel`), `locale/<lang>/local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii`.
 
-**Code Symbols:**
-- `PascalCase` for Pydantic models, dataclasses, protocols, and exceptions (`VfsArchive`, `VfsStack`, `SiiDocument`, `BaselineBundle`, `ProtectedPayloadError`, `SiiEncodingError`).
-- `snake_case` for functions, methods, and fields; leading underscore (`_helper_name`) for module-private helpers and internal dataclasses (`_OpenUnit`, `_HashFsRecord`, `_LaneSpanGroup`).
-- `UPPER_SNAKE_CASE` for module constants and compiled regexes (`DEFAULT_SEEDED_PREFIXES`, `MAX_V2_TABLE_BYTES`, `EXTRACTOR_SCHEMA_VERSION`, `_UNIT_SEGMENT_CHARS_RE`).
-- Explicit `__all__` export lists in every subpackage `__init__.py`.
+**Directories:**
+- Python subpackages: single lowercase domain noun (`vfs/`, `sii/`, `baseline/`, `normalize/`, `registry/`, `fetch/`, `validate/`, `package/`, `publish/`, `merge/`, `audit/`).
+- Data directories: lowercase plural nouns (`data/baselines/`, `data/laws/countries/`, `data/mappings/`, `data/curated/`).
+- Build output directories (gitignored): `dist/workshop/{summer,winter,promods-summer,promods-winter}/`, `dist/local/`, `dist/snapshots/`, `dist/audit/`.
 
-**SCS Mod Assets & Hygiene:**
-- POSIX `/` separators only; no `..` parent traversal; UTF-8 without BOM; LF (`\n`) line endings.
-- Unit name segments strictly match `[a-z0-9_]{1,12}` separated by `.` (`validate_unit_name_segments()` in `src/ets2v2/sii/hygiene.py`).
+## Where to Add New Code
 
-## Where to Add New Code (Phases 2–5 Placement Guide)
+**New Country Law / Territory Support:**
+- Statutory law record: `data/laws/countries/<iso2>.json`
+- Country slug/ISO mapping: `data/mappings/ets2_countries.json`
+- Third-party map-mod slug alias or TZ override: `data/mappings/country_aliases.json`
+- New currency or Tier 3 curated fuel baseline: `data/mappings/currencies.json` and `data/curated/tier3_fuel_baselines.json`
+- Tests: `tests/test_registry_contracts.py` and `tests/test_global_registry_expansion.py`
 
-**Important Pre-Condition (Active-Phase Guard):**
-`tests/test_cli_scaffold.py::test_active_phase_only_package_layout` (`lines 63–74`) explicitly enforces that `src/ets2v2/` contains only `{"__init__.py", "py.typed", "cli.py", "vfs", "sii", "baseline"}` and rejects `{"fetch", "normalize", "merge", "validate", "package"}` during Phase 1. When starting each new phase, update `allowed_phase*_entries` / `deferred_phase_dirs` in `tests/test_cli_scaffold.py` deliberately alongside introducing that phase's package(s).
+**New Live Fuel Collector (Tier 1 or Tier 2):**
+- Online collector implementation: `src/ets2_realism/fetch/national.py` (EU Tier 1), `src/ets2_realism/fetch/global_tier1.py` (Global Tier 1), or `src/ets2_realism/fetch/tier2_portals.py` (guarded Tier 2)
+- Precedence & pipeline wiring: `src/ets2_realism/fetch/pipeline.py` (`_FEED_PRECEDENCE`) and `src/ets2_realism/fetch/__init__.py`
+- Staleness bucket (if monthly/quarterly): `src/ets2_realism/normalize/lockfile.py`
+- Tests: `tests/test_fetch_fuel.py`, `tests/test_fetch_global_tier1.py`, `tests/test_fetch_tier2_portals.py`, or `tests/test_fetch_pipeline.py` (using mocked `httpx.MockTransport`)
 
-**Phase 2 — Realism Registry, Seasonal Core Builds & Offline Validator:**
-- **Canonical data files:** Place YAML/JSON country speed, DRL, axle, and alias registries under `data/laws/` and `data/mappings/`; place the release SHA-256 diff ledger at `state/published.json`.
-- **DST & registry normalization:** Add `src/ets2v2/normalize/` for canonical registry loading and stdlib `zoneinfo` + `tzdata` seasonal DST computation (`@@tz_*@@` vs plain `"CET"`/`"WET"`/`"AST"`).
-- **Mod compilation:** Add `src/ets2v2/merge/` for seasonal `country_data` + `speed_limits.sii` generation built over `ets2v2.sii` surgical editors (`patch_country_data()`, `patch_speed_limits()`).
-- **Offline SCS Validator:** Add `src/ets2v2/validate/` wrapping `ets2v2.sii.hygiene.validate_sii_hygiene()` and adding Workshop checks (`00001`–`00010`, `WARN 00001`/`00002`, `276x162` `.jpg` icon, `manifest.sii`/`versions.sii` constraints, no ZIP-as-`.scs` errors).
-- **Packaging & CI:** Add `src/ets2v2/package/` for staging `dist/workshop/{summer,winter}/` (`universal/` and `universal.zip`), wire build/validate CLI commands in `src/ets2v2/cli.py`, add Phase A Friday release workflow in `.github/workflows/`, and add tests in `tests/test_validate_*.py`, `tests/test_merge_*.py`, `tests/test_package_*.py`.
+**New Validation Rule or ETS2 Invariant:**
+- Workshop/archive/format check: `src/ets2_realism/validate/workshop.py`
+- Realism/ProMods/Combo/Totem/Taint invariant: `src/ets2_realism/validate/invariants.py` (keep `validate/` strictly independent of `package/`, `merge/`, `audit/`)
+- Tests: `tests/test_validate_workshop.py` or `tests/test_validate_invariants.py`
 
-**Phase 3 — Open European Fuel/FX Pipeline & Zero-DDS Totems:**
-- **Source configs & circuit-breaker state:** Add `data/sources.yaml` (FX/fuel endpoint configs), `prices.lock.json` (last-known-good fallback store), and `data/mappings/fuel_sign_boards.yaml`.
-- **Collectors & FX conversion:** Add `src/ets2v2/fetch/` (`Frankfurter v2`, `ECB`, `fawazahmed0`, `CBR` FX validators; Tier 1 EU/EEA collectors with `0.01–5.00 EUR/L` and `±25%` circuit-breaker guards) and extend `src/ets2v2/normalize/` for `eur_per_liter` vs `local_display_price` conversion.
-- **Zero-DDS totem engine:** Extend `src/ets2v2/sii/sign_board.py` and `src/ets2v2/sii/localization.py` with write/patch helpers if surgical board mutation is needed, and implement Option 4b `@@fp_*_ets2v2@@` `def/sign/board/*.sii` + 43-locale `locale/<lang>/local_module.ets2v2_fuel.sii` compilation in `src/ets2v2/merge/`.
+**New Map-Combo Policy / Totem Pattern:**
+- Merge policy rule: `src/ets2_realism/merge/policy.py`
+- Load-order / archive detection: `src/ets2_realism/merge/load_order.py` or `src/ets2_realism/merge/scanner.py`
+- Opt-in hardcoded board signature: `src/ets2_realism/merge/hardcoded_totems.py`
+- Tests: `tests/test_merge_policy.py`, `tests/test_compose_local.py`, `tests/test_hardcoded_totems.py`
 
-**Phase 4 — ProMods Companion & Local Map Combo Composer:**
-- **Alias & ProMods schemas:** Populate `data/mappings/country_aliases.yaml` and `data/mappings/pm_totem_keys.yaml` (keeping zero ProMods `.scs` or extracted `.sii`/`.sui` files in Git).
-- **Snapshot & `FieldOwnershipPolicy`:** Extend `src/ets2v2/normalize/` to emit/validate `realism-snapshot-{summer|winter}.json`; extend `src/ets2v2/merge/` with `FieldOwnershipPolicy` (`max_of_map_and_real`, `patch_if_single_tz`), ProMods `EU + ME + MA + TGS` companion builder (`local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii`), and load-order scanner over `ets2v2.vfs.VfsStack` (handling `.sui`/`.sii` fragments, `base/`, `empty_stub_paths()`, `AEM!`/encrypted-ZIP diagnostics, `--unpacked-defs`, and `--patch-hardcoded-totems`).
-- **CLI:** Add `compose-local` (and ProMods build subcommand) in `src/ets2v2/cli.py`, emitting `zz_ETS2V2_ComboPatch_{Summer|Winter}.scs` via `src/ets2v2/package/`.
+**New CLI Subcommand:**
+- Parser registration & handler: `src/ets2_realism/cli.py` (keep domain logic inside the appropriate subpackage; CLI handles arg parsing, exit codes, and text/`--json` rendering only)
+- Tests: `tests/test_cli_scaffold.py`
 
-**Phase 5 — Global Tier 1/2/3 Coverage & Internal OSM Audit:**
-- **Global collectors & baselines:** Extend `src/ets2v2/fetch/` with non-EU Tier 1 collectors and isolated per-country Tier 2 scrapers; expand `data/laws/` Tier 3 coverage to `200+` territories.
-- **Isolated OSM audit:** Place the CI-only OSM Overpass/Taginfo (`CC BY-SA`) speed-limit drift audit in an isolated audit module/script and dedicated CI check asserting zero `CC BY-SA` data provenance enters `CC BY 4.0` snapshot or mod outputs.
-
-**Utilities & Shared Helpers:**
-- VFS container/path/diagnostic utilities belong in `src/ets2v2/vfs/types.py`.
-- SII scalar/tuple/span helpers belong in `src/ets2v2/sii/lexer.py`; encoding/path/unit hygiene checks belong in `src/ets2v2/sii/hygiene.py`.
+**Shared Offline Utilities:**
+- Path normalization & VFS helpers: `src/ets2_realism/vfs/types.py`
+- SII string quoting & hygiene: `src/ets2_realism/package/synthesize.py`, `src/ets2_realism/sii/hygiene.py`
+- Hardened HTTPS / XML / HTML helpers (online-only): `src/ets2_realism/fetch/http.py`, `_parsing.py`, `_html.py`
 
 ## Special Directories
 
-**`data/baselines/` (`data/baselines/ets2_1.62_def/`):**
-- Purpose: Holds deterministic clean-room JSON metadata extracted from ETS2 `1.62.3.3s` archives (`countries.json`, `speed_limits.json`, `fuel_boards.json`, `locales.json`, `manifest.json`).
-- Generated: Extracted via `ets2v2 baseline extract` (only regenerates on game updates or extractor schema bumps; verified zero-diff via `--check`).
-- Committed: Yes. Enforced free of raw `.sii`/`.sui` files by `tests/test_baseline_contracts.py` and `src/ets2v2/baseline/extractor.py` (`--raw-cache-dir` is forbidden inside `data/`).
+**`dist/`, `out/`, `build/`, `raw/`, `vendor/`:**
+- Purpose: Generated Workshop staging trees, local `.zip`/`.scs` mods, `realism-snapshot-*.json` + `SHA256SUMS.txt`, raw baseline caches, and audit reports.
+- Generated: Yes
+- Committed: No (explicitly ignored in `.gitignore` and enforced by `assert_out_dir_not_tracked()` for ProMods/Combo IP protection).
+
+**`data/baselines/ets2_1.62_def/`:**
+- Purpose: Deterministic clean-room JSON extracts of ETS2 `1.62.3.3s` metadata enabling 100% offline CI builds without game archives.
+- Generated: Yes (via `ets2-realism baseline extract` on a machine with ETS2 `1.62.3.3s` installed).
+- Committed: Yes (byte-verified via `ets2-realism baseline extract --check`).
+
+**`state/`:**
+- Purpose: Versioned operational lockfile (`prices.lock.json`) and Phase A release ledger (`published.json`).
+- Generated: Yes (updated by `ets2-realism fetch` and `ets2-realism publish release --write-state`).
+- Committed: Yes (advanced via `release/phase-a-weekly` PRs after manual Workshop upload).
+
+**`.agents/skills/scs-modding-wiki/`:**
+- Purpose: Vendored local mirror of official SCS Modding Wiki documentation (162 pages) for offline modding reference.
+- Generated: No (vendored reference skill).
+- Committed: Yes (excluded from Ruff linting in `pyproject.toml:44`).
 
 **`.planning/`:**
-- Purpose: Stores project specifications (`PROJECT.md`, `REQUIREMENTS.md`, `ROADMAP.md`, `STATE.md`), workflow settings (`config.json`), pre-phase research (`.planning/research/`), phase execution/review/verification artifacts (`.planning/phases/01-*/`), codebase maps (`.planning/codebase/`), and intel timestamps (`.planning/intel/`).
-- Generated: Maintained by GSD planning/execution workflows (`commit_docs: true` in `.planning/config.json`).
-- Committed: Yes. Excluded from Ruff markdown formatting checks via `extend-exclude = [".planning", ".agents"]` in `pyproject.toml`.
-
-**`.agents/` (`skills/scs-modding-wiki/`):**
-- Purpose: Houses vendored project skill `scs-modding-wiki` (`SKILL.md`, `index.json`, `sources.json`, `crawl_report.md`, and 163 mirrored official SCS Modding Wiki pages across `docs/engine/` and `docs/tools/`), wired to GSD agents via `agent_skills` in `.planning/config.json`.
-- Generated: Pre-vendored offline documentation snapshot (read-only reference).
-- Committed: Yes. Excluded from Ruff checks via `pyproject.toml`.
-
-**Gitignored Staging/Cache Directories (`.gitignore`):**
-- `build/`, `dist/`, `out/`, `raw/`, `vendor/`, `.venv/`, `.pytest_cache/`, `.ruff_cache/`, `__pycache__/`: Local virtualenvs, tool caches, optional `--raw-cache-dir` extracts, and generated build/Workshop/combo outputs. Never committed to Git.
+- Purpose: GSD project roadmap, requirements, phase plans/summaries/verifications, and codebase maps.
+- Generated: Managed by GSD workflows.
+- Committed: Yes (excluded from Ruff linting in `pyproject.toml:44`).
 
 ---
 
-*Structure analysis: 2026-11-16*
+*Structure analysis: 2026-11-26*

@@ -1,13 +1,17 @@
 {
   "_meta": {
-    "updated_at": "2026-11-16T19:29:10.323Z",
-    "version": 3
+    "updated_at": "2026-11-26T17:51:00.000Z",
+    "version": 4
   },
   "languages": [
     "Python 3.12+"
   ],
   "frameworks": [
     "Pydantic v2",
+    "httpx",
+    "Pillow",
+    "openpyxl",
+    "zoneinfo + tzdata (IANA DST)",
     "argparse (stdlib CLI)"
   ],
   "tools": [
@@ -17,17 +21,20 @@
     "basedpyright (strict)",
     "pytest",
     "pytest-cov",
-    "GitHub Actions"
+    "GitHub Actions",
+    "GitHub CLI (gh)"
   ],
-  "build_system": "hatchling (pyproject.toml) + uv",
-  "test_framework": "pytest (with pytest-cov)",
+  "build_system": "hatchling (pyproject.toml -> src/ets2_realism) + uv",
+  "test_framework": "pytest (with pytest-cov; 45 test modules, local_ets2 & local_promods markers)",
   "package_manager": "uv (uv.lock)",
   "content_formats": [
     "SCS .sii (SiiNunit unit definition files)",
     "SCS .sui (headerless/fragment include files)",
     "SCS .scs archives (HashFS v1, HashFS v2, ZIP)",
-    "JSON (clean-room ETS2 baseline schemas & manifest)",
-    "Markdown + YAML frontmatter (scs-modding-wiki skill)",
+    "JSON (1.62 baseline, 225-country law registry, v1 realism snapshots, prices.lock.json, published.json)",
+    "JPEG (276x162 clean-room Core & ProMods Workshop icons)",
+    "XLSX / CSV / XML / HTML (open government fuel & FX feeds)",
+    "Markdown + YAML frontmatter (changelogs, OSM drift audit reports, scs-modding-wiki skill)",
     "TOML (pyproject.toml, uv.lock)"
   ]
 }

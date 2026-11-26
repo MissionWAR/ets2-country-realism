@@ -1,235 +1,44 @@
 {
   "_meta": {
-    "updated_at": "2026-11-16T19:29:11.191Z",
-    "version": 2
+    "updated_at": "2026-11-26T17:52:00.000Z",
+    "version": 4
   },
   "entries": {
-    "CLI ets2v2 baseline extract": {
-      "method": "CLI",
-      "path": "ets2v2 baseline extract",
-      "params": [
-        "--game-dir",
-        "--out-dir",
-        "--raw-cache-dir",
-        "--check"
-      ],
-      "file": "src/ets2v2/cli.py",
-      "description": "Extract clean-room ETS2 baseline JSONs or verify zero-diff (--check)"
-    },
-    "CLI ets2v2 vfs inspect": {
-      "method": "CLI",
-      "path": "ets2v2 vfs inspect",
-      "params": [
-        "paths",
-        "--prefix",
-        "--limit",
-        "--json"
-      ],
-      "file": "src/ets2v2/cli.py",
-      "description": "Inspect ordered .scs/.zip/dir VFS layers, paths, and diagnostics"
-    },
-    "PYTHON ets2v2.baseline.extract_baseline": {
-      "method": "PYTHON",
-      "path": "ets2v2.baseline:extract_baseline",
-      "params": [
-        "game_dir",
-        "raw_cache_dir"
-      ],
-      "file": "src/ets2v2/baseline/extractor.py",
-      "description": "Extract BaselineBundle from version.scs, def.scs, locale.scs, and audit dlc_*.scs"
-    },
-    "PYTHON ets2v2.baseline.resolve_game_dir": {
-      "method": "PYTHON",
-      "path": "ets2v2.baseline:resolve_game_dir",
-      "params": [
-        "game_dir"
-      ],
-      "file": "src/ets2v2/baseline/extractor.py",
-      "description": "Resolve ETS2 install path (arg > ETS2_GAME_DIR > DEFAULT_ETS2_GAME_DIR)"
-    },
-    "PYTHON ets2v2.baseline.verify_baseline_bundle": {
-      "method": "PYTHON",
-      "path": "ets2v2.baseline:verify_baseline_bundle",
-      "params": [
-        "bundle",
-        "out_dir"
-      ],
-      "file": "src/ets2v2/baseline/extractor.py",
-      "description": "Verify no raw .sii/.sui files, valid SHA-256s, LF no-BOM, and zero diff"
-    },
-    "PYTHON ets2v2.baseline.write_baseline_bundle": {
-      "method": "PYTHON",
-      "path": "ets2v2.baseline:write_baseline_bundle",
-      "params": [
-        "bundle",
-        "out_dir"
-      ],
-      "file": "src/ets2v2/baseline/extractor.py",
-      "description": "Write deterministic UTF-8 no-BOM LF baseline JSON files and manifest"
-    },
-    "PYTHON ets2v2.cli.main": {
-      "method": "PYTHON",
-      "path": "ets2v2.cli:main",
-      "params": [
-        "argv"
-      ],
-      "file": "src/ets2v2/cli.py",
-      "description": "Root CLI entrypoint dispatching vfs and baseline subcommands"
-    },
-    "PYTHON ets2v2.sii.SiiDocument": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:SiiDocument",
-      "params": [
-        "text",
-        "require_siinunit"
-      ],
-      "file": "src/ets2v2/sii/document.py",
-      "description": "Span-preserving SII/SUI model for surgical scalar/array edits"
-    },
-    "PYTHON ets2v2.sii.parse_country_data": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:parse_country_data",
-      "params": [
-        "source"
-      ],
-      "file": "src/ets2v2/sii/country.py",
-      "description": "Parse country_data unit into CountryDataModel"
-    },
-    "PYTHON ets2v2.sii.parse_country_includes": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:parse_country_includes",
-      "params": [
-        "source"
-      ],
-      "file": "src/ets2v2/sii/country.py",
-      "description": "Extract ordered @include paths from def/country*.sii with col-0/path checks"
-    },
-    "PYTHON ets2v2.sii.parse_localization_db": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:parse_localization_db",
-      "params": [
-        "source"
-      ],
-      "file": "src/ets2v2/sii/localization.py",
-      "description": "Read-only parser for key[]/val[] pairs in localization_db or .sui fragments"
-    },
-    "PYTHON ets2v2.sii.parse_sign_board": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:parse_sign_board",
-      "params": [
-        "source"
-      ],
-      "file": "src/ets2v2/sii/sign_board.py",
-      "description": "Read-only sign_board_template and sign_template_text slot parser"
-    },
-    "PYTHON ets2v2.sii.parse_speed_limits": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:parse_speed_limits",
-      "params": [
-        "source"
-      ],
-      "file": "src/ets2v2/sii/speed_limits.py",
-      "description": "Parse country_speed_limit units into interleaved LaneSpeedRule blocks"
-    },
-    "PYTHON ets2v2.sii.patch_country_data": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:patch_country_data",
-      "params": [
-        "source",
-        "patch"
-      ],
-      "file": "src/ets2v2/sii/country.py",
-      "description": "Surgically patch country_data fields via CountryDataPatch, preserving comments"
-    },
-    "PYTHON ets2v2.sii.patch_speed_limits": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:patch_speed_limits",
-      "params": [
-        "source",
-        "updates"
-      ],
-      "file": "src/ets2v2/sii/speed_limits.py",
-      "description": "Surgically patch targeted vehicle_speed_class lane rules in speed_limits.sii"
-    },
-    "PYTHON ets2v2.sii.scan_sii_structure": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:scan_sii_structure",
-      "params": [
-        "source",
-        "require_siinunit"
-      ],
-      "file": "src/ets2v2/sii/lexer.py",
-      "description": "Single-pass O(n) string/comment-aware structural scanner for SII/SUI text"
-    },
-    "PYTHON ets2v2.sii.validate_sii_hygiene": {
-      "method": "PYTHON",
-      "path": "ets2v2.sii:validate_sii_hygiene",
-      "params": [
-        "source",
-        "require_siinunit"
-      ],
-      "file": "src/ets2v2/sii/hygiene.py",
-      "description": "Check UTF-8 no-BOM, LF, col-0 @include, POSIX paths, and unit segment rules"
-    },
-    "PYTHON ets2v2.vfs.VfsStack": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:VfsStack",
-      "params": [
-        "layers",
-        "seeded_prefixes",
-        "enabled_dlcs"
-      ],
-      "file": "src/ets2v2/vfs/stack.py",
-      "description": "Multi-layer priority VFS overlay with base/ normalization and stub tracking"
-    },
-    "PYTHON ets2v2.vfs.classify_mount_path": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:classify_mount_path",
-      "params": [
-        "raw_path",
-        "enabled_dlcs"
-      ],
-      "file": "src/ets2v2/vfs/stack.py",
-      "description": "Map base/ and opt-in dlc_<id>/ prefixes into (canonical_path, mount_scope)"
-    },
-    "PYTHON ets2v2.vfs.hash_vfs_path": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:hash_vfs_path",
-      "params": [
-        "path",
-        "salt"
-      ],
-      "file": "src/ets2v2/vfs/cityhash.py",
-      "description": "Normalize path and compute SCS HashFS CityHash64 1.0.3 digest"
-    },
-    "PYTHON ets2v2.vfs.is_empty_sii_stub": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:is_empty_sii_stub",
-      "params": [
-        "data"
-      ],
-      "file": "src/ets2v2/vfs/stack.py",
-      "description": "Detect empty SiiNunit {} or {} suppression stubs outside comments/strings"
-    },
-    "PYTHON ets2v2.vfs.normalize_vfs_path": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:normalize_vfs_path",
-      "params": [
-        "path",
-        "allow_empty"
-      ],
-      "file": "src/ets2v2/vfs/types.py",
-      "description": "Canonicalize VFS path to POSIX and reject NUL bytes and '..' traversal"
-    },
-    "PYTHON ets2v2.vfs.open_archive": {
-      "method": "PYTHON",
-      "path": "ets2v2.vfs:open_archive",
-      "params": [
-        "path",
-        "seeded_prefixes"
-      ],
-      "file": "src/ets2v2/vfs/hashfs.py",
-      "description": "Open DirectoryArchive, ZipArchive, HashFsV1/V2, or ProtectedArchiveStub"
-    }
+    "CLI ets2-realism vfs inspect": {"method": "CLI", "path": "ets2-realism vfs inspect", "params": ["paths", "--prefix", "--limit", "--json"], "file": "src/ets2_realism/cli.py", "description": "Inspect ordered .scs/.zip/dir VFS layers and diagnostics"},
+    "CLI ets2-realism baseline extract": {"method": "CLI", "path": "ets2-realism baseline extract", "params": ["--game-dir", "--out-dir", "--raw-cache-dir", "--check"], "file": "src/ets2_realism/cli.py", "description": "Extract ETS2 1.62 baseline JSONs or verify zero diff"},
+    "CLI ets2-realism registry validate": {"method": "CLI", "path": "ets2-realism registry validate", "params": ["--laws-dir", "--mappings", "--baseline-dir", "--json"], "file": "src/ets2_realism/cli.py", "description": "Validate 225-country law registry against baseline"},
+    "CLI ets2-realism registry snapshot": {"method": "CLI", "path": "ets2-realism registry snapshot", "params": ["--season", "--date", "--prices-lock", "--out"], "file": "src/ets2_realism/cli.py", "description": "Export v1 realism-snapshot-{summer,winter}.json"},
+    "CLI ets2-realism registry snapshot-verify": {"method": "CLI", "path": "ets2-realism registry snapshot-verify", "params": ["snapshot_path", "--checksums", "--expected-edition"], "file": "src/ets2_realism/cli.py", "description": "Verify v1 snapshot schema and SHA256SUMS.txt offline"},
+    "CLI ets2-realism package icons": {"method": "CLI", "path": "ets2-realism package icons", "params": ["--out-dir"], "file": "src/ets2_realism/cli.py", "description": "Generate 276x162 Core & ProMods JPEG icons"},
+    "CLI ets2-realism package promods-icons": {"method": "CLI", "path": "ets2-realism package promods-icons", "params": ["--out-dir"], "file": "src/ets2_realism/cli.py", "description": "Generate 276x162 promods_{summer,winter}.jpg icons"},
+    "CLI ets2-realism package build": {"method": "CLI", "path": "ets2-realism package build", "params": ["--edition", "--out-dir", "--prices-lock", "--package-version"], "file": "src/ets2_realism/cli.py", "description": "Build Core Workshop roots and deterministic local ZIPs"},
+    "CLI ets2-realism package promods": {"method": "CLI", "path": "ets2-realism package promods", "params": ["--edition", "--mod-dir", "--out-dir", "--snapshot", "--require-all-packs"], "file": "src/ets2_realism/cli.py", "description": "Compile offline ProMods Editions (EU+ME+MA+TGS)"},
+    "CLI ets2-realism validate workshop": {"method": "CLI", "path": "ets2-realism validate workshop", "params": ["target", "--profile", "--json"], "file": "src/ets2_realism/cli.py", "description": "Offline SCS Workshop Validator (00001-00010) on unpacked root"},
+    "CLI ets2-realism validate local": {"method": "CLI", "path": "ets2-realism validate local", "params": ["target", "--profile", "--json"], "file": "src/ets2_realism/cli.py", "description": "Offline SCS Validator and invariants on local .zip/.scs"},
+    "CLI ets2-realism publish release": {"method": "CLI", "path": "ets2-realism publish release", "params": ["--state", "--prices-lock", "--out-dir", "--write-state", "--force"], "file": "src/ets2_realism/cli.py", "description": "SHA-256 diff-gated Phase A Core release and changelogs"},
+    "CLI ets2-realism fetch": {"method": "CLI", "path": "ets2-realism fetch", "params": ["--lock-path", "--allow-jump", "--fx-only", "--seed-offline", "--no-global", "--no-tier2", "--dry-run"], "file": "src/ets2_realism/cli.py", "description": "Fetch live FX and 3-tier global fuel into prices.lock.json"},
+    "CLI ets2-realism compose-local": {"method": "CLI", "path": "ets2-realism compose-local", "params": ["--season", "--game-log|--profile|--modlist", "--mod-dir", "--unpacked-defs", "--patch-hardcoded-totems", "--dry-run"], "file": "src/ets2_realism/cli.py", "description": "Compose validated zz_ETS2_Realism_ComboPatch_{Summer,Winter}.scs"},
+    "CLI ets2-realism audit osm-speeds": {"method": "CLI", "path": "ets2-realism audit osm-speeds", "params": ["--iso2", "--overpass", "--taginfo", "--out-md", "--out-json", "--fail-on-drift"], "file": "src/ets2_realism/cli.py", "description": "Internal speed-limit drift audit vs westnordost OSM defaults"},
+    "CLI ets2-realism audit taint": {"method": "CLI", "path": "ets2-realism audit taint", "params": ["--repo-root", "--snapshot", "--package", "--json"], "file": "src/ets2_realism/cli.py", "description": "Scan data/, state/, snapshots, and packages for license taint"},
+    "HTTP GET Frankfurter v2 FX": {"method": "GET", "path": "https://api.frankfurter.dev/v2/rates?base=EUR", "params": ["base"], "file": "src/ets2_realism/fetch/fx.py", "description": "Primary MIT EUR FX provider"},
+    "HTTP GET ECB Daily FX XML": {"method": "GET", "path": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml", "params": [], "file": "src/ets2_realism/fetch/fx.py", "description": "ECB daily reference FX XML validator"},
+    "HTTP GET fawazahmed0 FX": {"method": "GET", "path": "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/eur.json", "params": [], "file": "src/ets2_realism/fetch/fx.py", "description": "CC0 fallback FX (+ pages.dev mirror)"},
+    "HTTP GET CBR Daily FX XML": {"method": "GET", "path": "https://www.cbr.ru/scripts/XML_daily.asp", "params": [], "file": "src/ets2_realism/fetch/fx.py", "description": "CBR daily XML FX fallback"},
+    "HTTP GET EC Oil Bulletin": {"method": "GET", "path": "https://energy.ec.europa.eu/data-and-analysis/weekly-oil-bulletin_en", "params": [], "file": "src/ets2_realism/fetch/ec_bulletin.py", "description": "EU-27 XLSX fuel + FionnHughes CSV & fuel-prices.eu fallbacks"},
+    "HTTP GET EU National APIs": {"method": "GET", "path": "UK DESNZ / NO SSB / FR / DE Tankerkoenig / ES MITECO / IT MIMIT / NL CBS", "params": ["TANKERKOENIG_API_KEY"], "file": "src/ets2_realism/fetch/national.py", "description": "7 European open-gov multi-grade fuel feeds"},
+    "HTTP GET Global Tier 1 APIs": {"method": "GET", "path": "US EIA / BR ANP / AR / CO SICOM / CL CNE / MY OpenDOSM / JP METI / KR Opinet", "params": ["EIA_API_KEY", "CNE_API_TOKEN", "OPINET_API_KEY"], "file": "src/ets2_realism/fetch/global_tier1.py", "description": "8 Americas & APAC open-gov Tier 1 fuel feeds"},
+    "HTTP GET Tier 2 Portals": {"method": "GET", "path": "IS/CH/MD/MK/RU/IL/AE/ZA/SA/NG national portals", "params": [], "file": "src/ets2_realism/fetch/tier2_portals.py", "description": "10 guarded Tier 2 national fuel portals"},
+    "HTTP GET Westnordost OSM": {"method": "GET", "path": "https://westnordost.github.io/osm-legal-default-speeds/legal_default_speeds.json", "params": [], "file": "src/ets2_realism/audit/osm_speeds.py", "description": "Internal audit-only speed ruleset comparator"},
+    "HTTP POST Overpass & Taginfo": {"method": "POST", "path": "https://overpass-api.de/api/interpreter", "params": ["data"], "file": "src/ets2_realism/audit/overpass.py", "description": "Opt-in Overpass (<=10 ISO-2s) + Taginfo API v4"},
+    "PYTHON vfs.open_archive": {"method": "PYTHON", "path": "ets2_realism.vfs:open_archive", "params": ["path", "seeded_prefixes"], "file": "src/ets2_realism/vfs/hashfs.py", "description": "Open HashFS v1/v2, ZIP, Dir, or ProtectedArchiveStub"},
+    "PYTHON sii.SiiDocument": {"method": "PYTHON", "path": "ets2_realism.sii:SiiDocument", "params": ["text", "require_siinunit"], "file": "src/ets2_realism/sii/document.py", "description": "Span-preserving surgical SII/SUI editor"},
+    "PYTHON registry.build_realism_snapshot": {"method": "PYTHON", "path": "ets2_realism.registry:build_realism_snapshot", "params": ["registry", "bl_countries", "bl_locales", "season", "prices_lock"], "file": "src/ets2_realism/registry/snapshot.py", "description": "Build deterministic v1 seasonal RealismSnapshot"},
+    "PYTHON fetch.run_price_fetch": {"method": "PYTHON", "path": "ets2_realism.fetch:run_price_fetch", "params": ["lock_path", "include_global", "include_tier2", "write_lock"], "file": "src/ets2_realism/fetch/pipeline.py", "description": "Run FX validation + 3-tier global fuel lock update"},
+    "PYTHON package.build_core_editions": {"method": "PYTHON", "path": "ets2_realism.package:build_core_editions", "params": ["out_dir", "editions", "prices_lock_path"], "file": "src/ets2_realism/package/builder.py", "description": "Compile Core Summer/Winter Workshop roots, ZIPs, totems"},
+    "PYTHON validate.validate_workshop_package": {"method": "PYTHON", "path": "ets2_realism.validate:validate_workshop_package", "params": ["target", "baseline_dir", "profile"], "file": "src/ets2_realism/validate/workshop.py", "description": "Offline SCS Validator across core/promods/combo profiles"},
+    "PYTHON publish.run_phase_a_release": {"method": "PYTHON", "path": "ets2_realism.publish:run_phase_a_release", "params": ["state_path", "prices_lock_path", "out_dir", "write_state", "force_run"], "file": "src/ets2_realism/publish/release.py", "description": "Diff-gated Phase A build, snapshots, and changelogs"},
+    "PYTHON merge.build_promods_editions": {"method": "PYTHON", "path": "ets2_realism.merge:build_promods_editions", "params": ["out_dir", "editions", "mod_dir", "snapshot_path"], "file": "src/ets2_realism/merge/promods_builder.py", "description": "Compile offline ProMods Editions + pm_fuel locales"},
+    "PYTHON merge.compose_local": {"method": "PYTHON", "path": "ets2_realism.merge:compose_local", "params": ["season", "out_dir", "game_log", "unpacked_defs", "patch_hardcoded_totems"], "file": "src/ets2_realism/merge/compose.py", "description": "Compose conflict-free local map-combo patch"},
+    "PYTHON audit.run_osm_speed_audit": {"method": "PYTHON", "path": "ets2_realism.audit:run_osm_speed_audit", "params": ["laws_dir", "allowlist_path", "iso2_filter", "include_overpass"], "file": "src/ets2_realism/audit/osm_speeds.py", "description": "Audit data/laws/ vs westnordost OSM default speeds"}
   }
 }

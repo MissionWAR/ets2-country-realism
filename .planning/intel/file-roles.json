@@ -1,386 +1,88 @@
 {
   "_meta": {
-    "updated_at": "2026-11-16T19:29:10.770Z",
-    "version": 2
+    "updated_at": "2026-11-26T17:52:00.000Z",
+    "version": 4
   },
   "entries": {
-    ".github/workflows/ci.yml": {
-      "exports": [],
-      "imports": [],
-      "type": "config"
-    },
-    "data/baselines/ets2_1.62_def/manifest.json": {
-      "exports": [],
-      "imports": [],
-      "type": "data"
-    },
-    "pyproject.toml": {
-      "exports": [],
-      "imports": [],
-      "type": "config"
-    },
-    "src/ets2v2/__init__.py": {
-      "exports": [
-        "__version__"
-      ],
-      "imports": [],
-      "type": "module"
-    },
-    "src/ets2v2/baseline/__init__.py": {
-      "exports": [
-        "DEFAULT_ETS2_GAME_DIR",
-        "EXTRACTOR_SCHEMA_VERSION",
-        "BaselineBundle",
-        "BaselineCountry",
-        "BaselineManifest",
-        "BaselineSpeedLimit",
-        "BoardClassification",
-        "CountriesBaseline",
-        "FuelBoardEntry",
-        "FuelBoardSlot",
-        "FuelBoardsBaseline",
-        "LocalesBaseline",
-        "SpeedLimitsBaseline",
-        "extract_baseline",
-        "resolve_game_dir",
-        "verify_baseline_bundle",
-        "write_baseline_bundle"
-      ],
-      "imports": [
-        "ets2v2.baseline.extractor",
-        "ets2v2.baseline.models"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/baseline/extractor.py": {
-      "exports": [
-        "DEFAULT_ETS2_GAME_DIR",
-        "EXTRACTOR_SCHEMA_VERSION",
-        "resolve_game_dir",
-        "extract_baseline",
-        "write_baseline_bundle",
-        "verify_baseline_bundle"
-      ],
-      "imports": [
-        "hashlib",
-        "json",
-        "pydantic",
-        "ets2v2.baseline.models",
-        "ets2v2.sii",
-        "ets2v2.sii.lexer",
-        "ets2v2.vfs",
-        "ets2v2.vfs.hashfs"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/baseline/models.py": {
-      "exports": [
-        "BoardClassification",
-        "BaselineManifest",
-        "BaselineCountry",
-        "CountriesBaseline",
-        "BaselineSpeedLimit",
-        "SpeedLimitsBaseline",
-        "FuelBoardSlot",
-        "FuelBoardEntry",
-        "FuelBoardsBaseline",
-        "LocalesBaseline",
-        "BaselineBundle"
-      ],
-      "imports": [
-        "pydantic",
-        "ets2v2.sii.speed_limits"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/cli.py": {
-      "exports": [
-        "CommandHandler",
-        "build_parser",
-        "main"
-      ],
-      "imports": [
-        "argparse",
-        "json",
-        "ets2v2",
-        "ets2v2.baseline",
-        "ets2v2.vfs",
-        "ets2v2.vfs.hashfs"
-      ],
-      "type": "entry-point"
-    },
-    "src/ets2v2/sii/__init__.py": {
-      "exports": [
-        "CountryDataModel",
-        "CountryDataPatch",
-        "LaneSpeedRule",
-        "LocalizationEntry",
-        "SignBoardTemplate",
-        "SignTemplateTextSlot",
-        "SiiAttributeSpan",
-        "SiiDiagnostic",
-        "SiiDocument",
-        "SiiEncodingError",
-        "SiiIncludeSpan",
-        "SiiSpan",
-        "SiiUnitBlock",
-        "SpeedLimitsFile",
-        "VehicleSpeedLimitBlock",
-        "normalize_sii_bytes",
-        "parse_country_data",
-        "parse_country_includes",
-        "parse_localization_db",
-        "parse_sign_board",
-        "parse_sii_float",
-        "parse_speed_limits",
-        "patch_country_data",
-        "patch_speed_limits",
-        "scan_sii_structure",
-        "serialize_sii_text",
-        "validate_sii_hygiene"
-      ],
-      "imports": [
-        "ets2v2.sii.country",
-        "ets2v2.sii.document",
-        "ets2v2.sii.hygiene",
-        "ets2v2.sii.lexer",
-        "ets2v2.sii.localization",
-        "ets2v2.sii.sign_board",
-        "ets2v2.sii.speed_limits"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/country.py": {
-      "exports": [
-        "CountryDataModel",
-        "CountryDataPatch",
-        "parse_country_includes",
-        "parse_country_data",
-        "patch_country_data"
-      ],
-      "imports": [
-        "pydantic",
-        "ets2v2.sii.document",
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/document.py": {
-      "exports": [
-        "SiiAttributeSpan",
-        "SiiDocument",
-        "SiiIncludeSpan",
-        "SiiUnitBlock"
-      ],
-      "imports": [
-        "ets2v2.sii.hygiene",
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/hygiene.py": {
-      "exports": [
-        "SiiEncodingError",
-        "SiiDiagnostic",
-        "normalize_sii_bytes",
-        "serialize_sii_text",
-        "validate_unit_name_segments",
-        "validate_string_path_hygiene",
-        "validate_sii_hygiene"
-      ],
-      "imports": [
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/lexer.py": {
-      "exports": [
-        "SiiSpan",
-        "SiiLexDiagnostic",
-        "SiiIncludeSpan",
-        "SiiAttributeSpan",
-        "SiiUnitBlock",
-        "SiiScanResult",
-        "parse_sii_float",
-        "parse_sii_bool",
-        "split_sii_tuple",
-        "unquote_sii_string",
-        "scan_sii_structure"
-      ],
-      "imports": [
-        "struct"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/localization.py": {
-      "exports": [
-        "LocalizationEntry",
-        "parse_localization_db"
-      ],
-      "imports": [
-        "pydantic",
-        "ets2v2.sii.document",
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/sign_board.py": {
-      "exports": [
-        "SignTemplateTextSlot",
-        "SignBoardTemplate",
-        "parse_sign_board"
-      ],
-      "imports": [
-        "pydantic",
-        "ets2v2.sii.document",
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/sii/speed_limits.py": {
-      "exports": [
-        "LaneSpeedRule",
-        "VehicleSpeedLimitBlock",
-        "SpeedLimitsFile",
-        "parse_speed_limits",
-        "patch_speed_limits"
-      ],
-      "imports": [
-        "pydantic",
-        "ets2v2.sii.document",
-        "ets2v2.sii.lexer"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/__init__.py": {
-      "exports": [
-        "ArchiveDiagnostic",
-        "CompressionKind",
-        "DiagnosticKind",
-        "DirectoryArchive",
-        "EffectiveVfsEntry",
-        "HashFsV1Archive",
-        "HashFsV2Archive",
-        "ProtectedArchiveStub",
-        "ProtectedPayloadError",
-        "UnsupportedCompressionError",
-        "VfsArchive",
-        "VfsEntryMeta",
-        "VfsLayer",
-        "VfsStack",
-        "ZipArchive",
-        "cityhash64",
-        "classify_mount_path",
-        "detect_3nk",
-        "hash_vfs_path",
-        "is_empty_sii_stub",
-        "normalize_vfs_path",
-        "open_archive"
-      ],
-      "imports": [
-        "ets2v2.vfs.cityhash",
-        "ets2v2.vfs.dir_archive",
-        "ets2v2.vfs.hashfs",
-        "ets2v2.vfs.stack",
-        "ets2v2.vfs.types",
-        "ets2v2.vfs.zip_archive"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/cityhash.py": {
-      "exports": [
-        "K0",
-        "K1",
-        "K2",
-        "K3",
-        "cityhash64",
-        "hash_vfs_path"
-      ],
-      "imports": [
-        "struct",
-        "ets2v2.vfs.types"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/dir_archive.py": {
-      "exports": [
-        "DirectoryArchive"
-      ],
-      "imports": [
-        "ets2v2.vfs.types"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/hashfs.py": {
-      "exports": [
-        "DEFAULT_SEEDED_PREFIXES",
-        "MAX_V2_TABLE_BYTES",
-        "MAX_ENTRY_DECOMPRESSED_BYTES",
-        "HashFsV1Archive",
-        "HashFsV2Archive",
-        "ProtectedArchiveStub",
-        "detect_3nk",
-        "open_archive"
-      ],
-      "imports": [
-        "struct",
-        "zlib",
-        "ets2v2.vfs.cityhash",
-        "ets2v2.vfs.dir_archive",
-        "ets2v2.vfs.types",
-        "ets2v2.vfs.zip_archive"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/stack.py": {
-      "exports": [
-        "MAX_STUB_INSPECT_BYTES",
-        "is_empty_sii_stub",
-        "classify_mount_path",
-        "VfsLayer",
-        "EffectiveVfsEntry",
-        "VfsStack"
-      ],
-      "imports": [
-        "ets2v2.vfs.hashfs",
-        "ets2v2.vfs.types"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/types.py": {
-      "exports": [
-        "DiagnosticKind",
-        "CompressionKind",
-        "ProtectedPayloadError",
-        "UnsupportedCompressionError",
-        "detect_3nk",
-        "ArchiveDiagnostic",
-        "VfsEntryMeta",
-        "normalize_vfs_path",
-        "matches_prefixes",
-        "filter_paths_by_prefixes",
-        "DiagnosticCollector",
-        "deduplicate_diagnostics",
-        "decode_vfs_text",
-        "record_3nk_if_present",
-        "VfsArchive"
-      ],
-      "imports": [
-        "pydantic"
-      ],
-      "type": "module"
-    },
-    "src/ets2v2/vfs/zip_archive.py": {
-      "exports": [
-        "MAX_ZIP_ENTRY_BYTES",
-        "ZipArchive"
-      ],
-      "imports": [
-        "zipfile",
-        "zlib",
-        "ets2v2.vfs.types"
-      ],
-      "type": "module"
-    }
+    "pyproject.toml": {"exports": [], "imports": [], "type": "config"},
+    ".github/workflows/ci.yml": {"exports": [], "imports": [], "type": "config"},
+    ".github/workflows/phase-a-release.yml": {"exports": [], "imports": [], "type": "config"},
+    ".github/workflows/osm-speed-audit.yml": {"exports": [], "imports": [], "type": "config"},
+    "scripts/generate_icons.py": {"exports": [], "imports": ["ets2_realism.package.icons"], "type": "script"},
+    "data/baselines/ets2_1.62_def/manifest.json": {"exports": [], "imports": [], "type": "data"},
+    "data/mappings/ets2_countries.json": {"exports": [], "imports": [], "type": "data"},
+    "data/mappings/country_aliases.json": {"exports": [], "imports": [], "type": "data"},
+    "data/mappings/currencies.json": {"exports": [], "imports": [], "type": "data"},
+    "data/curated/tier3_fuel_baselines.json": {"exports": [], "imports": [], "type": "data"},
+    "data/laws/speed_audit_allowlist.json": {"exports": [], "imports": [], "type": "data"},
+    "state/prices.lock.json": {"exports": [], "imports": [], "type": "data"},
+    "state/published.json": {"exports": [], "imports": [], "type": "data"},
+    "src/ets2_realism/__init__.py": {"exports": ["__version__"], "imports": [], "type": "module"},
+    "src/ets2_realism/cli.py": {"exports": ["build_parser", "main"], "imports": ["argparse", "ets2_realism"], "type": "entry-point"},
+    "src/ets2_realism/vfs/cityhash.py": {"exports": ["cityhash64", "hash_vfs_path"], "imports": ["ets2_realism.vfs.types"], "type": "module"},
+    "src/ets2_realism/vfs/dir_archive.py": {"exports": ["DirectoryArchive"], "imports": ["ets2_realism.vfs.types"], "type": "module"},
+    "src/ets2_realism/vfs/hashfs.py": {"exports": ["HashFsV1Archive", "HashFsV2Archive", "open_archive"], "imports": ["ets2_realism.vfs.cityhash"], "type": "module"},
+    "src/ets2_realism/vfs/stack.py": {"exports": ["VfsStack", "is_empty_sii_stub"], "imports": ["ets2_realism.vfs.hashfs"], "type": "module"},
+    "src/ets2_realism/vfs/types.py": {"exports": ["VfsArchive", "normalize_vfs_path", "detect_3nk"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/vfs/zip_archive.py": {"exports": ["ZipArchive"], "imports": ["zipfile"], "type": "module"},
+    "src/ets2_realism/sii/country.py": {"exports": ["CountryDataModel", "patch_country_data"], "imports": ["ets2_realism.sii.document"], "type": "module"},
+    "src/ets2_realism/sii/document.py": {"exports": ["SiiDocument"], "imports": ["ets2_realism.sii.lexer"], "type": "module"},
+    "src/ets2_realism/sii/hygiene.py": {"exports": ["validate_sii_hygiene", "serialize_sii_text"], "imports": ["ets2_realism.sii.lexer"], "type": "module"},
+    "src/ets2_realism/sii/lexer.py": {"exports": ["scan_sii_structure", "parse_sii_float"], "imports": ["struct"], "type": "module"},
+    "src/ets2_realism/sii/localization.py": {"exports": ["parse_localization_db"], "imports": ["ets2_realism.sii.document"], "type": "module"},
+    "src/ets2_realism/sii/sign_board.py": {"exports": ["parse_sign_board"], "imports": ["ets2_realism.sii.document"], "type": "module"},
+    "src/ets2_realism/sii/speed_limits.py": {"exports": ["parse_speed_limits", "patch_speed_limits"], "imports": ["ets2_realism.sii.document"], "type": "module"},
+    "src/ets2_realism/baseline/extractor.py": {"exports": ["extract_baseline", "verify_baseline_bundle"], "imports": ["ets2_realism.sii", "ets2_realism.vfs"], "type": "module"},
+    "src/ets2_realism/baseline/models.py": {"exports": ["BaselineManifest", "BaselineBundle"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/registry/loader.py": {"exports": ["load_law_registry", "validate_law_registry"], "imports": ["pydantic", "zoneinfo"], "type": "module"},
+    "src/ets2_realism/registry/models.py": {"exports": ["CountryLawRecord", "CountryAliasRegistry"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/registry/snapshot.py": {"exports": ["RealismSnapshot", "build_realism_snapshot", "verify_snapshot_file"], "imports": ["ets2_realism.normalize.lockfile"], "type": "module"},
+    "src/ets2_realism/registry/timezone.py": {"exports": ["resolve_ets2_timezone"], "imports": ["zoneinfo"], "type": "module"},
+    "src/ets2_realism/normalize/currencies.py": {"exports": ["load_currency_registry", "load_tier3_fuel_baselines"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/normalize/fuel.py": {"exports": ["normalize_country_fuel_prices"], "imports": ["ets2_realism.normalize.fx"], "type": "module"},
+    "src/ets2_realism/normalize/fx.py": {"exports": ["cross_validate_fx_rates"], "imports": ["ets2_realism.normalize.currencies"], "type": "module"},
+    "src/ets2_realism/normalize/lockfile.py": {"exports": ["load_prices_lockfile", "write_prices_lockfile"], "imports": ["ets2_realism.normalize.fuel"], "type": "module"},
+    "src/ets2_realism/normalize/models.py": {"exports": ["PricesLockfile", "CountryFuelLockEntry"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/normalize/totem_catalog.py": {"exports": ["classify_all_fuel_boards"], "imports": ["ets2_realism.baseline.models"], "type": "module"},
+    "src/ets2_realism/normalize/totem_format.py": {"exports": ["format_national_pump_price", "verify_totem_glyph_and_width"], "imports": ["ets2_realism.normalize.totem_catalog"], "type": "module"},
+    "src/ets2_realism/fetch/_html.py": {"exports": ["extract_html_tables", "decode_with_fallbacks"], "imports": ["html.parser"], "type": "module"},
+    "src/ets2_realism/fetch/_parsing.py": {"exports": ["AnchorExtractor", "validate_ooxml_zip_safety"], "imports": ["zipfile"], "type": "module"},
+    "src/ets2_realism/fetch/ec_bulletin.py": {"exports": ["fetch_ec_weekly_oil_bulletin"], "imports": ["httpx", "openpyxl"], "type": "module"},
+    "src/ets2_realism/fetch/fx.py": {"exports": ["fetch_all_fx_quotes"], "imports": ["httpx"], "type": "module"},
+    "src/ets2_realism/fetch/global_tier1.py": {"exports": ["fetch_all_global_tier1_feeds"], "imports": ["httpx", "openpyxl"], "type": "module"},
+    "src/ets2_realism/fetch/http.py": {"exports": ["HttpFetchError", "fetch_bytes_with_retry"], "imports": ["httpx"], "type": "module"},
+    "src/ets2_realism/fetch/models.py": {"exports": ["FetchRunReport", "RawCountryFuelQuote"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/fetch/national.py": {"exports": ["fetch_all_national_feeds"], "imports": ["httpx"], "type": "module"},
+    "src/ets2_realism/fetch/pipeline.py": {"exports": ["run_price_fetch"], "imports": ["httpx", "ets2_realism.normalize.lockfile"], "type": "module"},
+    "src/ets2_realism/fetch/tier2_portals.py": {"exports": ["TIER2_PORTAL_FEED_NAMES", "fetch_all_tier2_portals"], "imports": ["httpx", "openpyxl"], "type": "module"},
+    "src/ets2_realism/package/builder.py": {"exports": ["build_core_editions", "write_deterministic_zip"], "imports": ["ets2_realism.package.totems"], "type": "module"},
+    "src/ets2_realism/package/icons.py": {"exports": ["generate_all_icons", "generate_promods_icons"], "imports": ["PIL"], "type": "module"},
+    "src/ets2_realism/package/metadata.py": {"exports": ["MANAGED_MANIFEST_MARKER", "render_manifest_sii"], "imports": ["ets2_realism.sii.hygiene"], "type": "module"},
+    "src/ets2_realism/package/synthesize.py": {"exports": ["synthesize_country_sui", "synthesize_speed_limits_sii"], "imports": ["ets2_realism.registry.snapshot"], "type": "module"},
+    "src/ets2_realism/package/totems.py": {"exports": ["FUEL_LOCALE_FILENAME", "compile_totem_payloads"], "imports": ["ets2_realism.normalize.totem_format"], "type": "module"},
+    "src/ets2_realism/validate/invariants.py": {"exports": ["check_license_taint_bytes", "validate_core_realism_invariants"], "imports": ["ets2_realism.sii.country"], "type": "module"},
+    "src/ets2_realism/validate/models.py": {"exports": ["ValidationReport", "ValidationCollector"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/validate/workshop.py": {"exports": ["validate_workshop_package", "validate_local_zip"], "imports": ["PIL", "ets2_realism.validate.invariants"], "type": "module"},
+    "src/ets2_realism/publish/changelog.py": {"exports": ["render_edition_changelog"], "imports": ["ets2_realism.registry.snapshot"], "type": "module"},
+    "src/ets2_realism/publish/ledger.py": {"exports": ["PublishedLedger", "compute_workshop_canonical_sha256"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/publish/release.py": {"exports": ["PhaseAReleaseSummary", "run_phase_a_release"], "imports": ["ets2_realism.package.builder", "ets2_realism.validate.workshop"], "type": "module"},
+    "src/ets2_realism/merge/aliases.py": {"exports": ["CountryResolver"], "imports": ["ets2_realism.registry.loader"], "type": "module"},
+    "src/ets2_realism/merge/compose.py": {"exports": ["COMBO_SCS_FILENAMES", "compose_local"], "imports": ["ets2_realism.merge.policy", "ets2_realism.validate.workshop"], "type": "module"},
+    "src/ets2_realism/merge/hardcoded_totems.py": {"exports": ["patch_hardcoded_numeric_totems"], "imports": ["ets2_realism.sii.sign_board"], "type": "module"},
+    "src/ets2_realism/merge/load_order.py": {"exports": ["build_combo_vfs_stack", "parse_game_log"], "imports": ["ets2_realism.vfs.stack"], "type": "module"},
+    "src/ets2_realism/merge/policy.py": {"exports": ["FieldOwnershipPolicy", "apply_country_policy"], "imports": ["ets2_realism.sii.country"], "type": "module"},
+    "src/ets2_realism/merge/promods_builder.py": {"exports": ["build_promods_editions", "assert_out_dir_not_tracked"], "imports": ["ets2_realism.merge.promods_fuel"], "type": "module"},
+    "src/ets2_realism/merge/promods_discovery.py": {"exports": ["discover_promods_packs"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/merge/promods_fuel.py": {"exports": ["PM_FUEL_MODULES", "compile_promods_fuel_locales"], "imports": ["ets2_realism.sii.localization"], "type": "module"},
+    "src/ets2_realism/merge/scanner.py": {"exports": ["scan_active_countries"], "imports": ["ets2_realism.vfs.stack"], "type": "module"},
+    "src/ets2_realism/audit/models.py": {"exports": ["OsmSpeedAuditReport", "TaintScanReport"], "imports": ["pydantic"], "type": "module"},
+    "src/ets2_realism/audit/osm_speeds.py": {"exports": ["run_osm_speed_audit"], "imports": ["httpx", "ets2_realism.registry.loader"], "type": "module"},
+    "src/ets2_realism/audit/overpass.py": {"exports": ["fetch_overpass_speed_spot_checks"], "imports": ["httpx"], "type": "module"},
+    "src/ets2_realism/audit/taint.py": {"exports": ["scan_repo_and_artifacts_for_taint"], "imports": ["ets2_realism.vfs.hashfs"], "type": "module"},
+    "tests/test_license_taint_gate.py": {"exports": [], "imports": ["pytest"], "type": "test"},
+    "tests/test_compose_local.py": {"exports": [], "imports": ["pytest"], "type": "test"},
+    "tests/test_promods_builder.py": {"exports": [], "imports": ["pytest"], "type": "test"},
+    "tests/test_publish_release.py": {"exports": [], "imports": ["pytest"], "type": "test"},
+    "tests/test_validate_workshop.py": {"exports": [], "imports": ["pytest"], "type": "test"}
   }
 }

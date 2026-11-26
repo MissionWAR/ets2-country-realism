@@ -1,238 +1,268 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-11-16
+**Analysis Date:** 2026-11-26
 
 ## Tech Debt
 
-### `IN-01` Oversized Multi-Responsibility Core Functions (Deferred from Phase 1 Review)
+### Oversized Multi-Responsibility Functions Across Core Modules
 
-**Issue:** Six core functions flagged in `.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-REVIEW.md` (`IN-01`) exceed 80–275 lines and combine I/O, state transitions, validation, and assembly in single scopes:
-- `scan_sii_structure` in `src/ets2v2/sii/lexer.py:473-747` (275 lines): mixes brace tracking, `@include` parsing, `SiiNunit` detection, identifier/array lexing, unit-header lookahead, attribute span creation, and EOF diagnostics.
-- `extract_baseline` in `src/ets2v2/baseline/extractor.py:198-446` (249 lines): combines path/cache validation, `version.sii`, `def/country.sii`, 36 country/speed-limit parses, ~12.9k sign-board scans, `locale.scs` walking, DLC auditing, and manifest hashing.
-- `HashFsV2Archive._load_tables` in `src/ets2v2/vfs/hashfs.py:445-607` (163 lines): combines binary header decoding, table size bounds checking, zlib decompression, metadata word unpacking, and multi-descriptor selection.
-- `parse_country_data` in `src/ets2v2/sii/country.py:148-261` (114 lines): manually extracts and coerces all 20 known scalar, tuple, and array attributes inline.
-- `validate_sii_hygiene` in `src/ets2v2/sii/hygiene.py:235-337` (103 lines): mixes BOM/UTF-8 decoding, line-ending checks, structural scan delegation, `@include` validation, unit naming checks, and attribute path checks.
-- `_BaseHashFsArchive._walk_with_parser` in `src/ets2v2/vfs/hashfs.py:223-311` (89 lines): couples prefix/root/seeded fallback resolution, BFS directory traversal, unsafe entry rejection, and diagnostic path rewriting.
-**Impact:** High cyclomatic complexity raises regression risk when Phase 2–4 extend the parser (`sign_board.py`/`localization.py` write modes, `profile.sii`/load-order scanning, or additional SII unit classes) and lowers unit-level testability of individual branches.
-**Fix approach:** Extract focused single-purpose helpers before extending these modules — e.g., `_scan_statement` / `_open_or_emit_unit` in `src/ets2v2/sii/lexer.py`, `_extract_countries_and_speeds` / `_discover_fuel_boards` / `_extract_locales` in `src/ets2v2/baseline/extractor.py`, and `_parse_v2_entry_record` in `src/ets2v2/vfs/hashfs.py`.
+- **Issue:** Across `73` Python modules (`29,395` LOC) in `src/ets2_realism/`, `25` functions exceed `120` lines and concentrate CLI argument wiring, network orchestration, VFS scanning, SII lexing, and multi-profile validation inside single scopes:
+  - `build_parser()` in `src/ets2_realism/cli.py:940-1900` (`961` lines): registers all subcommands, flags, and defaults in one monolithic builder (out of `1,925` total lines in `cli.py`).
+  - `run_price_fetch()` in `src/ets2_realism/fetch/pipeline.py:235-697` (`463` lines): combines lockfile loading, FX cross-validation, 32 sequential feed invocations, precedence sorting, circuit-breaker evaluation, Tier 3 repricing, staleness checks, and persistence.
+  - `compose_local()` in `src/ets2_realism/merge/compose.py:203-604` (`402` lines): orchestrates snapshot loading, load-order parsing, VFS mounting, country scanning, alias resolution, policy patching, totem compilation, staging, offline validation, and report generation.
+  - `validate_workshop_package()` (`304` lines, `1312-1615`), `_validate_manifest()` (`298` lines, `573-870`), and `_validate_package_contents()` (`284` lines, `935-1218`) in `src/ets2_realism/validate/workshop.py` (`1,681` lines total).
+  - `build_promods_edition()` in `src/ets2_realism/merge/promods_builder.py:128-414` (`287` lines), `scan_active_countries()` in `src/ets2_realism/merge/scanner.py:132-417` (`286` lines), `scan_sii_structure()` in `src/ets2_realism/sii/lexer.py:473-747` (`275` lines), `extract_baseline()` in `src/ets2_realism/baseline/extractor.py:198-462` (`265` lines), `run_phase_a_release()` in `src/ets2_realism/publish/release.py:124-362` (`239` lines), `validate_law_registry()` in `src/ets2_realism/registry/loader.py:220-454` (`235` lines), `patch_hardcoded_numeric_totems()` in `src/ets2_realism/merge/hardcoded_totems.py:133-357` (`225` lines), and `HashFsV2Archive._load_tables()` in `src/ets2_realism/vfs/hashfs.py:484-646` (`163` lines).
+- **Files:** `src/ets2_realism/cli.py`, `src/ets2_realism/fetch/pipeline.py`, `src/ets2_realism/merge/compose.py`, `src/ets2_realism/validate/workshop.py`, `src/ets2_realism/merge/promods_builder.py`, `src/ets2_realism/merge/scanner.py`, `src/ets2_realism/sii/lexer.py`, `src/ets2_realism/baseline/extractor.py`, `src/ets2_realism/publish/release.py`, `src/ets2_realism/registry/loader.py`, `src/ets2_realism/merge/hardcoded_totems.py`, `src/ets2_realism/vfs/hashfs.py`
+- **Impact:** High cyclomatic complexity increases regression risk when extending CLI subcommands, ETS2 `1.63+` schema rules, or V2 SteamCMD publishing, and makes targeted unit testing of internal stages harder.
+- **Fix approach:** Split `cli.py` into per-command parser registration helpers (`_register_fetch_parser`, `_register_merge_parser`, etc.), decompose `run_price_fetch()` into fetch/merge/reprice stages, and extract per-attribute manifest checks in `validate/workshop.py` before starting V2 milestones.
 
-### Mutable CI Action Tags (`WR-07` vs `01-01-PLAN.md` Constraint)
+### Editable-Checkout Layout Coupling (Non-Editable Wheel Installation Broken)
 
-**Issue:** `.github/workflows/ci.yml:16` adds `timeout-minutes: 15` under `permissions: contents: read` (`ci.yml:10-11`), resolving the timeout half of `WR-07`. However, `.github/workflows/ci.yml:19,22` still pins `actions/checkout@v4` and `astral-sh/setup-uv@v5` by mutable major tag rather than immutable 40-character commit SHAs.
-**Reason retained:** `01-01-PLAN.md` `must_haves.artifacts` (`.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-01-PLAN.md:54`) requires `contains: "astral-sh/setup-uv@v5"`, and `tests/test_cli_scaffold.py:151-152` fails CI if `"actions/checkout@v4"` or `"astral-sh/setup-uv@v5"` strings are replaced.
-**Impact:** Mutable upstream tags remain a supply-chain drift risk once workflows gain release artifact permissions (Phase 2 Phase A) or credentials (deferred Phase B). Current Phase 1 exposure is mitigated by `permissions: contents: read`, zero CI secrets, and `uv sync --locked` against `uv.lock`.
-**Fix approach:** Keep `.github/workflows/ci.yml` tag assertions only as long as `01-01` contract tests require them, and pin all actions and container images by immutable 40-char commit SHA / digest in new Phase 2+ release workflows (`.planning/research/PITFALLS.md:62,207`) or update `tests/test_cli_scaffold.py:151-152` together with `ci.yml` in Phase 2.
+- **Issue:** `pyproject.toml:37-38` configures `[tool.hatch.build.targets.wheel]` with `packages = ["src/ets2_realism"]` only, omitting `data/` and `assets/`. However, `src/ets2_realism/normalize/currencies.py:13-17` resolves `DEFAULT_CURRENCIES_JSON_PATH` and `DEFAULT_TIER3_BASELINES_JSON_PATH` via `Path(__file__).resolve().parents[3] / "data"` and loads them at module import time. Similarly, `src/ets2_realism/baseline/extractor.py:217` and `src/ets2_realism/merge/promods_builder.py:88` anchor repository-root checks on `Path(__file__).resolve().parents[3]`, while CLI default paths (`data/laws`, `data/mappings/ets2_countries.json`, `data/baselines/ets2_1.62_def`, `assets/icons`, `state/prices.lock.json`) are CWD-relative (`src/ets2_realism/cli.py`, `src/ets2_realism/publish/release.py:126-134`, `src/ets2_realism/merge/promods_builder.py:145-150`).
+- **Files:** `pyproject.toml`, `src/ets2_realism/normalize/currencies.py`, `src/ets2_realism/baseline/extractor.py`, `src/ets2_realism/merge/promods_builder.py`, `src/ets2_realism/cli.py`
+- **Impact:** Installing `ets2-country-realism` as a non-editable wheel (`pip install` / `uv tool install`) fails immediately with `FileNotFoundError` on `import ets2_realism.normalize.currencies`. End users running `ets2-realism compose-local` or `ets2-realism package promods` are forced to clone the repository and execute from the repo root via `uv run`.
+- **Fix approach:** Bundle clean-room static registries (`data/mappings/`, `data/curated/`, `data/baselines/ets2_1.62_def/`, `data/laws/`, `assets/icons/`) via `importlib.resources` (or Hatch `force-include` shared-data) with explicit repo-checkout override, and locate Git repo roots by walking upward for `.git`/`pyproject.toml` rather than hardcoding `parents[3]`.
 
-### Active-Phase Layout & Dependency Coupling in `tests/test_cli_scaffold.py`
+### Mutable GitHub Actions Tags Coupled to Contract Tests
 
-**Issue:** `test_active_phase_only_package_layout()` (`tests/test_cli_scaffold.py:63-74`) and `test_pyproject_metadata_and_quality_gates()` (`tests/test_cli_scaffold.py:76-116`) hardcode the exact Phase 1 package allowlist (`{"__init__.py", "py.typed", "cli.py", "vfs", "sii", "baseline"}`), forbid `{"fetch", "normalize", "merge", "validate", "package"}`, and assert `dependencies == ["pydantic>=2.14,<3"]`.
-**Impact:** Intentional Phase 2–5 additions (`tzdata`, `pillow`, `httpx`, `openpyxl`, and new subpackages) will fail `tests/test_cli_scaffold.py` until that test file is updated in lockstep.
-**Fix approach:** Update `tests/test_cli_scaffold.py` at the start of each phase's Wave 1 plan to admit only that phase's newly activated subpackages and verified dependencies.
+- **Issue:** All three GitHub Actions workflows pin actions to mutable major tags (`actions/checkout@v4`, `astral-sh/setup-uv@v5`, `actions/upload-artifact@v4`) rather than immutable 40-character commit SHAs: `.github/workflows/ci.yml:19,22`, `.github/workflows/phase-a-release.yml:30,33,196`, and `.github/workflows/osm-speed-audit.yml:36,39,82`. Both `tests/test_cli_scaffold.py:180-190` and `tests/test_publish_workflow.py:92-94` explicitly assert those `@v4`/`@v5` strings.
+- **Files:** `.github/workflows/ci.yml`, `.github/workflows/phase-a-release.yml`, `.github/workflows/osm-speed-audit.yml`, `tests/test_cli_scaffold.py`, `tests/test_publish_workflow.py`
+- **Impact:** Upstream tag re-pointing creates a supply-chain drift vector in write-scoped workflows (`phase-a-release.yml` holds `contents: write`, `pull-requests: write`, and 4 optional API secrets; `osm-speed-audit.yml` holds `issues: write`).
+- **Fix approach:** Resolve verified 40-character commit SHAs online for `actions/checkout`, `astral-sh/setup-uv`, and `actions/upload-artifact`, pin them with `# v4` / `# v5` comments across all three workflows, and update the workflow contract assertions in `tests/test_cli_scaffold.py` and `tests/test_publish_workflow.py` in lockstep.
 
-### Compatibility & Residual VFS/SII Ergonomics
+### Duplicated Helpers, Inline Workflow Python Scripts, and Hardcoded `DEFAULT_ANCHOR_YEAR`
 
-**Issue:** Minor interface/implementation shortcuts exist in Phase 1 modules:
-- `VfsStack.__init__` (`src/ets2v2/vfs/stack.py:164-171`) accepts `seeded_prefixes` only to delete it (`del seeded_prefixes`) because `VfsArchive` layers own their own seed prefixes.
-- `ZipArchive._load_central_directory()` (`src/ets2v2/vfs/zip_archive.py:125`) silently overwrites `self._entries[norm] = info` when a ZIP central directory contains duplicate normalized paths instead of recording a diagnostic for duplicate entries.
-- `src/ets2v2/sii/sign_board.py` and `src/ets2v2/sii/localization.py` are strictly read-only parsers; Phase 3 totem generation requires surgical emitters/writers that do not yet exist.
-- `src/ets2v2/vfs/` is strictly read-only; Phase 2 (`universal.zip`) and Phase 4 (`zz_ETS2V2_ComboPatch_*.scs`) require a deterministic ZIP packager (normalized timestamps, zero `.scs`-named Workshop ZIPs).
-**Fix approach:** Deprecate `seeded_prefixes` on `VfsStack.__init__` when refactoring Phase 4 `compose-local`, add optional duplicate-entry diagnostics in `ZipArchive`, and build dedicated Phase 2/3 write adapters rather than mutating read models.
+- **Issue:** Several small maintenance debts accumulated across Phases 1–5:
+  - **Duplicated SII formatters:** `_format_fuel_price()` and `_format_sii_string()` are duplicated verbatim between `src/ets2_realism/sii/country.py:102-117` and `src/ets2_realism/package/synthesize.py:20-57`.
+  - **Duplicated inline Python in YAML workflows:** Identical `_sanitize()` and `_is_ext_fx_warn()` alert-formatting Python heredocs are duplicated twice inside `.github/workflows/phase-a-release.yml:63-145,264-338` and again in `.github/workflows/osm-speed-audit.yml:93-137`.
+  - **Hardcoded DST anchor year:** `DEFAULT_ANCHOR_YEAR = 2026` in `src/ets2_realism/registry/timezone.py:14` is used as the default in `cli.py`, `package/builder.py`, `publish/release.py`, `merge/promods_builder.py`, and `merge/compose.py`. Once the calendar rolls into `2027+`, builds omitting `--anchor-year` will continue computing DST rules for `2026` rather than the active release year.
+  - **Residual VFS ergonomics:** `VfsStack.__init__()` (`src/ets2_realism/vfs/stack.py:164-171`) accepts `seeded_prefixes` only to discard it (`del seeded_prefixes`), and `ZipArchive._load_central_directory()` (`src/ets2_realism/vfs/zip_archive.py:125`) silently overwrites duplicate normalized paths (`self._entries[norm] = info`) without emitting an archive diagnostic (only `validate/workshop.py` inspects raw ZIP duplicates separately).
+  - **Active-phase layout test coupling:** `test_active_phase_only_package_layout()` and `test_pyproject_metadata_and_quality_gates()` in `tests/test_cli_scaffold.py:64-139` hardcode exact subpackage sets and exact dependency version strings; every V2 dependency or subpackage addition requires updating that test file.
+  - **Pre-rename `ets2v2` prose in `.planning/`:** Commit `67e2071` cleanly renamed `src/ets2_realism/`, `tests/`, `scripts/`, `.github/`, `data/`, and `state/` (`0` residual `ets2v2` references in code/config), while `.planning/STATE.md` and historical phase docs still reference `src/ets2v2/` and `ets2v2`.
+- **Files:** `src/ets2_realism/sii/country.py`, `src/ets2_realism/package/synthesize.py`, `.github/workflows/phase-a-release.yml`, `.github/workflows/osm-speed-audit.yml`, `src/ets2_realism/registry/timezone.py`, `src/ets2_realism/vfs/stack.py`, `src/ets2_realism/vfs/zip_archive.py`, `tests/test_cli_scaffold.py`, `.planning/STATE.md`
+- **Impact:** Duplicated formatting/sanitization logic risks behavioral drift across modules and workflows; `DEFAULT_ANCHOR_YEAR = 2026` will silently anchor future `2027+` releases to `2026` IANA DST rules.
+- **Fix approach:** Export shared SII formatters from `ets2_realism.sii`, extract workflow summary/PR-body rendering into a CLI subcommand (`ets2-realism publish format-summary`), default `anchor_year` to `build_date.year` in `run_phase_a_release()` / `compose_local()`, and emit duplicate-entry diagnostics in `ZipArchive`.
 
 ## Known Bugs
 
-All Critical (`CR-01`..`CR-04`) and Warning (`WR-01`..`WR-11`) defects identified in `.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-REVIEW.md` and `.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-VERIFICATION.md` are resolved and covered by regression tests (`115/115` passing locally; `113/113` passing in CI-safe mode). Two behavioral edge cases remain in current Phase 1 code:
+### `assert_out_dir_not_tracked()` Falsely Blocks Valid User Output Directories When Run Outside the Repo
 
-### `SiiDocument.diagnostics` Masks Raw BOM/CRLF Hygiene Errors
+- **Symptoms:** Running `ets2-realism compose-local --out-dir ./mod` or `ets2-realism package promods --out-dir ./my_builds` from a working directory outside the repository (e.g., `D:\ETS2Data\Euro Truck Simulator 2`) raises `ValueError: Refusing to write ProMods/Combo output inside tracked/unignored repository directory`.
+- **Files:** `src/ets2_realism/merge/promods_builder.py:82-110` (called by both `build_promods_edition()` at line `157` and `compose_local()` in `src/ets2_realism/merge/compose.py:217`)
+- **Trigger:** `_candidate_repo_roots()` unconditionally appends `Path.cwd().resolve()` to the protected-repo root list even when CWD is not a Git repository. Any `out_dir` beneath CWD whose first relative path segment is not in `{"dist", "out", "build", "raw", "vendor"}` (including `mod/`!) is rejected.
+- **Workaround:** Pass an `--out-dir` outside CWD or named `dist`/`out`/`build`, or invoke from inside the repository root; fix by only adding `cwd` to `_candidate_repo_roots()` when `(cwd / ".git").exists()` or `(cwd / "pyproject.toml").is_file()`.
 
-- **Symptoms:** Constructing a `SiiDocument` from raw bytes or text containing a leading UTF-8 BOM (`\xef\xbb\xbf`) or `\r\n`/`\r` line endings and inspecting `doc.diagnostics` returns zero `utf8_bom` or `non_lf_line_ending` diagnostics.
-- **Files:** `src/ets2v2/sii/document.py:44-50,72-74`
-- **Trigger:** `SiiDocument.parse()` strips leading BOM and normalizes `\r\n`/`\r` to `\n` before storing `self._text`, and `doc.diagnostics` calls `validate_sii_hygiene(self._text)` on the already-normalized string.
-- **Workaround:** Offline validators in Phase 2 (`PUB-01`) must pass raw unparsed file bytes directly to `validate_sii_hygiene(raw_bytes)` rather than relying on `SiiDocument.parse(raw_bytes).diagnostics`.
+### `fetch_ch_bfs_lik()` Issues HTTP `GET` Against a PxWeb v1 `.px` Endpoint Expecting `POST`
 
-### `extract_baseline` Repo `data/` Guard Assumes Editable Source Layout
+- **Symptoms:** On live network runs, Switzerland's Tier 2 collector (`ch_bfs_lik`) receives PxWeb table variable metadata JSON (`{"title": ..., "variables": [...]}`) instead of JSON-stat2 price data, trips `Tier2SelectorDriftError("CH BFS JSON-stat2 missing dimension/value fields")`, emits a `tier2_selector_drift` warning, and falls back to `fuel_prices_eu` or `state/prices.lock.json`.
+- **Files:** `src/ets2_realism/fetch/tier2_portals.py:53-58,632-668`
+- **Trigger:** `CH_BFS_LIK_URL` targets `https://www.pxweb.bfs.admin.ch/api/v1/de/px-x-0501000000_105/px-x-0501000000_105.px` via `fetch_bytes_with_retry()` (`GET`). PxWeb v1 `.px` URLs require a `POST` request with a JSON query payload (`"response": {"format": "json-stat2"}`) to return data; `GET` returns schema metadata only.
+- **Workaround:** Per-country `_run_tier2_guarded()` isolates the failure so `CH` falls back cleanly to `fuel_prices_eu`/lockfile; fix by either `POST`ing a PxWeb query (analogous to `fetch_no_ssb_09654()` in `src/ets2_realism/fetch/national.py`) or targeting a direct `dam-api.bfs.admin.ch` CSV asset endpoint.
 
-- **Symptoms:** The CWD-independent guard preventing `--raw-cache-dir` writes inside `data/` anchors on `Path(__file__).resolve().parents[3] / "data"` (`src/ets2v2/baseline/extractor.py:217`).
-- **Files:** `src/ets2v2/baseline/extractor.py:215-219`, `src/ets2v2/cli.py:101-113`
-- **Trigger:** If `ets2v2` is installed into `site-packages` as a non-editable wheel instead of running from the repo checkout (`uv run`), `parents[3]` resolves inside `site-packages` rather than the repository's `data/` directory.
-- **Workaround:** `cli.py:101-113` separately blocks `--raw-cache-dir` overlapping `--out-dir`; keep repo CI/local runs editable via `uv run`, and resolve repo root via marker discovery (`pyproject.toml`) if non-editable distribution is ever supported.
+### `phase-a-release.yml` Never Passes `--previous-snapshots-dir`, Leaving Structured Changelog Diffs Inactive in CI
+
+- **Symptoms:** Every scheduled and manual run of `.github/workflows/phase-a-release.yml` renders the static initial-release highlights (`_render_initial_highlights`) in `CHANGELOG_SUMMER.md` and `CHANGELOG_WINTER.md` instead of structured `## Changes Since Previous Snapshot` diffs.
+- **Files:** `.github/workflows/phase-a-release.yml:151-161`, `src/ets2_realism/cli.py:582-608`, `src/ets2_realism/publish/release.py:140,283-295`
+- **Trigger:** `cli.py` exposes `--previous-snapshots-dir`, but `phase-a-release.yml` never downloads the prior `realism-snapshot-{summer,winter}.json` files from the rolling `snapshots-latest` GitHub Release and never passes `--previous-snapshots-dir` to `ets2-realism publish release`. Separately, `cli.py:603-605` reads `--previous-snapshots-dir` files via unbounded `snap_file.read_text("utf-8")` instead of calling `load_realism_snapshot()` (which enforces `MAX_SNAPSHOT_BYTES = 64 MiB`).
+- **Workaround:** Pass `--previous-snapshots-dir` manually in local runs; fix by adding a best-effort `gh release download snapshots-latest` step into a temp dir before `publish release` in `phase-a-release.yml` and routing `cli.py:603` through `load_realism_snapshot()`.
+
+### `SiiDocument.diagnostics` Masks Raw UTF-8 BOM and CRLF Hygiene Errors
+
+- **Symptoms:** Calling `SiiDocument.parse(raw_bytes).diagnostics` on files containing a leading UTF-8 BOM (`\xef\xbb\xbf`) or `\r\n`/`\r` line endings reports zero `utf8_bom` or `non_lf_line_ending` issues.
+- **Files:** `src/ets2_realism/sii/document.py:44-50,72-74`
+- **Trigger:** `SiiDocument.parse()` strips leading BOM and normalizes line endings to `\n` before storing `self._text`, and `diagnostics` runs `validate_sii_hygiene(self._text)` on the already-normalized string.
+- **Workaround:** `src/ets2_realism/validate/workshop.py` already passes raw file bytes directly to `validate_sii_hygiene(raw_bytes)`. Maintain that rule for any future validator or linter caller.
 
 ## Security Considerations
 
-### Protected & Obfuscated Containers (`3nK`, `AEM!`, Encrypted ZIPs, Unknown Compression)
+### Write-Scoped CI Workflows & Optional API Key Handling
 
-- **Boundary:** Untrusted third-party `.scs`/`.zip` archives and mod trees read by `src/ets2v2/vfs/`.
+- **Risk:** `.github/workflows/phase-a-release.yml` runs with `permissions: { contents: write, pull-requests: write }` and accepts 4 optional repository secrets (`TANKERKOENIG_API_KEY`, `EIA_API_KEY`, `OPINET_API_KEY`, `CNE_API_TOKEN`, lines `51-54`); `.github/workflows/osm-speed-audit.yml` runs with `permissions: { contents: read, issues: write }`. Both still use mutable major action tags (`@v4`/`@v5`).
+- **Files:** `.github/workflows/phase-a-release.yml`, `.github/workflows/osm-speed-audit.yml`, `src/ets2_realism/fetch/http.py`, `src/ets2_realism/fetch/global_tier1.py`, `src/ets2_realism/fetch/national.py`
+- **Current mitigation:** Zero Steam credentials in CI; `pull_request` and `pull_request_target` triggers are forbidden on both write-scoped workflows; zero `${{ ... }}` expressions appear inside `run:` blocks; all secrets pass via step-level `env:`; `redact_url_secrets()` (`src/ets2_realism/fetch/http.py:29-49`) masks `apikey`, `api_key`, `token`, `key`, and `code` query parameters; every keyed collector scrubs raw secret values before logging/alerts; untrusted error strings are sanitized (including `[`, `]`, `|`, `<`, `>`, `` ` ``) before Markdown rendering.
+- **Recommendations:** Pin all third-party GitHub Actions to 40-character commit SHAs across all three workflows.
+
+### Untrusted External Feeds (OOXML, XML, HTML, CSV, JSON)
+
+- **Risk:** `ets2-realism fetch` and `ets2-realism audit osm-speeds` consume 35+ third-party HTTPS endpoints (including dynamic `.xlsx` attachments from EC WOB, JP METI, RU Rosstat, ZA DMRE/CEF, NG NBS and legacy national HTML portals), creating exposure to SSRF redirects, XXE/UTF-16 DOCTYPE attacks, ZIP bombs, charset confusion, and response-size exhaustion.
+- **Files:** `src/ets2_realism/fetch/http.py`, `src/ets2_realism/fetch/_parsing.py`, `src/ets2_realism/fetch/_html.py`, `src/ets2_realism/fetch/ec_bulletin.py`, `src/ets2_realism/fetch/global_tier1.py`, `src/ets2_realism/fetch/tier2_portals.py`, `src/ets2_realism/audit/overpass.py`
+- **Current mitigation:** `validate_https_url()` enforces HTTPS-only, port 443 only, no embedded credentials, and per-feed host allowlists across redirects (`_MAX_REDIRECTS = 5`, `follow_redirects=False`, TLS `verify=True`); streaming byte caps (`DEFAULT_MAX_RESPONSE_BYTES = 30 MiB`, `ES_MITECO_MAX_BYTES = 50 MiB`, `DEFAULT_MAX_XML_BYTES = 2 MiB`); `validate_ooxml_zip_safety()` (`fetch/_parsing.py:113-165`) caps OOXML at `256` entries / `64 MiB` uncompressed, rejects encrypted/non-deflate members, catches `zlib.error`/`BadZipFile`, and blocks both UTF-8 and UTF-16 `<!DOCTYPE`/`<!ENTITY` payloads; Overpass QL strictly validates `^[A-Z]{2}$` before query interpolation.
+- **Recommendations:** Keep `fetch/_html.py` stdlib-only (avoiding native `lxml` C-parser attack surface) and maintain strict `scanned_rows` caps on any new `.xlsx` or `.csv` collectors.
+
+### Clean-Room IP & License Contamination Boundaries (`MIT` / `CC BY 4.0` vs `CC BY-SA` / ProMods / Proprietary)
+
+- **Risk:** Accidental leakage of `CC BY-SA` / `ODbL` OpenStreetMap data (`westnordost/osm-legal-default-speeds`, Overpass, Taginfo), `CC BY-NC-ND` (`GlobalPetrolPrices.com`), `MyLPG.eu`, paid `IEA` reports, raw ETS2 `.sii`/`.sui` game files, or proprietary ProMods `.scs`/def files into Git or `CC BY 4.0` snapshots/packages would violate project licensing and ProMods redistribution rules.
+- **Files:** `src/ets2_realism/audit/taint.py`, `src/ets2_realism/validate/invariants.py`, `src/ets2_realism/validate/workshop.py`, `src/ets2_realism/merge/promods_builder.py`, `tests/test_cli_scaffold.py`, `tests/test_license_taint_gate.py`, `tests/test_validate_workshop.py`, `data/laws/speed_audit_allowlist.json`
 - **Current mitigation:**
-  - **`3nK\x01` payloads:** `detect_3nk()` (`src/ets2v2/vfs/types.py:33-35`) matches magic bytes only; `decode_vfs_text()` (`types.py:168-174`) raises `ProtectedPayloadError`; `record_3nk_if_present()` (`types.py:177-190`) emits `three_nk_obfuscated` diagnostics. Zero XOR keytables or decryption code exist in `src/ets2v2/`.
-  - **`AEM!` & unknown archive magic:** `open_archive()` (`src/ets2v2/vfs/hashfs.py:736-796`) isolates `b"AEM!"`, `<4`-byte files, truncated `SCS#`, unsupported HashFS versions, and unrecognized headers behind `ProtectedArchiveStub`, raising `ProtectedPayloadError` on any `read_bytes()`/`read_text()` call.
-  - **Encrypted ZIP entries:** `ZipArchive` (`src/ets2v2/vfs/zip_archive.py:28-30,127-140,169-175`) checks `flag_bits & 0x41` (both standard PKZIP `0x01` and strong encryption `0x40`), surfaces central-directory paths without decryption, emits post-dedup `encrypted_zip` diagnostics, and raises `ProtectedPayloadError` on `read_bytes()`.
-  - **Compression whitelist:** Only `"none"` and `"zlib"` (`deflate`) are implemented (`src/ets2v2/vfs/hashfs.py:576-586`, `src/ets2v2/vfs/zip_archive.py:91-96`); other methods emit `unsupported_compression` and raise `UnsupportedCompressionError`.
-- **Gap / nuance:** `three_nk` detection occurs lazily upon reading payload bytes (`read_bytes()` or `VfsStack._with_stub_status()` for `.sii`/`.sui` `<= 1 MiB` during `resolve()`). Files `> 1 MiB` or non-`.sii`/`.sui` entries do not populate `VfsEntryMeta.three_nk` via `get_meta()` alone until `read_bytes()` runs.
+  - **Universal AST DAG quarantine:** `tests/test_cli_scaffold.py` and `tests/test_validate_workshop.py` enforce all 6 offline isolation walls (`validate`, `merge`, `package`, `publish`, `normalize`, `registry`) plus zero inbound imports of `ets2_realism.audit` across all 10 non-audit subpackages.
+  - **Dual independent license-taint gates:** Both `src/ets2_realism/audit/taint.py` (`ets2-realism audit taint`) and self-contained `check_license_taint_bytes()` in `src/ets2_realism/validate/invariants.py:46-75` (`ETS2R-INV-LICENSE-TAINT`, wired into all 3 profiles `core`/`promods`/`combo` in `validate/workshop.py`) reject `CC BY-SA`, `ODbL`, `OpenStreetMap`, `osm-legal-default-speeds`, `GlobalPetrolPrices`, `CC BY-NC-ND`, `MyLPG`, and `IEA` across multi-line and underscore variants.
+  - **Zero proprietary/SCS files in Git:** `data/` holds strictly clean-room JSON (`0` `.sii`/`.sui`/`.scs`/`.dds`/`.tobj` files); `.github/workflows/osm-speed-audit.yml` has `contents: read` and zero `git` write commands.
+- **Recommendations:** Maintainers triaging monthly `osm-audit` GitHub issues must always verify statutory changes against official national legislation and author clean-room rationales in `data/laws/` — never paste OSM wiki URLs or `osm-legal-default-speeds` text into `data/laws/`. Also fix `assert_out_dir_not_tracked()`'s CWD bug carefully so tracked-repo protection remains airtight.
 
-### Bounded Decompression & Memory Exhaustion Guards
+### Protected & Obfuscated Local Mod Containers (`3nK`, `AEM!`, `ScsC`, Encrypted ZIPs, Traversal/Junctions)
 
-- **Boundary:** Maliciously crafted HashFS v1/v2 headers, zlib bombs, spoofed ZIP `file_size` headers, or oversized `.sii`/`.sui` stubs.
-- **Current mitigation:**
-  - `HashFsV2Archive` caps entry and metadata tables at `MAX_V2_TABLE_BYTES = 64 MiB` (`64 * 1024 * 1024`, `src/ets2v2/vfs/hashfs.py:31,421-434,481-493`) and decodes zlib streams via `_bounded_zlib_decompress(..., expected_size + 1)` (`hashfs.py:50-67`).
-  - Both `HashFsV1Archive`/`HashFsV2Archive` (`MAX_ENTRY_DECOMPRESSED_BYTES = 128 MiB`, `hashfs.py:32,145-181`) and `ZipArchive` (`MAX_ZIP_ENTRY_BYTES = 128 MiB`, chunked `_ZIP_READ_CHUNK_BYTES = 65536` streaming in `_read_zip_bounded`, `src/ets2v2/vfs/zip_archive.py:24-49`) bound per-entry allocations regardless of spoofed headers.
-  - `VfsStack._with_stub_status()` (`src/ets2v2/vfs/stack.py:25,287`) enforces `MAX_STUB_INSPECT_BYTES = 1 MiB` before reading `.sii`/`.sui` payloads for `SiiNunit {}` stub checks.
-  - `sign_board.py:128-146` looks up `items[i]` by unit name rather than preallocating from `items: N`, defeating untrusted count-based memory DoS.
-- **Residual gap:** `DirectoryArchive.read_bytes()` (`src/ets2v2/vfs/dir_archive.py:173`) calls `resolved.read_bytes()` with no size cap. Calling `DirectoryArchive.read_bytes()` directly on large unpacked binary assets (`.pmg`/`.dds`) loads the entire file into RAM. Enforce an explicit `MAX_ENTRY_DECOMPRESSED_BYTES` guard in `DirectoryArchive.read_bytes()` before Phase 4 scans arbitrary user `mod/` trees.
-
-### Path Traversal, Symlink & Windows NTFS Junction Guards
-
-- **Boundary:** Archive entry paths, directory symlinks/junctions, and `--raw-cache-dir` file writes.
-- **Current mitigation:**
-  - `normalize_vfs_path()` (`src/ets2v2/vfs/types.py:63-83`) rejects `\x00` NUL bytes and `..` segments and canonicalizes `\` and `/` identically on Windows and Linux.
-  - `HashFs*._walk_with_parser()` (`src/ets2v2/vfs/hashfs.py:238-257,274-302`) rejects unsafe directory names (`""`, `.`, `..`, `/`, `\`, `\x00`) with `path_traversal` diagnostics and deduplicates `visited_dir_hashes` + `visited_dir_paths` to break cyclic directory links.
-  - `ZipArchive._load_central_directory()` (`src/ets2v2/vfs/zip_archive.py:113-121`) catches traversal errors and logs `path_traversal`.
-  - `DirectoryArchive` (`src/ets2v2/vfs/dir_archive.py:21-24,60-124,134-141,164-171`) prunes escaping symlinks and Windows NTFS junctions (`_is_dir_junction`), detects junction cycles via `visited_dirs`, and re-verifies `_is_within_root()` on every `get_meta()` and `read_bytes()`.
-  - `_write_raw_cache_entry()` (`src/ets2v2/baseline/extractor.py:103-111`) validates `resolved_dest.is_relative_to(resolved_root)` before creating parent directories or writing files.
-
-### SII Injection & Hygiene Enforcement
-
-- **Boundary:** Values written into `.sui`/`.sii` templates and downstream ETS2/Workshop output files.
-- **Current mitigation:** `_format_sii_string()` (`src/ets2v2/sii/country.py:111-117`) rejects `\` and `\x00` and escapes `"`, `\r`, `\n`, `\t`. `validate_sii_hygiene()` (`src/ets2v2/sii/hygiene.py:235-337`) enforces strict UTF-8 (no `latin1` fallback), BOM-free header, LF line endings, column-0 `@include`, POSIX `/` paths without `..`, balanced braces, and `[a-z0-9_]{1,12}` unit segments.
-
-### Raw `.sii`/`.sui` Copyright & License Provenance Boundaries
-
-- **Boundary:** Proprietary ETS2 `def.scs`/`locale.scs` text, ProMods assets, and non-open third-party sources vs public MIT/`CC BY 4.0` repository.
-- **Current mitigation:**
-  - `data/baselines/ets2_1.62_def/` stores only clean-room Pydantic JSON schemas (`manifest.json`, `countries.json`, `speed_limits.json`, `fuel_boards.json`, `locales.json`).
-  - `verify_baseline_bundle()` (`src/ets2v2/baseline/extractor.py:471-477`) and `test_no_raw_scs_files_committed_under_data` (`tests/test_baseline_contracts.py:83-89`) fail if any `.sii` or `.sui` exists under `data/`.
-  - `uv.lock` contains 17 packages with `MIT`, `BSD`, `Apache-2.0`, and `PSF-2.0` licenses only (`01-VERIFICATION.md:145`), avoiding GPL (`TruckLib`/`Extractor`/`easy-scsmodmanager`).
-- **Ongoing Phase 3–5 risks:** Future collectors must enforce hard rejections documented in `.planning/REQUIREMENTS.md:60-67` (`GlobalPetrolPrices.com` `CC BY-NC-ND 3.0`, `MyLPG.eu`, paid `IEA`, `3nK` cracking, ProMods `.scs`/`.sui` git commits, and any `CC BY-SA` OSM Overpass/Taginfo data leaking into `CC BY 4.0` snapshots or mods).
+- **Risk:** `ets2-realism compose-local` and `package promods` mount untrusted local user `.scs`/`.zip`/directory mods, `profile.sii`, `game.log.txt`, and Steam Workshop `227300` directories.
+- **Files:** `src/ets2_realism/vfs/hashfs.py`, `src/ets2_realism/vfs/zip_archive.py`, `src/ets2_realism/vfs/dir_archive.py`, `src/ets2_realism/vfs/types.py`, `src/ets2_realism/merge/load_order.py`
+- **Current mitigation:** Zero decryption/cracking code for `3nK\x01`, `AEM!`, `ScsC`, or PKZIP encryption (`flag_bits & 0x41`); `128 MiB` entry decompression/read caps across `HashFs*`, `ZipArchive`, and `DirectoryArchive`; `64 MiB` HashFS v2 table caps and `64 MiB` text caps for `profile.sii`/`game.log.txt`/snapshots/taint scans; strict `mod_dir` & Workshop `item_dir` containment, UNC (`\\server\share`) NTLMv2 leak rejection, `explicit_path` restricted to `--modlist` only, and Windows NTFS junction cycle/escape pruning in `dir_archive.py` and `publish/ledger.py`.
+- **Recommendations:** Note that `VfsEntryMeta.three_nk` is still detected lazily upon `read_bytes()` or `<= 1 MiB` `.sii`/`.sui` stub inspection (`vfs/stack.py:283-294`); callers inspecting non-`.sii`/`.sui` entries or `> 1 MiB` files via `get_meta()` alone must not assume `three_nk=False` guarantees plaintext.
 
 ## Performance Bottlenecks
 
-### Eager Full-Archive Indexing in `VfsStack._ensure_index()`
+### Sequential Execution of Up to 32 External HTTP Feeds Under a 20-Minute CI Timeout
 
-- **Problem:** First call to `VfsStack.resolve()`, `exists()`, or `list_paths()` triggers `_ensure_index()` (`src/ets2v2/vfs/stack.py:240-273`), which calls `layer.archive.list_paths()` (unfiltered `prefixes=None`) and `layer.archive.get_meta(raw_path)` across **every file in every mounted layer**.
-- **Files:** `src/ets2v2/vfs/stack.py:240-273,318-322`
-- **Cause:** `HashFs*` `list_paths(None)` performs a BFS walk hashing every directory and child entry in pure Python (`cityhash64` in `src/ets2v2/vfs/cityhash.py:139-192`). For ETS2 `def.scs` (`66,066` entries in `data/baselines/ets2_1.62_def/manifest.json:5`), walking and metadata-boxing tens of thousands of unrelated `.tobj`/`.mat`/`.pmd` entries dominates startup time. Notice `_audit_dlc_archives()` (`src/ets2v2/baseline/extractor.py:141-161`) originally took ~244s across 107 local `dlc_*.scs` archives until narrowed to `list_paths(["def", "base/def", "def/country", "base/def/country"])` (~0.94s, `.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-03-SUMMARY.md:40`).
-- **Improvement path:** Add optional `index_prefixes: Sequence[str] | None` to `VfsStack` (defaulting to `("def", "base/def", "locale", "base/locale")` or caller-supplied prefixes in `compose-local`) and skip `get_meta()` until an entry is actually queried, cutting Phase 4 load-order indexing across 86–503 mod archives by orders of magnitude.
+- **Problem:** `run_price_fetch()` (`src/ets2_realism/fetch/pipeline.py:302-380`) invokes all 4 FX providers, up to 10 European fuel feeds (including 5 sequential city requests for `de_tankerkoenig` and 50 MiB JSON for `es_miteco`), 8 Global Tier 1 feeds, and 10 Tier 2 national portal scrapers **synchronously and sequentially** on a single `httpx.Client` inside `.github/workflows/phase-a-release.yml` (`timeout-minutes: 20`).
+- **Files:** `src/ets2_realism/fetch/pipeline.py`, `src/ets2_realism/fetch/http.py`, `src/ets2_realism/fetch/national.py`, `src/ets2_realism/fetch/global_tier1.py`, `src/ets2_realism/fetch/tier2_portals.py`, `.github/workflows/phase-a-release.yml`
+- **Cause:** With `DEFAULT_TIMEOUT_SECONDS = 20.0` and `DEFAULT_MAX_RETRIES = 2` (3 attempts + backoff per request, and 2–5 requests per portal for landing + attachment downloads), 8–10 slow/tarpitting Tier 2 or Global government portals can add `8–12+` minutes of serial blocking time on top of quality gates (`ruff` + `basedpyright` + `634` pytest tests) and dual-edition builds/validation, risking a `20`-minute GitHub Actions timeout.
+- **Improvement path:** Use bounded `concurrent.futures.ThreadPoolExecutor` (or `asyncio`/`httpx.AsyncClient` with per-host semaphores) to fetch independent Global Tier 1 and Tier 2 feeds concurrently with a total wall-clock budget, or cap Tier 2 `timeout` to `10s` with `max_retries=1` since Tier 2 failures are non-blocking.
 
-### Full `12,942`-Board Decompression Scan in `extract_baseline`
+### Eager Full-Archive Indexing in Generic `VfsStack._ensure_index()`
 
-- **Problem:** `extract_baseline()` (`src/ets2v2/baseline/extractor.py:304-317`) calls `def_stack.read_bytes(board_vfs)` on all `12,942` `def/sign/board/*.sii` entries inside `def.scs` to check `b"@@fp_" not in raw_board` even when `board_name` is not a fuel keyword.
-- **Files:** `src/ets2v2/baseline/extractor.py:304-317`
-- **Cause:** 19+ boards lacking `gas_` filename prefixes still contain `@@fp_*@@` tokens, requiring payload inspection during baseline refresh; `def_stack.read_bytes()` also runs `resolve()` + `is_empty_sii_stub()` (`stack.py:275-299`) on each board, making full `local_ets2` verification take `36.12s` (`01-REVIEW.md:71`).
-- **Improvement path:** Acceptable for infrequent local baseline extraction (`data/baselines/ets2_1.62_def/fuel_boards.json` isolates CI from this cost), but Phase 2–4 build loops must consume `fuel_boards.json` rather than re-scanning `def.scs`.
+- **Problem:** First access on a generic `VfsStack` triggers `_ensure_index()` (`src/ets2_realism/vfs/stack.py:240-273`), enumerating every path and calling `get_meta()` across all layers.
+- **Files:** `src/ets2_realism/vfs/stack.py`, `src/ets2_realism/vfs/cityhash.py`, `src/ets2_realism/baseline/extractor.py`
+- **Cause:** Pure-Python `cityhash64` BFS traversal over ETS2 `def.scs` (`66,066` entries) plus full decompression of all `12,942` sign boards in `extract_baseline()` (`baseline/extractor.py:304-317`) makes local baseline verification take ~35–40s. (`compose-local` mitigates this for 500-mod combos using `_ComboScopedArchive`, `DirectoryArchive(include_top_dirs=...)`, and `_BaseHashFsArchive.list_direct_files()`.)
+- **Improvement path:** Add optional `index_prefixes` directly to `VfsStack` and defer `get_meta()` until entry access so all callers benefit without needing wrapper archives.
 
-### Repeated Full-Document Re-Scans During Chained SII Edits
+### Repeated Full-Document SII Re-Scans & Slow Instrumented `pytest-cov` Runs
 
-- **Problem:** Every call to `SiiDocument.set_scalar()`, `update_attribute_value()`, `remove_attribute_line()`, or `insert_lines_after_attribute()` calls `replace_span()` -> `_refresh()` -> full `scan_sii_structure(self._text)` (`src/ets2v2/sii/document.py:112-136`). `_patch_unit_lanes_in_place()` (`src/ets2v2/sii/speed_limits.py:152-178`) mutates lane attributes one field at a time inside nested loops (`N lanes * 4 fields`), re-scanning the entire `speed_limits.sii` on every field.
-- **Files:** `src/ets2v2/sii/document.py:112-136,249-258`, `src/ets2v2/sii/speed_limits.py:152-178`
-- **Cause:** Sequential span mutations invalidate downstream offsets unless batched in reverse order (`_apply_reverse_edits`).
-- **Improvement path:** Negligible on 1–5 KB `.sui`/`speed_limits.sii` files, but if Phase 3/4 generates or edits large `local_module.*.sii` files (hundreds of `key[]`/`val[]` entries), batch edits via `_apply_reverse_edits()` or emit sorted localization modules directly.
+- **Problem:** Every individual `SiiDocument` mutation (`set_scalar`, `update_attribute_value`, `remove_attribute_line`) runs a full `scan_sii_structure()` (`src/ets2_realism/sii/document.py:112-136`, amplified in nested lane loops in `src/ets2_realism/sii/speed_limits.py:152-178`). Additionally, multiple integration tests (`tests/test_license_taint_gate.py`, `tests/test_package_builder.py`, `tests/test_promods_builder.py`, `tests/test_publish_release.py`, `tests/test_validate_workshop.py`) each build and offline-validate full 460-board × 43-locale packages from scratch, causing full `pytest-cov` runs on Windows to take `>5` minutes (even with `COVERAGE_CORE=sysmon`) because pure-Python SII lexing/hygiene loops run under bytecode tracing.
+- **Files:** `src/ets2_realism/sii/document.py`, `src/ets2_realism/sii/speed_limits.py`, `tests/test_license_taint_gate.py`, `tests/test_package_builder.py`, `tests/test_promods_builder.py`, `tests/test_publish_release.py`
+- **Cause:** Unbatched sequential span edits and unshared per-test full-package fixtures.
+- **Improvement path:** Batch edits via `_apply_reverse_edits()` in `speed_limits.py`, and use module/session-scoped read-only built-package fixtures across validator/taint tests to cut coverage runtime sharply.
 
 ## Fragile Areas
 
-### `VfsStack` Un-Normalized `dlc_<id>/` Scope vs User Mod Packs
+### Unverified Live-Network Execution Across All 32 FX/Fuel Collectors & 10 Tier 2 Portals
 
-- **Files:** `src/ets2v2/vfs/stack.py:100-123`
-- **Why fragile:** `classify_mount_path()` strips `base/` unconditionally (`mount_scope="base"`) and scopes `dlc_<id>/` unless `enabled_dlcs` is explicitly passed (`VfsStack(..., enabled_dlcs=...)`). Notice `extract_baseline()` (`src/ets2v2/baseline/extractor.py:231`) creates `def_stack` over `def.scs` only without mounting `dlc_*.scs` into `def_stack` (DLCs are audited separately in `_audit_dlc_archives`), and `cli.py` `vfs inspect` does not yet expose an `--enable-dlc` flag. If future ETS2 `1.63+` DLCs ever ship `country_data` inside `dlc_<id>/def/country/`, callers must pass `enabled_dlcs` explicitly.
-- **Safe modification:** Keep `enabled_dlcs` opt-in so non-DLC mods cannot accidentally spoof `dlc_*` flattening, and document `enabled_dlcs` requirement for Phase 4 combo resolution when inspecting DLC-scoped overrides.
-- **Test coverage:** Tested in `tests/test_vfs_stack.py`, untested in `cli.py` (`vfs inspect`).
+- **Files:** `src/ets2_realism/fetch/fx.py`, `src/ets2_realism/fetch/ec_bulletin.py`, `src/ets2_realism/fetch/national.py`, `src/ets2_realism/fetch/global_tier1.py`, `src/ets2_realism/fetch/tier2_portals.py`, `state/prices.lock.json`, `state/published.json`
+- **Why fragile:** `state/published.json` is still empty (`{"editions": {}, "schema_version": 1}`) and `state/prices.lock.json` is 100% pre-launch seeded (`39` `baseline_1.62_seeded` + `37` `promods_curated_seed` + `149` `tier3_curated_baseline`, `alerts: []`). None of the 32 external endpoints (especially dynamic HTML/XLSX scrapers for EC WOB, UK DESNZ, JP METI, CO CREG, and the 10 Tier 2 portals `anre.md`, `erc.org.mk`, `rosstat.gov.ru`, `gov.il`, `moei.gov.ae`, `cefgroup.co.za`, `aramco.com`, `nigerianstat.gov.ng`, `pxweb.bfs.admin.ch`) have been exercised in a live scheduled GitHub Actions run. Real-world WAFs, TLS/geo-blocks from `ubuntu-latest` IPs, HTML table changes, or CMS URL rotations can break individual collectors on first live execution.
+- **Safe modification:** Keep every Global Tier 1 and Tier 2 feed strictly isolated behind warning-only circuit breakers and never widen the EU Core hard-fail gate; run a manual `workflow_dispatch` dry-run on GitHub Actions to validate live responses and fix selector/endpoint drift (starting with `ch_bfs_lik`).
+- **Test coverage:** 100% offline mocked `httpx.MockTransport` tests only; zero live-network canary tests.
 
-### `SiiDocument` Interleaved & Non-Contiguous Array Updates
+### Synchronized 180-Day Staleness Cliff for All 186 Curated Tier 3 Baselines
 
-- **Files:** `src/ets2v2/sii/document.py:298-405`, `src/ets2v2/sii/speed_limits.py:80-107,180-248`
-- **Why fragile:** `replace_array_append()` rejects interleaved attributes (lines `319-326,378-382`) because `speed_limits.sii` interleaves `lane_speed_class[]`, `limit[]`, `urban_limit[]`, `max_limit[]`, and `uncommon[]` (`speed_limits.py` handles this separately via `_extract_lane_groups`). Additionally, `_extract_lane_groups()` rejects duplicate `limit[]`/`urban_limit[]`/`max_limit[]`/`uncommon[]` within one lane (`speed_limits.py:102-103`) and raises if a lane field precedes `lane_speed_class[]` (`98-101`). Malformed third-party map-mod `speed_limits.sii` files with trailing orphan lane attributes or comments placed mid-lane block could trigger `ValueError` during Phase 4 `compose-local` unless handled with per-file error reporting.
-- **Safe modification:** Wrap `parse_speed_limits`/`patch_speed_limits` calls in `compose-local` with file-scoped diagnostics so one malformed third-party `speed_limits.sii` reports a clear diagnostic instead of aborting an entire 100-mod combo merge.
-- **Test coverage:** Interleaved rejection errors in `document.py:323,380` and orphan/duplicate lane errors in `speed_limits.py:77,99,103` are currently uncovered by tests.
+- **Files:** `data/curated/tier3_fuel_baselines.json`, `src/ets2_realism/normalize/lockfile.py:135-148`
+- **Why fragile:** Every one of the `186` entries in `data/curated/tier3_fuel_baselines.json` shares the exact same `verified_date: "2026-11-25"`. On `2027-05-25` (`+181` days), all territories remaining on Tier 3 / `promods_curated_seed` will cross `TIER3_CURATED_STALE_DAYS = 180` simultaneously, triggering a permanent `stale_tier3_curated` rollup warning across every changelog, Step Summary, and Release PR until manually re-verified.
+- **Safe modification:** Plan a semi-annual Tier 3 refresh cycle (or stagger regional audits) and verify `IR`/`VE` `clamped_to_floor: true` (`0.010 EUR/L`) invariants whenever updating `tier3_fuel_baselines.json`.
 
-### `sign_board_template` Discovery Filter Coupling
+### ETS2 `1.63+` Baseline, HashFS v2 Compression, and Community Map-Mod Schema Coupling
 
-- **Files:** `src/ets2v2/baseline/extractor.py:49-55,75-91,304-354`, `src/ets2v2/sii/sign_board.py:59-66`
-- **Why fragile:** `extract_baseline` relies on `_FUEL_BOARD_PREFIXES` (`gas_`, `es_95_`, `es_diesel_`, `pt_95_`, `pt_diesel_`), `_is_fuel_keyword_name()`, `b"@@fp_" in raw_board`, and `is_single_text_fuel_candidate` (`model_name == ""`, `items_count == 1`, `child_types == ["sign_template_text"]`). Any future ETS2 patch introducing fuel boards with non-matching filenames and non-`@@fp_` placeholder text (e.g., `"0.00"` in a differently named board) will not be discovered automatically.
-- **Safe modification:** Keep `excluded_fuel_keyword_boards` and `total_sign_boards` monitored in `manifest.json` whenever refreshing baselines against ETS2 `1.63+`.
+- **Files:** `data/baselines/ets2_1.62_def/`, `src/ets2_realism/baseline/extractor.py:49-55,304-354`, `src/ets2_realism/vfs/hashfs.py:576-586`, `src/ets2_realism/validate/invariants.py:32-44`, `src/ets2_realism/merge/promods_fuel.py:49-135`, `src/ets2_realism/merge/hardcoded_totems.py:39-52`
+- **Why fragile:**
+  - Baseline extraction relies on `_FUEL_BOARD_PREFIXES` (`gas_`, `es_95_`, `es_diesel_`, `pt_95_`, `pt_diesel_`), keyword heuristics, and `b"@@fp_"` scans; new ETS2 `1.63+` fuel boards using different naming or placeholder text could be missed.
+  - `HashFsV2Archive` only implements compression nibbles `0` (stored) and `1` (zlib); if SCS adopts Zstd/GDeflate in a future ETS2 update, `extract_baseline` and local ProMods discovery will fail with `UnsupportedCompressionError`.
+  - `validate/invariants.py` hardcodes 1.62-specific invariants (Iceland 5-axle 60t / 80 km/h, 6 `D-09` exact board token mappings, 36 Vanilla countries, 43 locales).
+  - `merge/promods_fuel.py` relies on curated prefix maps (`PM_EU_PREFIX_TO_ISO2`, `PM_ME_PREFIX_TO_ISO2`, `PM_TGS_PREFIX_TO_ISO2`, including collision guard `mn=ME` vs `mn=MN`) and `merge/hardcoded_totems.py` hardcodes `JRR_NUMERIC_BOARD_SIGNATURES` and `_COMMUNITY_NUMERIC_BOARD_RE`; ProMods/JRR/7RM renames require coordinated map updates.
+- **Safe modification:** Always run `ets2-realism baseline extract --check` against local ETS2 archives after each game patch, inspect `excluded_fuel_keyword_boards` and `total_sign_boards` in `data/baselines/ets2_1.62_def/manifest.json`, and run `@pytest.mark.local_promods` after ProMods updates.
 
-### Unpacked `SiiNunit` Nested Units / Malformed Map-Mod Quirks
+### Hardcoded Windows Workstation Paths & `VfsStack` Opt-In DLC Scoping
 
-- **Files:** `src/ets2v2/sii/lexer.py:649-675`, `src/ets2v2/sii/hygiene.py:118-145`
-- **Why fragile:** `scan_sii_structure` enters a unit block only when `active_unit is None` (`lexer.py:650`), assuming standard SCS non-nested unit definitions. Furthermore, `DEFAULT_ETS2_GAME_DIR = Path(r"D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2")` (`src/ets2v2/baseline/extractor.py:46`) hardcodes a single Windows path as the default fallback when `--game-dir` and `ETS2_GAME_DIR` are unset, which will always fail with `FileNotFoundError` on Linux or non-default Steam library drives unless explicitly configured.
+- **Files:** `src/ets2_realism/baseline/extractor.py:46`, `src/ets2_realism/merge/promods_discovery.py:15`, `src/ets2_realism/merge/load_order.py:388-389`, `src/ets2_realism/vfs/stack.py:100-123`, `src/ets2_realism/cli.py:77-110`
+- **Why fragile:** Default paths hardcode maintainer-specific Windows drives (`D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2`, `D:\ETS2Data\Euro Truck Simulator 2\mod`, `D:\SteamLibrary\steamapps\workshop\content\227300`), which fail on Linux/macOS or non-`D:` Windows installs unless `ETS2_GAME_DIR`, `ETS2_MOD_DIR`, `ETS2_WORKSHOP_DIR`, or CLI flags are set. Separately, `VfsStack` only flattens `dlc_<id>/` paths when `enabled_dlcs` is explicitly passed, and `ets2-realism vfs inspect` does not expose `--enable-dlc`; if ETS2 `1.63+` moves `country_data` inside `dlc_<id>/def/country/`, `extract_baseline` and `vfs inspect` will require explicit `enabled_dlcs` wiring.
+
+### OSM Speed-Limit Audit Upstream & Allowlist Maintenance
+
+- **Files:** `src/ets2_realism/audit/osm_speeds.py:39-99`, `src/ets2_realism/audit/overpass.py:28-35`, `data/laws/speed_audit_allowlist.json`
+- **Why fragile:** `osm_speeds.py` depends on the third-party `westnordost.github.io/osm-legal-default-speeds/legal_default_speeds.json` schema and heuristic filter-string classification (`_GENERAL_FILTERS`, `_SKIP_SUBRULE_TOKENS`, `_CONDITIONAL_NON_GENERAL_RE`), while opt-in `--overpass` calls the public rate-limited `overpass-api.de` instance. `data/laws/speed_audit_allowlist.json` currently contains only `11` entries (covering `DE`, `EE`, `FI`, `IM`, `LT`); the first live monthly audit across all `225` territories will likely surface many legitimate statutory/abstraction differences requiring clean-room allowlist triage.
 
 ## Scaling Limits
 
-### Archive Count, Memory, and Format Ceilings
+### Archive, Payload, and Text Memory Ceilings
 
-- **HashFS table & entry ceilings:**
-  - `MAX_V2_TABLE_BYTES = 64 MiB` (`src/ets2v2/vfs/hashfs.py:31`): Assumes HashFS v2 `entry_table` (`entry_count * 16 B`, up to ~4.19M entries) and `metadata_table` (`metadata_count * 4 B`, up to ~16.7M words) fit within 64 MiB each and are loaded completely into `_records: dict[int, _HashFsRecord]`. ETS2 `1.62.3.3s` `def.scs` has `66,066` entries (~1 MB table), well within bounds, while massive multi-GB `base.scs` / map-asset archives could approach table/memory limits if opened whole.
-  - `MAX_ENTRY_DECOMPRESSED_BYTES = 128 MiB` (`hashfs.py:32`) and `MAX_ZIP_ENTRY_BYTES = 128 MiB` (`src/ets2v2/vfs/zip_archive.py:24`): Single entries `> 128 MiB` raise `ValueError` / diagnostic `corrupt_archive`.
-  - `MAX_STUB_INSPECT_BYTES = 1 MiB` (`src/ets2v2/vfs/stack.py:25`): `.sii`/`.sui` files `> 1 MiB` skip empty-stub detection (`is_empty_stub=False`) during `VfsStack.resolve()`.
-- **Map-combo scale (`Phase 4` target):**
-  - Local census verified `503` installed user mods (`86` touching `def/country*`, `speed_limits.sii`, or fuel boards, including `12` protected `AEM!`/`Bad magic`/encrypted ZIP archives; `.planning/research/ARCHITECTURE.md:41,54`). Current `VfsStack` eager full-tree indexing does not scale cleanly to scanning 503 full archives without prefix scoping.
-- **Global coverage scale (`Phase 5` target):**
-  - Baseline currently tracks `36` countries, `461` fuel boards (`373` `active_fp`, `88` placeholder/blank, `5` excluded highway signs), `43` locales, `12` `tz_*` keys, and `99` `fp_*` keys (`data/baselines/ets2_1.62_def/manifest.json`). Phase 5 scales snapshots to `200+` global countries/territories across Tier 1/2/3 pipelines (`.planning/ROADMAP.md:88-96`).
-- **HashFS compression evolution (`ETS2 1.63+`):**
-  - `HashFsV2Archive` handles compression nibbles `0` (stored) and `1` (zlib) only (`src/ets2v2/vfs/hashfs.py:576-586`). If SCS adopts Zstandard/GDeflate on `def.scs` or `locale.scs` in a future ETS2 update, `extract_baseline` will fail with `UnsupportedCompressionError` until extended.
+- **Current capacity:**
+  - HashFS v2 tables: `MAX_V2_TABLE_BYTES = 64 MiB` (~4.19M entries / ~16.7M metadata words; ETS2 `1.62.3.3s` `def.scs` has `66,066` entries).
+  - Single archive/file reads: `128 MiB` across `HashFs*`, `ZipArchive`, and `DirectoryArchive`; `64 MiB` for `profile.sii`, `game.log.txt`, `RealismSnapshot`, and `audit/taint.py` text scans; `1 MiB` for `VfsStack` empty-stub inspection (`MAX_STUB_INSPECT_BYTES`).
+  - HTTP / OOXML caps: `30 MiB` default HTTP (`50 MiB` for `es_miteco`), `20 MiB` compressed / `64 MiB` uncompressed / `256` entries / `5,000` rows for `.xlsx`.
+- **Limit:** Multi-GB monolithic `base.scs` / map-asset archives can exceed `64 MiB` HashFS table caps if mounted unfiltered; single community map files `> 128 MiB` or JSON station feeds `> 50 MiB` (`es_miteco` ~12k stations) will fail bounded-read checks.
+- **Scaling path:** Keep `compose-local` restricted to `def/` and `locale/` via `_ComboScopedArchive` and `DirectoryArchive(include_top_dirs=...)`; stream very large station JSON/CSV feeds incrementally if `es_miteco` or `br_anp` grows past `50 MiB`.
+
+### Global Territory, Hyperinflationary Currency, and Map-Combo Maintenance Scale
+
+- **Current capacity:** `225` canonical country laws (`data/laws/countries/*.json`), `151` ISO-4217 currencies (`data/mappings/currencies.json`), `186` Tier 3 curated fuel baselines (`data/curated/tier3_fuel_baselines.json`), `119` map-mod aliases (`data/mappings/country_aliases.json`), and verified compatibility against a `503`-mod local combo (`86` touching country/speed/totem defs, `12` protected `AEM!`/encrypted archives).
+- **Limit:** Static FX sanity bands in `data/mappings/currencies.json` (e.g., `ARS`, `IRR`, `LBP`, `SYP`, `TRY`, `VES`, `ZWG`) can be breached over 12–24 months by severe inflation or currency redenominations, causing `fx_sanity_rejected` fallbacks until bands are updated. Likewise, the `12` local `AEM!`/encrypted community mods cannot be automated without user-supplied `--unpacked-defs` directories.
+- **Scaling path:** Review `extended_fx_alerts` rollups in weekly Step Summaries to adjust redenominated currency bands proactively, and expand `data/mappings/country_aliases.json` as new map mods emerge.
 
 ## Dependencies at Risk
 
-### Phase 1 Runtime & Dev Toolchain (`pyproject.toml`, `uv.lock`)
+### Locked Python Runtime & Dev Toolchain (`pyproject.toml`, `uv.lock`)
 
-- **Current dependency footprint:** Minimal locked graph (`17` packages total in `uv.lock`, `.planning/phases/01-vfs-1-62-baseline-extraction-structural-sii-engine/01-VERIFICATION.md:97`): runtime `pydantic>=2.14,<3` (`2.14.3`), build backend `hatchling>=1.27,<2` (`1.33.0`), dev `basedpyright>=1.40,<2` (`1.40.2`), `pytest>=9.2,<9.3` (`9.2.0`), `pytest-cov>=6,<8` (`7.1.0`), `ruff>=0.16` (`0.17.5`).
-- **Risk notes:**
-  - `ruff` (`0.17.5`) checks markdown code snippets unless excluded (`extend-exclude = [".planning", ".agents"]` in `pyproject.toml:33`), which required an explicit exclusion for `.planning/research/ARCHITECTURE.md` (`01-01-SUMMARY.md:54`).
-  - No GPL dependencies exist (`MIT`, `BSD`, `Apache-2.0`, `PSF-2.0` only).
+- **Current footprint:** `28` locked packages in `uv.lock` (`5` runtime: `httpx>=0.28,<0.29`, `openpyxl>=3.1,<4`, `pillow>=12,<14`, `pydantic>=2.14,<3`, `tzdata>=2025.2`; `5` dev: `basedpyright>=1.40,<2`, `pytest>=9.2,<9.3`, `pytest-cov>=6,<8`, `ruff>=0.16`, `types-openpyxl>=3.1`; build backend `hatchling>=1.27,<2`). Zero GPL dependencies.
+- **Risk:**
+  - `httpx>=0.28,<0.29` pins a single minor version and blocks upgrades to `0.29+` / `1.0` without manual constraint updates.
+  - `tzdata>=2025.2` freezes the IANA timezone database inside `uv.lock`; countries changing DST laws (e.g., future EU/MENA/Latin America DST abolitions) will not take effect until `uv lock --upgrade-package tzdata` is run.
+  - `pillow>=12,<14` relies on an upper bound aligned with Pillow 12/13; major Pillow releases require verification of deterministic baseline RGB EXIF/ICC-stripped JPEG output (`276x162`).
 
-### Planned External Dependencies & Upstream Data Feeds (Phases 2–5)
+### External Free Data Providers With No SLA
 
-- **Windows `zoneinfo` dependency (`Phase 2`):** Python stdlib `zoneinfo` fails on Windows (`ZoneInfoNotFoundError`) without `tzdata` on PyPI (`.planning/research/SUMMARY.md:51`). `tzdata` is not yet in `pyproject.toml`.
-- **Workshop Icon Validation (`Phase 2`):** `pillow>=12,<14` is needed exclusively for `276x162` JPEG validation/generation (`.planning/research/STACK.md:43,149`), strictly excluded from `.dds` texture generation.
-- **Network APIs & Fragile Scrapers (`Phases 3 & 5`):**
-  - `httpx` and `openpyxl` (and `beautifulsoup4`/`lxml` for Phase 5 Tier 2 portals) are not yet added to `pyproject.toml`.
-  - EC Weekly Oil Bulletin uses Drupal dynamic XLSX links, `EL` instead of `GR` for Greece, and EUR/1,000 L units, and shifts around EU holidays (`.planning/research/PITFALLS.md:130`).
-  - ECB `eurofxref-daily.xml` omits `RUB` and ~15–20+ non-Eurozone/CIS/MENA/Balkan currencies and freezes on weekends/TARGET2 holidays (`PITFALLS.md:116-119`).
-  - Optional API keys required for full automated multi-grade/non-EU coverage: DE `Tankerkönig`, `US EIA v2`, `KR Opinet` (`.planning/STATE.md:53`).
-  - Tier 2 national HTML portals (`anre.md`, `erc.org.mk`, `rosstat`, `dmre`, `epra`, etc.) risk HTTP `403`/`429`, `windows-1251`/Latin-1 charset issues, and selector drift, requiring `prices.lock.json` circuit-breakers (`ROADMAP.md:94`).
-- **Missing Local SCS & Steam Tooling (`Phase 2` / `Phase B`):**
-  - `SCS Workshop Uploader` (`AppID 421800`), `steamcmd`, `scs_extractor.exe`, and `scs_packer.exe` are not installed on the local workstation (`.planning/research/PITFALLS.md:12`). Phase A manual upload verification requires installing `AppID 421800` on Windows; full-auto SteamCMD (`PUB-V2-01`, `PUB-V2-02`) is deferred to V2 due to `config.vdf` token rot (`#56`), `GHSA-mj96-mh85-r574`, and `m00nl1ght-dev/steam-workshop-deploy` cross-edition `rsync` leaks (`.planning/research/PITFALLS.md:23-63`).
+- **Risk:** Several critical live feeds are community-hosted with no uptime or stability SLA:
+  - **`@fawazahmed0/currency-api`** (`cdn.jsdelivr.net` + `latest.currency-api.pages.dev`, `src/ets2_realism/fetch/fx.py:43-46`): sole live FX source for ~120 non-ECB extended global currencies. If both mirrors fail or stop updating, all 120+ extended currencies freeze on `state/prices.lock.json` rates.
+  - **`fuel-prices.eu`** (`ec_bulletin.py:66`) & **`FionnHughes/eu-weekly-oil-bulletin`** (`ec_bulletin.py:59`): primary live fallback for non-EU European territories and EC WOB outages.
+  - **`gasvaktin/gasvaktin`** (`tier2_portals.py:47`), **`westnordost.github.io/osm-legal-default-speeds`** (`audit/osm_speeds.py:39`), and **`overpass-api.de`** (`audit/overpass.py:29`).
+- **Impact:** Outages do not fail Core European CI (EU Core FX uses `Frankfurter v2` + `ECB XML` + `CBR XML`; fuel uses `EC WOB` + 7 national Tier 1 APIs), but extended global FX/fuel and monthly OSM audits degrade gracefully to lockfile/warning state.
+- **Migration plan:** Circuit breakers and `state/prices.lock.json` cushion temporary outages; if `fawazahmed0` ever retires, add an alternative open multi-currency FX feed (e.g., IMF / Open ER-API) behind `normalize/fx.py`.
 
-## Missing Critical Features (Phase 2–5 Integration Dependencies)
+### Operational Local & Optional External Dependencies
 
-Phase 1 delivers the VFS, baseline extraction, and SII foundations (`VFS-01`, `VFS-02`, `SII-01`, `SII-02`) but intentionally omits all downstream compilation, validation, fetching, and packaging layers (`.planning/ROADMAP.md:38-102`):
+- **Local ETS2 `1.62.3.3s` archives (`VFS-02`):** Maintainer machine needs `def.scs` and `locale.scs` (`ETS2_GAME_DIR` / `D:\SteamLibrary\steamapps\common\Euro Truck Simulator 2`) to refresh `data/baselines/ets2_1.62_def/` after game patches and run `@pytest.mark.local_ets2`.
+- **Local ProMods & map-combo archives (`MAP-01`, `MAP-03`):** Building ProMods Companion Editions (`ets2-realism package promods`), running `ets2-realism compose-local`, and executing `@pytest.mark.local_promods` require user-installed ProMods (`EU`/`ME`/`MA`/`TGS` `def`/`defmap`/`assets`) and combo archives in `ETS2_MOD_DIR` (`D:\ETS2Data\Euro Truck Simulator 2\mod`).
+- **Manual `SCS Workshop Uploader` (`AppID 421800`, `PUB-03`):** Not installed on the current local workstation. Every Phase A release requires a maintainer to download the `phase-a-release-bundle` artifact, upload `dist/workshop/{summer,winter}/` manually via `AppID 421800`, and only then merge the persistent `release/phase-a-weekly` PR.
+- **Optional CI API keys (`DAT-02`, `GLB-01`):** `TANKERKOENIG_API_KEY` (DE multi-grade), `EIA_API_KEY` (US), `OPINET_API_KEY` (KR), and `CNE_API_TOKEN` (CL v4). Without them configured in GitHub Actions secrets, `DE` falls back to EC WOB, `US`/`KR` remain on Tier 3 curated baselines, and `CL` falls back to CNE v3/Tier 3.
 
-1. **Phase 2 (`SIM-01`..`03`, `PUB-01`..`03`) — Realism Registry, Core Compiler, Offline SCS Validator & Phase A Release Gate:**
-   - Depends on Phase 1 `data/baselines/ets2_1.62_def/*.json` and `src/ets2v2/sii/{country,speed_limits,hygiene,document}.py`.
-   - Missing pieces: `data/laws/` & `data/mappings/` Pydantic registry, `zoneinfo` + `tzdata` seasonal DST engine respecting the 12 supported `@@tz_*@@` tokens (`locales.json`), read/write ZIP Workshop packager (`versions.sii`, `manifest.sii`, `276x162` `.jpg` icon, `mp_mod_optional: true`, no `display_name`/`compatible_versions[]`, no ZIP-as-`.scs`), Offline SCS Validator (`00001`–`00010` + `WARN 00001`/`00002`, raw-byte hygiene check), `state/published.json` SHA-256 no-op gate, and Friday `06:00 UTC` Phase A workflow.
-2. **Phase 3 (`DAT-01`..`03`, `TOT-01`..`02`) — Multi-Provider FX/Fuel Pipeline & Zero-DDS Totem Writers:**
-   - Depends on Phase 1 `data/baselines/ets2_1.62_def/fuel_boards.json` (`461` boards), `locales.json` (`43` locales), and Phase 2 core compiler/validator.
-   - Missing pieces: `httpx` + `openpyxl` collectors (`Frankfurter v2`, `ECB`, `fawazahmed0`, `CBR`, `EC Weekly Oil Bulletin`, `UK DESNZ`, `NO SSB`, `FR`/`DE`/`ES`/`IT`/`NL`), `prices.lock.json` (`0.01–5.00 EUR/L`, `±25%` alerts), writable `sign_board_template` & `localization_db` emitters (`@@fp_*_ets2v2@@` + `locale/<lang>/local_module.ets2v2_fuel.sii` for all 43 locales), and repair of the 17 active unmapped + 69 placeholder/blank `1.62` signs.
-3. **Phase 4 (`MAP-01`..`05`) — ProMods Companion & `ets2v2 compose-local`:**
-   - Depends on Phase 1 `src/ets2v2/vfs/` (`VfsStack`, `base/`, empty `{}` stubs, `AEM!`/encrypted ZIP diagnostics), `src/ets2v2/sii/` surgical writers, and Phase 3 `realism-snapshot-{summer|winter}.json`.
-   - Missing pieces: local ProMods archives (`promods-eu-def-v284.scs`, `promods-me-defmap-v284.scs`, `promods-ma-defmap-v104.scs`, `promods-tgs-defmap-v170.scs`), `local_module.{pm_fuel,pm_me_fuel,pm_tgs_fuel}.sii` emitters, active load-order parser (`profile.sii` / `game.log.txt`), `FieldOwnershipPolicy` (`max_of_map_and_real`, `patch_if_single_tz`), `--unpacked-defs` fallback for `12` local `AEM!`/encrypted mods, opt-in `--patch-hardcoded-totems` (JRR/7RM), and `VfsStack` prefix-scoped indexing.
-4. **Phase 5 (`GLB-01`..`04`) — Global Tier 1/2/3 Expansion & OSM Drift Audit:**
-   - Depends on Phase 3 snapshot/circuit-breaker architecture and Phase 4 global alias mappings (`200+` territories).
-   - Missing pieces: non-EU Tier 1 collectors (`US EIA`, `BR ANP`, `AR Energía`, `CO SICOM`, `CL CNE`, `MY OpenDOSM`, `JP METI`, `KR Opinet`), per-country Tier 2 scrapers, Tier 3 curated baselines, and CI-only OSM (`CC BY-SA`) drift audit with provenance isolation checks guaranteeing zero `CC BY-SA` contamination in `CC BY 4.0` artifacts.
+## Missing Critical Features
+
+### Deferred V2 Automated Steam Workshop Publishing (`PUB-V2-01`, `PUB-V2-02`)
+
+- **Problem:** Phase A stops at validated Workshop artifacts, rolling `snapshots-latest` GitHub Releases, and a persistent Release PR; actual Steam Workshop uploads are still manual via `SCS Workshop Uploader` (`AppID 421800`).
+- **Blocks:** Fully hands-free Friday Workshop publishing via `steamcmd +workshop_build_item` with inline post-self-update 30s TOTP (`STEAM_SHARED_SECRET`), isolated Summer/Winter matrix jobs, and multi-day hidden-item (`visibility: 2`) verification (`PUB-V2-01`, `PUB-V2-02` in `.planning/STATE.md:58-59`).
+
+### First Live End-to-End Production Release & Workshop Upload Verification
+
+- **Problem:** `state/published.json` has never recorded a live release (`editions: {}`), `state/prices.lock.json` contains zero live-fetched entries yet, `.github/workflows/phase-a-release.yml` has not run end-to-end against live upstream APIs or pushed a real `snapshots-latest` GitHub Release, and generated Workshop bundles have not yet been uploaded through real `AppID 421800` / tested in ETS2 `1.62.3.3s` `game.log.txt`.
+- **Blocks:** Production confidence across live upstream feed behavior, real Steam Workshop ingestion, and in-game rendering verification of all 460 Zero-DDS boards and ProMods `pm*_fuel` modules.
+
+### Standalone Wheel / Non-Editable Packaging for End-Users
+
+- **Problem:** Users running `ets2-realism compose-local` or `ets2-realism package promods` cannot install a standalone wheel (`pipx` / `uv tool install`) because `data/` and `assets/` are excluded from the wheel (`pyproject.toml:37-38`) and loaded via `parents[3]` (`src/ets2_realism/normalize/currencies.py:13-17`).
+- **Blocks:** Frictionless distribution of the local CLI tool to ETS2 players outside a developer Git checkout.
 
 ## Test Coverage Gaps
 
-Executing the CI-safe suite with coverage (`uv run --offline --no-sync pytest -p no:cacheprovider -k "not local_ets2" --cov=ets2v2 --cov-report=term-missing`) achieves **91% overall statement coverage (2,578 / 2,831 statements; 253 missed across 113 CI-safe tests)**, while the `2` `@pytest.mark.local_ets2` tests in `tests/test_baseline_contracts.py` skip automatically on CI runners lacking local ETS2 `1.62.3.3s` archives.
+The test suite comprises `45` test modules (`24,654` LOC, `437` test functions expanding to **`638` collected tests**: `634` CI-safe + `4` local-archive tests) with `0` `ruff` and `0` `basedpyright` strict errors.
 
-### Unenforced CI Coverage & Platform Gaps
+### Unenforced Coverage Gate in CI & Slow Instrumented Coverage Execution
 
-- **No coverage gate in CI:** `.github/workflows/ci.yml:40` runs `uv run pytest` without `--cov` or `--cov-fail-under`, even though `pytest-cov` is a declared dev dependency (`pyproject.toml:22`).
-- **Windows-only & live-archive test skips on CI:** NTFS junction pruning (`src/ets2v2/vfs/dir_archive.py:21-24,82-97`) and `@pytest.mark.local_ets2` tests (`tests/test_baseline_contracts.py:235-321`) only execute meaningfully on Windows hosts with local ETS2 `1.62.3.3s` archives.
+- **What's not tested / enforced:** `.github/workflows/ci.yml:40` runs `uv run pytest` with neither `--cov` nor `--cov-fail-under`, even though `pytest-cov` is declared in `pyproject.toml:32`. Meanwhile, running `pytest --cov=ets2_realism` locally on Windows exceeds `5` minutes because multiple tests rebuild and offline-validate complete 460-board × 43-locale packages under bytecode coverage tracing.
+- **Files:** `.github/workflows/ci.yml`, `pyproject.toml`, `tests/test_license_taint_gate.py`, `tests/test_package_builder.py`, `tests/test_promods_builder.py`, `tests/test_publish_release.py`
+- **Risk:** Silent coverage regressions can slip into PRs undetected, and slow local coverage runs discourage developers from checking branch coverage.
+- **Priority:** Medium.
 
-### Module-Level Coverage Gaps (Verified via `pytest-cov`)
+### Zero Live-HTTP Contract / Canary Tests for External Feeds
 
-- **`src/ets2v2/vfs/dir_archive.py` — 78% (25 missed / 116 statements):**
-  - Untested paths: missing/non-directory constructor errors (`34, 36`), broken/unreadable symlinks in `_is_within_root` (`63-64`), intra-archive NTFS junction cycle skipping (`94-97`), non-file/unsafe-path skips in `_scan_tree` (`106-113, 116-122`), and post-scan root-escape / missing-file checks in `get_meta` and `read_bytes` (`133, 144-145, 163, 166-171`).
-  - Priority: **High** before Phase 4 `compose-local` traverses untrusted user `mod/` trees and `--unpacked-defs` directories.
-- **`src/ets2v2/vfs/hashfs.py` — 86% (56 missed / 405 statements):**
-  - Untested paths: truncated HashFS v1/v2 headers (`339-344, 450-455`), invalid magic/version/hash method (`351-357, 472-478`), table offset past EOF (`362-367, 499-504`), `_read_slice` bounds & zero-length reads (`123, 125`), uncompressed entry cap errors (`174-179`), `_decode_table` empty/raw-fallback/corrupt branches (`420, 422-427, 438-443, 522`), out-of-bounds metadata spans & truncated `0x80`/`0x81` blocks (`537-542, 560-565`), truncated v2 directory listings (`611-625, 632-637`), `ProtectedArchiveStub` context/validation branches (`661, 665, 669, 689-690, 704`), and `<6`-byte `SCS#` header stub (`755`).
-  - Priority: **Medium-High** (corrupt-archive fault-injection coverage before scanning diverse community `.scs` mods in Phase 4).
-- **`src/ets2v2/sii/lexer.py` — 86% (61 missed / 449 statements):**
-  - Untested paths: malformed-input diagnostic paths (`unterminated_comment` `252-261, 393-402`, `unterminated_string` `228-229, 327-328, 544-545`, `malformed_include` `567-575`, `unexpected_token` `590-601`, `syntax_error` missing `:` `625-636`, stray `{`/`}` `unbalanced_brace` `499-508, 522-533`), `_looks_like_next_statement` comment skipping (`277-286, 291-304`), multi-line tuple `line_span` (`688-690`), and `parse_sii_bool`/`split_sii_tuple` error cases (`141, 148, 151`).
-  - Priority: **Medium-High** (Phase 2 Offline SCS Validator and Phase 4 third-party mod parsing rely directly on these diagnostics).
-- **`src/ets2v2/sii/document.py` — 87% (32 missed / 249 statements):**
-  - Untested paths: `_resolve_unit` `KeyError` (`123`), `replace_span` invalid bounds (`128`), `insert_lines_after_attribute` on same-line `}` or no-trailing-newline EOF (`153-158, 165-166`), `_attribute_removal_bounds` without trailing newline (`215-217`), `same_open` / `same_open and same_close` in `_replace_attribute_line_with_lines` (`232-236`), empty `replace_array_append` on absent key or clearing fixed arrays (`310, 386-390`), and interleaved array `ValueError` guards (`323, 380`).
-  - Priority: **Medium**.
-- **`src/ets2v2/cli.py` (91%), `src/ets2v2/sii/hygiene.py` (94%), `src/ets2v2/baseline/extractor.py` (95%):**
-  - Untested paths: `cli.py` non-JSON `vfs inspect` diagnostics/truncation output (`42-44, 86, 88-91`) and default help/exit fallback (`264, 272-273`); `hygiene.py` `invalid_utf8` raw-bytes diagnostic (`257-266`) and trailing backslash escape edge (`130, 133`); `extractor.py` `verify_baseline_bundle` failure branches (`467, 477, 485-486, 490, 492, 505-506`) and `_write_raw_cache_entry` root-escape check (`109`).
-  - Priority: **Medium** (`verify_baseline_bundle` negative tests and `hygiene.py` `invalid_utf8` are directly relevant to Phase 2 validator verification).
+- **What's not tested:** All `32` FX/fuel collectors and the OSM/Overpass/Taginfo audit clients are verified solely against handcrafted mock payloads via `httpx.MockTransport`. No opt-in `@pytest.mark.live_network` canary test exists to verify real upstream URLs, HTTP verbs (which allowed the `CH_BFS_LIK_URL` `GET`-vs-`POST` bug to pass offline tests), TLS chains, or CMS selectors.
+- **Files:** `tests/test_fetch_fx.py`, `tests/test_fetch_fuel.py`, `tests/test_fetch_global_tier1.py`, `tests/test_fetch_tier2_portals.py`, `tests/test_audit_osm_speeds.py`, `src/ets2_realism/fetch/tier2_portals.py`
+- **Risk:** Upstream URL/schema/method mismatches remain invisible until a live Friday `phase-a-release.yml` or monthly `osm-speed-audit.yml` run fails or degrades to fallback.
+- **Priority:** High.
+
+### CI-Skipped Local-Archive & Platform-Specific Tests (`4` of `638` Tests + Windows Junctions)
+
+- **What's not tested on CI (`ubuntu-latest`):**
+  - `2` `@pytest.mark.local_ets2` tests (`tests/test_baseline_contracts.py:264,271`) testing zero-diff baseline extraction and 36-country surgical SII round-trips against real `def.scs`/`locale.scs`.
+  - `2` `@pytest.mark.local_promods` tests (`tests/test_promods_builder.py:773`, `tests/test_compose_local.py:1065`) testing real local ProMods Companion build/validation and real local `mod/` combo dry-run. Note that `tests/test_promods_builder.py:782-811` substitutes a synthetic 1-country UK `eu_def` fixture whenever local `promods-eu-def-*.scs` is absent, partially masking real EU def edge cases.
+  - Real Windows NTFS directory junction pruning in `src/ets2_realism/vfs/dir_archive.py` and `src/ets2_realism/publish/ledger.py` does not execute on Linux CI runners.
+- **Files:** `tests/test_baseline_contracts.py`, `tests/test_promods_builder.py`, `tests/test_compose_local.py`, `src/ets2_realism/vfs/dir_archive.py`, `src/ets2_realism/publish/ledger.py`
+- **Risk:** Real ETS2 `1.63+` or ProMods format changes and Windows-only filesystem regressions will not surface in GitHub Actions PR checks.
+- **Priority:** Medium-High.
+
+### Residual Edge-Case & Packaging Test Gaps
+
+- **What's not tested:**
+  - External-CWD invocation of `assert_out_dir_not_tracked()` / `compose_local()` / `build_promods_edition()` from a non-repo working directory (`src/ets2_realism/merge/promods_builder.py:82-110`).
+  - Built wheel (`uv build --wheel`) installation and import smoke test (currently fails due to missing `data/` package data).
+  - Full `phase-a-release.yml` `--previous-snapshots-dir` incremental diff path (wired in `cli.py:593-608`, unwired in workflow).
+  - Phase 1 low-level error branches in `src/ets2_realism/vfs/dir_archive.py` (broken symlinks, post-scan root-escape), `src/ets2_realism/vfs/hashfs.py` (truncated v1/v2 headers, corrupt metadata spans), `src/ets2_realism/sii/lexer.py` (malformed comment/string/include diagnostics), `src/ets2_realism/sii/document.py` (interleaved array `ValueError` guards, same-line brace edits), and `src/ets2_realism/sii/speed_limits.py` (orphan/duplicate lane errors).
+- **Files:** `src/ets2_realism/merge/promods_builder.py`, `src/ets2_realism/cli.py`, `src/ets2_realism/vfs/dir_archive.py`, `src/ets2_realism/vfs/hashfs.py`, `src/ets2_realism/sii/lexer.py`, `src/ets2_realism/sii/document.py`, `src/ets2_realism/sii/speed_limits.py`
+- **Risk:** Edge-case failures on malformed community `.scs` mods or end-user external-CWD CLI runs.
+- **Priority:** Medium.
 
 ---
 
-*Concerns audit: 2026-11-16*
+*Concerns audit: 2026-11-26*

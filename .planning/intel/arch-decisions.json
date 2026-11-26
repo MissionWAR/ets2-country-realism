@@ -1,41 +1,61 @@
 {
   "_meta": {
-    "updated_at": "2026-11-16T19:29:12.024Z",
-    "version": 3
+    "updated_at": "2026-11-26T17:52:00.000Z",
+    "version": 4
   },
   "entries": {
     "overview": {
-      "pattern": "Clean-room layered Python 3.12+ toolkit (VFS -> SII -> Baseline -> CLI)",
-      "description": "Modular ETS2 1.62+ country realism and VFS/SII toolkit in src/ets2v2/ separating read-only archive inspection (vfs), span-preserving SII/SUI parsing and surgical editing (sii), deterministic clean-room baseline extraction/verification (baseline), and argparse CLI (cli). Guided by .agents/skills/scs-modding-wiki/SKILL.md for official SCS Engine/Unit/Archive semantics."
+      "pattern": "Clean-room acyclic layered Python 3.12+ toolkit (VFS/SII -> Baseline -> Normalize/Registry/Validate -> Fetch/Package -> Merge/Publish -> CLI; Audit quarantined)",
+      "description": "MIT / CC BY 4.0 ETS2 1.62+ country realism generator and combo composer in src/ets2_realism/ (73 modules across 11 subpackages + cli.py, 45 pytest suites, 3 GitHub workflows). Builds Summer/Winter Vanilla+DLC Core mods, offline ProMods Editions (EU+ME+MA+TGS), and local map-combo patches (zz_ETS2_Realism_ComboPatch_{Summer,Winter}.scs) from 225-territory laws and live/locked fuel & FX data."
     },
     "data-flow": {
-      "flow": "SCS archives (.scs HashFS v1/v2, .zip, dir) -> VfsStack overlay -> SiiDocument/adapters -> Pydantic v2 clean-room JSON baseline",
-      "description": "open_archive dispatches by magic bytes (SCS# v1/v2, PK, AEM!, or dir) and mounts into VfsStack (normalizing base/ mounts and tracking empty SiiNunit {} suppression stubs). extract_baseline reads version.sii, def/country.sii, country .sui and speed_limits.sii, def/sign/board/*.sii, and stripped-root locale.scs, serializing sorted UTF-8 no-BOM LF JSONs with SHA-256 manifest."
+      "flow": "1.62 baseline + 225 law JSONs + 3-tier fuel/FX APIs -> state/prices.lock.json -> v1 RealismSnapshot -> Core/ProMods/Combo compiler + Zero-DDS totems -> Offline SCS Validator -> Phase A Release PR",
+      "description": "fetch updates state/prices.lock.json (151 currencies, 225 territories); registry resolves seasonal DST via zoneinfo+tzdata into schema_version=1 realism-snapshot-{summer,winter}.json + SHA256SUMS.txt; package/merge synthesize country .sui, speed_limits.sii, Zero-DDS sign boards, and 43-locale fuel modules; validate checks SCS 00001-00010 + license taint before publish updates state/published.json."
     },
     "conventions": {
-      "naming": "snake_case modules/functions, PascalCase frozen Pydantic v2 BaseModel/dataclass models; SCS unit segments enforced as [a-z0-9_]{1,12}",
-      "file-organization": "src/ets2v2/{vfs,sii,baseline}/ + cli.py + py.typed; tests under tests/test_<subsystem>_*.py with @pytest.mark.local_ets2 gating local archive tests; committed clean-room JSON baseline under data/baselines/ets2_1.62_def/",
-      "imports": "from __future__ import annotations throughout; strict typing via basedpyright (typeCheckingMode=strict, Python 3.12) and Ruff (E, F, I, UP, B, SIM, RUF; line-length=100); deterministic UTF-8 no-BOM LF serialization"
+      "naming": "Package ets2-country-realism (import ets2_realism, CLI ets2-realism); snake_case modules/functions, PascalCase strict frozen Pydantic v2 models; SCS unit segments strictly [a-z0-9_]{1,12} (.ets2r_fuel, @@fp_*_ets2r@@)",
+      "file-organization": "src/ets2_realism/{vfs,sii,baseline,registry,normalize,fetch,package,validate,publish,merge,audit}/ + cli.py; data/{baselines/ets2_1.62_def,laws/countries (225),mappings,curated}/; state/{prices.lock.json,published.json}; assets/icons/ (4 JPEGs); tests/test_*.py (45 suites)",
+      "imports": "from __future__ import annotations; basedpyright strict + Ruff (E,F,I,UP,B,SIM,RUF, line-length=100); deterministic UTF-8 no-BOM LF JSON/SII and fixed-timestamp ZIPs"
     },
-    "security": {
-      "protection_boundaries": "Refuses decryption of protected/obfuscated assets: AEM! headers yield ProtectedArchiveStub, encrypted ZIP entries (flag_bits & 0x41) raise ProtectedPayloadError, and 3nK\\x01 payloads emit three_nk_obfuscated diagnostics and refuse text decoding.",
-      "traversal_and_resource_caps": "normalize_vfs_path and DirectoryArchive block NUL bytes, '..' traversal, and escaping symlinks/junctions; SII hygiene rejects backslashes, '..', and non-col-0 @include; HashFS v2 caps tables at 64 MiB (MAX_V2_TABLE_BYTES) and entries at 128 MiB (MAX_ENTRY_DECOMPRESSED_BYTES); ZipArchive caps reads at 128 MiB (MAX_ZIP_ENTRY_BYTES); VfsStack caps stub inspection at 1 MiB (MAX_STUB_INSPECT_BYTES); extract_baseline blocks --raw-cache-dir inside repo data/."
+    "license-boundary": {
+      "rule": "MIT (code) / CC BY 4.0 (data & snapshots) clean-room boundary with automated taint gate",
+      "description": "Zero GPL extractors, zero 3nK/AEM! decryption, zero CC BY-NC-ND (GlobalPetrolPrices), MyLPG, paid IEA, or CC BY-SA/ODbL OSM data in data/, state/, snapshots, or packages. Enforced by src/ets2_realism/audit/taint.py, src/ets2_realism/validate/invariants.py, and tests/test_license_taint_gate.py."
     },
-    "component:VFS": {
-      "path": "src/ets2v2/vfs/",
-      "responsibility": "Read-only VfsArchive implementations for HashFS v1/v2 (hashfs.py) using pure-Python CityHash64 1.0.3 (cityhash.py), ZIP-wrapped .scs (zip_archive.py), unpacked directories (dir_archive.py), and multi-layer VfsStack overlay (stack.py) handling base/ flattening, opt-in dlc_<id>/ mounting, and empty SiiNunit {} stub detection."
+    "field-ownership-policy": {
+      "path": "src/ets2_realism/merge/policy.py",
+      "description": "FieldOwnershipPolicy separates realism overlays (fuel_price, lights_mandatory, driving_tired_offence, car/truck/bus speed_limits) from map geometry/identity (country_id, pos, regions[]/region_areas[], train/tram speeds, leftside_traffic, imperial_units, country_code). Uses max_of_map_and_real monotonic axle-limit merging and patch_if_single_tz DST shifting (preserving multi-TZ Russia/Kazakhstan/Brazil)."
     },
-    "component:SII": {
-      "path": "src/ets2v2/sii/",
-      "responsibility": "Single-pass O(n) string/comment-aware structural scanner (lexer.py) with &xxxxxxxx IEEE754 hex-float decoding, SCS hygiene checker (hygiene.py), and span-preserving surgical editor SiiDocument (document.py); adapters for country.sii/country_data (country.py), interleaved country_speed_limit rules (speed_limits.py), read-only sign_board_template (sign_board.py), and localization_db (localization.py)."
+    "zero-dds-totems": {
+      "path": "src/ets2_realism/normalize/totem_format.py, src/ets2_realism/package/totems.py, src/ets2_realism/merge/promods_fuel.py",
+      "description": "Option 4b Zero-DDS totems forbid .dds/.tobj outputs; rewrite def/sign/board/*.sii with @@fp_*_ets2r@@ tokens and emit synchronized locale/<lang>/local_module.ets2r_fuel.sii across all 43 active 1.62 locales with glyph/width verification, national formats (EUR/tenth-cent <sup>9</sup>/pence/integers), ProMods pm_fuel/pm_me_fuel/pm_tgs_fuel modules, and opt-in --patch-hardcoded-totems for JRR/7RM."
     },
-    "component:Baseline": {
-      "path": "src/ets2v2/baseline/",
-      "responsibility": "Clean-room ETS2 1.62.3.3 (eut2) extractor and byte-exact verifier (extractor.py, models.py) producing manifest.json, countries.json (36 countries), speed_limits.json (36 entries), fuel_boards.json (461 fuel boards: 373 active_fp, 88 placeholder/blank), and locales.json (43 locales, 12 tz_* keys, 99 fp_* keys) with dlc_*.scs country audit."
+    "promods-ip-boundary": {
+      "path": "src/ets2_realism/merge/promods_builder.py, src/ets2_realism/merge/promods_discovery.py",
+      "description": "Option C IP boundary: zero ProMods .scs/def files in Git or CI. Public CI ships Vanilla+DLC Core and SHA256SUMS-verified snapshots; ProMods Editions (EU+ME+MA+TGS) and compose-local run offline on user archives with assert_out_dir_not_tracked and automatic managed-package self-exclusion (# ets2-realism:managed-package)."
     },
-    "component:CLI": {
-      "path": "src/ets2v2/cli.py",
-      "responsibility": "Root argparse CLI (ets2v2) providing 'ets2v2 vfs inspect' (--prefix, --limit, --json) for VFS overlay/diagnostic inspection and 'ets2v2 baseline extract' (--game-dir, --out-dir, --raw-cache-dir, --check) for baseline extraction and verification."
+    "three-tier-fuel-fx-pipeline": {
+      "path": "src/ets2_realism/fetch/, src/ets2_realism/normalize/, state/prices.lock.json",
+      "description": "Multi-provider FX validation (Frankfurter v2, ECB XML, fawazahmed0 CC0, CBR XML across 151 currencies) + 3-tier fuel acquisition: Tier 1 EU/Global gov APIs (EC WOB, UK/NO/FR/DE/ES/IT/NL, US/BR/AR/CO/CL/MY/JP/KR), Tier 2 10 guarded portals, Tier 3 186 curated baselines (data/curated/tier3_fuel_baselines.json). Circuit breakers (0.01-5.00 EUR/L, +/-25% WoW alert) fall back to prices.lock.json."
+    },
+    "offline-scs-validator": {
+      "path": "src/ets2_realism/validate/workshop.py, src/ets2_realism/validate/invariants.py",
+      "description": "Offline validator enforcing SCS Workshop Uploader rules (00001-00010, WARN 00001/00002, 276x162 JPEG icon, mp_mod_optional: true, no .dds/.tobj/non-asset files, SII hygiene, 43-locale parity, license taint) across core/promods/combo profiles."
+    },
+    "phase-a-publishing": {
+      "path": "src/ets2_realism/publish/, .github/workflows/phase-a-release.yml",
+      "description": "Semi-auto Friday 06:00 UTC CI with zero Steam secrets: fetches FX/fuel, builds & validates Core packages and v1 snapshots, SHA-256 diff-gates against state/published.json, updates rolling snapshots-latest Release, and upserts release/phase-a-weekly PR for manual Workshop upload."
+    },
+    "quarantined-osm-audit": {
+      "path": "src/ets2_realism/audit/, .github/workflows/osm-speed-audit.yml",
+      "description": "One-way internal CI audit (zero imports from audit into build/package/publish/merge/registry/fetch). Monthly read-only job diffs data/laws/ vs westnordost/osm-legal-default-speeds (+ opt-in Overpass <=10 ISO-2s & Taginfo v4) using data/laws/speed_audit_allowlist.json (11 entries) and upserts/auto-closes rolling osm-audit GitHub Issue."
+    },
+    "component:VFS-SII-Baseline": {
+      "path": "src/ets2_realism/vfs/, src/ets2_realism/sii/, src/ets2_realism/baseline/",
+      "responsibility": "Read-only HashFS v1/v2 (CityHash64 1.0.3), ZIP, and Dir VFS stack with AEM!/3nK refusal; span-preserving SiiDocument + country/speed_limits/sign_board/localization parsers; ETS2 1.62.3.3 baseline extractor (36 countries, 461 fuel boards, 43 locales)."
+    },
+    "component:Registry-Package-Merge": {
+      "path": "src/ets2_realism/registry/, src/ets2_realism/package/, src/ets2_realism/merge/",
+      "responsibility": "225-territory law registry, 119-alias resolver, IANA DST resolver, v1 snapshots, 276x162 icon generator, Core/ProMods/compose-local builders (game.log/profile.sii/modlist load-order, --unpacked-defs protected-archive substitution, FieldOwnershipPolicy, Zero-DDS totems)."
     }
   }
 }

@@ -101,8 +101,11 @@ jobs:
                   .replace("`", "'")
                   .replace("<", "&lt;")
                   .replace(">", "&gt;")
+                  .replace("|", "\\|")
+                  .replace("[", "\\[")
+                  .replace("]", "\\]")
               )
-              return cleaned[:limit]
+              return cleaned[:limit].rstrip("\\")
 
           step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
           json_path = pathlib.Path("dist/audit/osm_speed_drift_report.json")
@@ -140,7 +143,21 @@ jobs:
         run: |
           set -euo pipefail
           ISSUE_TITLE="Monthly OSM Speed-Limit Drift Review"
-          ISSUE_BODY_FILE="dist/audit/osm_speed_drift_report.md"
+          ISSUE_BODY_FILE="dist/audit/osm_issue_body.md"
+
+          uv run --offline python - <<'PY'
+          import pathlib
+
+          from ets2v2.audit import truncate_markdown_for_github_issue
+
+          full_md = pathlib.Path("dist/audit/osm_speed_drift_report.md").read_text("utf-8")
+          capped = truncate_markdown_for_github_issue(
+              full_md,
+              max_chars=58_000,
+              artifact_name="osm-speed-drift-report",
+          )
+          pathlib.Path("dist/audit/osm_issue_body.md").write_text(capped, encoding="utf-8")
+          PY
 
           gh label create osm-audit \
             --description "Automated monthly internal OSM speed-limit drift advisory" \
@@ -162,4 +179,21 @@ jobs:
               --label osm-audit \
               --title "$ISSUE_TITLE" \
               --body-file "$ISSUE_BODY_FILE"
+          fi
+
+      - name: Close rolling osm-audit GitHub Issue when unfiltered run clears all drift
+        if: steps.audit.outputs.unacknowledged_drift_count == '0' && (github.event_name == 'schedule' || inputs.iso2 == '')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          EXISTING_ISSUE=$(gh issue list \
+            --label osm-audit \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_ISSUE" ]; then
+            gh issue close "$EXISTING_ISSUE" \
+              --comment "All-clear: latest unfiltered monthly OSM speed-limit drift audit reported 0 unacknowledged drift findings."
           fi

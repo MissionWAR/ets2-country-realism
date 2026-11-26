@@ -65,11 +65,18 @@ _TIER2_PORTAL_SOURCES: Final[frozenset[str]] = frozenset(
 
 
 def _sanitize_markdown_inline(text: str, *, max_len: int = _MAX_ALERT_DETAIL_LEN) -> str:
-    """Collapse whitespace/newlines, neutralize backticks & HTML angle brackets, and cap length."""
+    """Collapse whitespace/newlines and neutralize backticks, HTML, pipes, and brackets."""
     collapsed = " ".join(text.split())
-    escaped = collapsed.replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
+    escaped = (
+        collapsed.replace("`", "'")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("|", "\\|")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+    )
     if len(escaped) > max_len:
-        return escaped[:max_len]
+        return escaped[:max_len].rstrip("\\")
     return escaped
 
 

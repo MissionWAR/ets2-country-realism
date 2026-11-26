@@ -685,3 +685,53 @@ def test_cli_audit_osm_speeds_handles_output_oserror_cleanly_lo03(
     cap = capsys.readouterr()
     assert rc == 1
     assert "error: audit osm-speeds failed:" in cap.err
+
+
+def test_markdown_issue_truncation_and_link_image_sanitization_md01_md06() -> None:
+    """MD-01 & MD-06: Cap GitHub Issue body <= 58k on line boundary & neutralize ![...](...)."""
+    from ets2v2.audit import OverpassSpotCheck, truncate_markdown_for_github_issue
+
+    # 1. MD-01: Truncation preserves complete lines, caps <= max_chars, points to artifact
+    rows = ["# OSM Speed-Limit Drift Audit Report", "", "| ISO2 | Detail |", "|------|--------|"]
+    rows.extend(f"| `C{i:02d}` | row-{i:04d}-{'x' * 60} |" for i in range(1200))
+    huge_md = "\n".join(rows) + "\n"
+    assert len(huge_md) > 70_000
+
+    capped = truncate_markdown_for_github_issue(huge_md, max_chars=58_000)
+    assert len(capped) <= 58_000
+    assert "osm-speed-drift-report" in capped
+    assert "Report truncated" in capped
+    # Never slices mid-row before the footer separator
+    before_footer = capped.split("\n\n---\n\n", 1)[0]
+    assert before_footer.splitlines()[-1].endswith("|")
+
+    # Small report returned unchanged
+    assert truncate_markdown_for_github_issue("short\n", max_chars=58_000) == "short\n"
+
+    # 2. MD-06: Neutralize Markdown image/link injection in untrusted error strings
+    report = OsmSpeedAuditReport(
+        schema_version=1,
+        generated_at="2026-11-26T00:00:00Z",
+        rules_source="test",
+        allowlist_path=None,
+        countries_checked=1,
+        countries_matched_in_osm=1,
+        countries_missing_in_osm=[],
+        unacknowledged_drift_count=0,
+        acknowledged_difference_count=0,
+        unacknowledged_drifts=[],
+        acknowledged_differences=[],
+        overpass_spot_checks=[
+            OverpassSpotCheck(
+                iso2="DE",
+                ok=False,
+                error="boom ![px](https://attacker.example/t) and [click](https://phish.example)",
+            )
+        ],
+        taginfo_distributions=[],
+    )
+    rendered = render_osm_speed_drift_markdown(report)
+    assert "![px](" not in rendered
+    assert "[click](" not in rendered
+    assert "!\\[px\\](" in rendered
+    assert "\\[click\\](" in rendered

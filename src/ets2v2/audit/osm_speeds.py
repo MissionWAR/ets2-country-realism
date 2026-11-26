@@ -43,6 +43,7 @@ WESTNORDOST_ALLOWED_HOSTS: Final[frozenset[str]] = frozenset(
     {"westnordost.github.io", "raw.githubusercontent.com", "github.com"}
 )
 DEFAULT_ALLOWLIST_PATH: Final[Path] = Path("data/laws/speed_audit_allowlist.json")
+DEFAULT_GITHUB_ISSUE_MAX_CHARS: Final[int] = 58_000
 
 _KMH_PER_MPH: Final[float] = 1.609344
 _ISO2_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{2}$")
@@ -103,13 +104,18 @@ RoadBucket = Literal["urban", "local_road", "expressway", "motorway"]
 
 
 def _sanitize_markdown_inline(text: str, *, max_len: int = 240) -> str:
-    """Collapse whitespace/newlines and neutralize backticks, angle brackets, and table pipes."""
+    """Collapse whitespace/newlines and neutralize Markdown links, HTML, backticks, and pipes."""
     collapsed = " ".join(text.split())
     escaped = (
-        collapsed.replace("`", "'").replace("<", "&lt;").replace(">", "&gt;").replace("|", "\\|")
+        collapsed.replace("`", "'")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("|", "\\|")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
     )
     if len(escaped) > max_len:
-        return escaped[:max_len]
+        return escaped[:max_len].rstrip("\\")
     return escaped
 
 
@@ -661,3 +667,35 @@ def render_osm_speed_drift_markdown(report: OsmSpeedAuditReport) -> str:
             )
 
     return "\n".join(lines) + "\n"
+
+
+def truncate_markdown_for_github_issue(
+    markdown_text: str,
+    *,
+    max_chars: int = DEFAULT_GITHUB_ISSUE_MAX_CHARS,
+    artifact_name: str = "osm-speed-drift-report",
+) -> str:
+    """Truncate a Markdown report on a line boundary to stay safely below GitHub's 65,536 cap."""
+    if max_chars <= 0:
+        raise ValueError(f"max_chars must be > 0, got {max_chars!r}")
+    if len(markdown_text) <= max_chars:
+        return markdown_text
+
+    footer = (
+        f"\n\n---\n\n"
+        f"> **Report truncated** at `<= {max_chars:,}` characters to stay within GitHub's "
+        f"65,536-character Issue body limit. Download the full untruncated report from the "
+        f"`{artifact_name}` workflow artifact.\n"
+    )
+    budget = max(0, max_chars - len(footer))
+    kept_lines: list[str] = []
+    used = 0
+    for line in markdown_text.splitlines():
+        addition = len(line) + (1 if kept_lines else 0)
+        if used + addition > budget:
+            break
+        kept_lines.append(line)
+        used += addition
+    if not kept_lines:
+        return (markdown_text[:budget] + footer)[:max_chars]
+    return "\n".join(kept_lines) + footer

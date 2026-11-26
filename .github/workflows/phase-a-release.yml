@@ -68,8 +68,16 @@ jobs:
           from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
 
           def _sanitize(text: str, limit: int = 240) -> str:
-              cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
-              return cleaned[:limit]
+              cleaned = (
+                  " ".join(text.split())
+                  .replace("`", "'")
+                  .replace("<", "&lt;")
+                  .replace(">", "&gt;")
+                  .replace("|", "\\|")
+                  .replace("[", "\\[")
+                  .replace("]", "\\]")
+              )
+              return cleaned[:limit].rstrip("\\")
 
           def _is_ext_fx_warn(alert: dict) -> bool:
               return (
@@ -271,8 +279,16 @@ jobs:
               from ets2v2.normalize.currencies import EXTENDED_GLOBAL_CURRENCIES
 
               def _sanitize(text: str, limit: int = 240) -> str:
-                  cleaned = " ".join(text.split()).replace("`", "'").replace("<", "&lt;").replace(">", "&gt;")
-                  return cleaned[:limit]
+                  cleaned = (
+                      " ".join(text.split())
+                      .replace("`", "'")
+                      .replace("<", "&lt;")
+                      .replace(">", "&gt;")
+                      .replace("|", "\\|")
+                      .replace("[", "\\[")
+                      .replace("]", "\\]")
+                  )
+                  return cleaned[:limit].rstrip("\\")
 
               def _is_ext_fx_warn(alert: dict) -> bool:
                   return (

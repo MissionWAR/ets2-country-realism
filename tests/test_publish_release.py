@@ -955,3 +955,31 @@ def test_changelog_rolls_up_extended_fx_warning_alerts_while_keeping_core_itemiz
     assert "`extended_fx_alerts` (`extended_fx`)" in alerts_section
     assert "`7` extended global FX warning alerts" in alerts_section
     assert "`fx_lockfile_retained` (`AED`)" not in alerts_section
+
+
+def test_changelog_neutralizes_markdown_link_image_and_pipe_injection_md06() -> None:
+    """MD-06: Alert detail strings escape [, ], and | to block Markdown image/link injection."""
+    registry = load_law_registry(LAWS_DIR, MAPPINGS_PATH)
+    bl_countries = CountriesBaseline.model_validate_json(
+        (BASELINE_DIR / "countries.json").read_text("utf-8")
+    )
+    bl_locales = LocalesBaseline.model_validate_json(
+        (BASELINE_DIR / "locales.json").read_text("utf-8")
+    )
+    base_lock = load_prices_lockfile(REPO_ROOT / "state" / "prices.lock.json")
+    evil_alert = LockAlert(
+        severity="warning",
+        code="tier2_portal_outage",
+        scope="ae_moei",
+        detail="Upstream ![img](https://evil.example/px) [click](https://phish.example) a|b",
+    )
+    lock = base_lock.model_copy(update={"alerts": [evil_alert]})
+    snap = build_realism_snapshot(registry, bl_countries, bl_locales, "summer", prices_lock=lock)
+    md = render_edition_changelog(
+        "summer", "1.62-2026.47", "a" * 64, "b" * 64, snap, prices_lock=lock
+    ).decode("utf-8")
+    assert "![img](" not in md
+    assert "[click](" not in md
+    assert "!\\[img\\](" in md
+    assert "\\[click\\](" in md
+    assert "a\\|b" in md

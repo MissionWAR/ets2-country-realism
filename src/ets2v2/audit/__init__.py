@@ -19,12 +19,14 @@ from ets2v2.audit.models import (
 )
 from ets2v2.audit.osm_speeds import (
     DEFAULT_ALLOWLIST_PATH,
+    DEFAULT_GITHUB_ISSUE_MAX_CHARS,
     DEFAULT_WESTNORDOST_RULES_URL,
     WESTNORDOST_ALLOWED_HOSTS,
     load_speed_audit_allowlist,
     render_osm_speed_drift_markdown,
     run_osm_speed_audit,
     serialize_audit_report_bytes,
+    truncate_markdown_for_github_issue,
 )
 from ets2v2.audit.overpass import (
     DEFAULT_OVERPASS_SLEEP_SECONDS,
@@ -46,6 +48,7 @@ from ets2v2.audit.taint import (
 
 __all__ = [
     "DEFAULT_ALLOWLIST_PATH",
+    "DEFAULT_GITHUB_ISSUE_MAX_CHARS",
     "DEFAULT_OVERPASS_SLEEP_SECONDS",
     "DEFAULT_OVERPASS_URL",
     "DEFAULT_TAGINFO_KEYS",
@@ -78,4 +81,5 @@ __all__ = [
     "scan_package_for_taint",
     "scan_repo_and_artifacts_for_taint",
     "serialize_audit_report_bytes",
+    "truncate_markdown_for_github_issue",
 ]

@@ -1,4 +1,23 @@
 {
-  "editions": {},
+  "editions": {
+    "summer": {
+      "anchor_date": "2026-07-15",
+      "baseline_game_version": "1.62.3.3",
+      "country_count": 36,
+      "file_count": 579,
+      "package_version": "1.62-2026.48",
+      "payload_sha256": "32eedb2a0e35c56d32ab3db99dba8694be0e5b65c75b2af1ea8c874f47561f6a",
+      "snapshot_sha256": "3888de0dc51053c8310b809a36ab3ec0be197ecf42b77e111f6a673d42cf4aa0"
+    },
+    "winter": {
+      "anchor_date": "2026-01-15",
+      "baseline_game_version": "1.62.3.3",
+      "country_count": 36,
+      "file_count": 579,
+      "package_version": "1.62-2026.48",
+      "payload_sha256": "5d4a745560dae59731fc167315f30bd205a021a36668c5afa1eb1fcc8eaa103f",
+      "snapshot_sha256": "6b283d2841a19b0f2b38fefcf72af4abb04090597d64fd1f29b9f2c762f14407"
+    }
+  },
   "schema_version": 1
 }
